@@ -81,6 +81,62 @@ function GrooveWriter() {
   var constant_snare_accent_on_color_hex = "#FFF";
   var constant_snare_accent_on_color_rgb = "rgb(255, 255, 255)";
 
+  var insertNoteContextMenu = null;
+
+  const popup_key_shortcut_mapping = {
+    "stickingContextMenu": {
+      type: "sticking",
+      note_mapping: {
+        "Escape": "off",
+        "-": "off",
+        "r": "right",
+        "l": "left",
+        "b": "both",
+        "c": "count"
+      }
+    },
+    "hhContextMenu": {
+      type: "hh",
+      note_mapping: {
+        "Escape": "off",
+        "-": "off",
+        "x": "normal",
+        "o": "open",
+        "X": "accent",
+        "c": "crash",
+        "r": "ride",
+        "b": "ride_bell",
+        "m": "cow_bell",
+        "s": "stacker",
+        "k": "metronome_normal",
+        "K": "metronome_accent"
+      }
+    },
+    "snareContextMenu": {
+      type: "snare",
+      note_mapping: {
+        "Escape": "off",
+        "-": "off",
+        "o": "normal",
+        "O": "accent",
+        "g": "ghost",
+        "x": "xstick",
+        "d": "buzz",
+        "f": "flam",
+      }
+    },
+    "kickContextMenu": {
+      type: "kick",
+      note_mapping: {
+        "Escape": "off",
+        "-": "off",
+        "o": "normal",
+        "x": "splash",
+        "X": "kick_and_splash"
+      }
+    }
+  };
+
   // functions below
 
   root.numberOfMeasures = function () {
@@ -1478,45 +1534,77 @@ function GrooveWriter() {
   // returns false if working.  (this is because of the onContextMenu handler
   root.noteRightClick = function (event, type, id) {
     class_which_index_last_clicked = id;
-    var contextMenu;
 
     switch (type) {
       case "sticking":
-        contextMenu = document.getElementById("stickingContextMenu");
+        insertNoteContextMenu = document.getElementById("stickingContextMenu");
         break;
       case "hh":
-        contextMenu = document.getElementById("hhContextMenu");
+        insertNoteContextMenu = document.getElementById("hhContextMenu");
         break;
       case "tom1":
-        contextMenu = document.getElementById("tom1ContextMenu");
+        insertNoteContextMenu = document.getElementById("tom1ContextMenu");
         break;
       case "tom4":
-        contextMenu = document.getElementById("tom4ContextMenu");
+        insertNoteContextMenu = document.getElementById("tom4ContextMenu");
         break;
       case "snare":
-        contextMenu = document.getElementById("snareContextMenu");
+        insertNoteContextMenu = document.getElementById("snareContextMenu");
         break;
       case "kick":
-        contextMenu = document.getElementById("kickContextMenu");
+        insertNoteContextMenu = document.getElementById("kickContextMenu");
         break;
       default:
         console.log("Bad case in handleNotePopup");
         break;
     }
 
-    if (contextMenu) {
+    if (insertNoteContextMenu) {
       if (!event)
         event = window.event;
       if (event.clientX || event.clientY) {
-        contextMenu.style.top = event.clientY - 30 + "px";
-        contextMenu.style.left = event.clientX - 75 + "px";
+        insertNoteContextMenu.style.top = event.clientY - 30 + "px";
+        insertNoteContextMenu.style.left = event.clientX - 75 + "px";
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      root.myGrooveUtils.showContextMenu(insertNoteContextMenu);
+      root.removeAllPopUpKeyEventListeners();
+      root.registerPopUpKeyEventListeners();
     } else {
       return true; //error
     }
 
     return false;
+  };
+
+  root.removeAllPopUpKeyEventListeners = function () {
+    document.removeEventListener("keydown", root.handlePopUpKeyEventListeners);
+  };
+
+  // Register or unregister the key event listeners for the given context menu.
+  // contextMenu: DOM element
+  // register: boolean indicating whether to register or unregister the listeners
+  root.registerPopUpKeyEventListeners = function () {
+    console.log("Adding listeners for " + insertNoteContextMenu.id);
+    if (insertNoteContextMenu) {
+      document.addEventListener("keydown", root.handlePopUpKeyEventListeners);
+    }
+  };
+
+  root.handlePopUpKeyEventListeners = function (event) {
+    if (!insertNoteContextMenu) {
+      console.log("No insertNoteContextMenu set");
+      return;
+    }
+    console.log("Handling key event for insert note context menu: " + event.key);
+    const mapForType = popup_key_shortcut_mapping[insertNoteContextMenu.id];
+    const new_setting = mapForType.note_mapping[event.key];
+    if (new_setting) {
+      console.log("Setting " + mapForType.type + " to " + new_setting);
+      root.notePopupClick(mapForType.type, new_setting);
+      event.preventDefault();
+      root.myGrooveUtils.hideContextMenu(insertNoteContextMenu);
+      root.removeAllPopUpKeyEventListeners();
+    }
   };
 
   root.noteLeftClick = function (event, type, id) {
