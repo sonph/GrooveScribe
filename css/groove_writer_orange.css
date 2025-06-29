@@ -1181,6 +1181,15 @@
 		justify-content: space-around;
 		-webkit-justify-content: space-around;
 	}
+	#embedTool {
+		background: #fff;
+		padding: 2em;
+	}
+    #embedTool input#convertedUrl,
+    #embedTool input#subText,
+    #embedTool input#measureText {
+      width: 60%;
+    }
 	.pageBottomButton {
 		display: inline-block;
 		margin: 0px 20px;

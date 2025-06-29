@@ -73,6 +73,8 @@
     }
   </script>
 
+  <script src="./js/notion-embed.js" defer></script>
+
 </head>
 
 <body>
@@ -224,6 +226,56 @@
           <span class=" grooveDB_hidden pageBottomButton" id="shareSaveButton"
             onclick="event.preventDefault(); myGrooveWriter.show_FullURLPopup();"><span class="bottomButtonIcon"><i
                 class="fa fa-share fa-2x"></i></span><span class="bottomButtonLabel">SHARE</span></span>
+        </div>
+
+        <div id="embedTool" class="fullWidthEle">
+          <h3><a href="https://www.notion.so/" target="_blank">
+              Notion</a> Embedding Options</h3>
+          <br>
+          <div>
+            <form>
+              <label for="showTempo">Show Tempo</label>
+              <input type="checkbox" id="showTempo" name="showTempo"><br><br>
+
+              <label for="subText">Sub Text:</label>
+              <input type="text" id="subText" name="subText" placeholder="Chorus (can also be lyric hints)"><br><br>
+
+              <label for="repeatBegins">Begin repeat at measures (separated by ;):</label>
+              <input type="text" id="repeatBegins" name="repeatBegins" placeholder="1;3"><br><br>
+
+              <label for="repeatEnds">End repeat at measures (separated by ;):</label>
+              <input type="text" id="repeatEnds" name="repeatEnds" placeholder="2;4"><br><br>
+
+              <label for="repeatEndings">Alternate endings at measures (separated by ;):</label>
+              <input type="text" id="repeatEndings" name="repeatEndings" placeholder="2:1;3:2"><br><br>
+
+              <label for="measureText">Text at begin or end of specific measures (separated by ;):</label>
+              <input type="text" id="measureText" name="measureText" placeholder="1:b:start here;2:e:end here"><br><br>
+
+              <label for="convertedUrl">Converted URL:</label>
+              <input type="text" id="convertedUrl" name="convertedUrl"><br><br>
+
+              <button type="button" id="convertBtn">Convert</button>
+              <button type="button" id="copyBtn">Convert & copy to clipboard</button>
+              <button type="button" id="openLink">Open link</button>
+              <br><br>
+              <button type="button" id="decodeUrlBtn">Decode converted URL</button>
+            </form>
+          </div>
+          <div>
+            <span id="status"></span>
+          </div>
+          <br>
+          <div>
+            <h4>How to use this tool:</h4>
+            <ol>
+              <li>Transcribe your drum groove.</li>
+              <li>Fill out the above options. Click convert and copy the converted link.</li>
+              <li>In Notion, insert an embed block with <code>/embed</code> then paste the link.</li>
+            </ol>
+            <p></p>For more info & demo, see <a href="https://github.com/sonph/notion-drum-sheet"
+              target="_blank">https://github.com/sonph/notion-drum-sheet</a></p>
+          </div>
         </div>
 
         <div id="midiTextOutput">
