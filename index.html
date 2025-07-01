@@ -28,7 +28,7 @@
   <link rel="stylesheet" type="text/css" href="css/groove_display_orange.css">
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700,300' rel='stylesheet' type='text/css'>
 
-  <!--   Other peoples JS libraries    -->
+  <!-- JS Libraries -->
   <!-- <script src="./MIDI.js/js/MIDI/MIDI.JS.min.js" type="text/javascript"></script> -->
   <script src="./MIDI.js/js/MIDI/AudioDetect.js" type="text/javascript"></script>
   <script src="./MIDI.js/js/MIDI/LoadPlugin.js" type="text/javascript"></script>
@@ -55,25 +55,18 @@
 
   <!-- jsmidgen for generating a midi file -->
   <script src="./js/jsmidgen.js" type="text/javascript"></script>
-  <!--   our custom JS  -->
+
   <script src="js/groove_writer.js"></script>
   <script src="js/groove_utils.js"></script>
   <script src="js/grooves.js"></script>
+  <script src="js/notion-embed.js" defer></script>
 
   <script type="text/javascript">
     /*jslint browser:true evil:true on:true */
-    /*global GrooveWriter, grooves */
-    // instantiate a global instance of the GrooveWriterClass.    This page only uses one
     var myGrooveWriter = new GrooveWriter();
-    if (myGrooveWriter.myGrooveUtils.grooveDBAuthoring) {
-      document.write('<link rel="stylesheet" type="text/css" href="css/grooveDB_authoring.css">');
-    }
-    if (myGrooveWriter.myGrooveUtils.debugMode) {
-      document.write('<link rel="stylesheet" type="text/css" href="css/groove_debug.css">');
-    }
   </script>
 
-  <script src="./js/notion-embed.js" defer></script>
+  <script src="js/local_development.js" defer></script>
 
 </head>
 
@@ -298,7 +291,7 @@
           </div>
         </div>
 
-        <div id="debugDisplayArea">
+        <div id="debugDisplayArea" style="display:none;">
           <span id="undoStack"></span>
           <span id="redoStack"></span>
           <span id="URLSearchData"></span>
@@ -313,7 +306,7 @@
             For more information about ABC Notation go here: <a
               href="http://abcnotation.com/">http://abcnotation.com/</a>
             <p></p>
-            <textarea id="ABCsource" rows="10" cols="72"></textarea>
+            <textarea id="ABCsource" rows="25" cols="72"></textarea>
             <br>
             <button type="button" onclick="myGrooveWriter.displayNewSVG();">Re-render the music</button>
             <button type="button" onclick="myGrooveWriter.saveABCtoFile();">Save ABC to file</button>
