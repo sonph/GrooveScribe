@@ -4272,10 +4272,10 @@ function GrooveWriter() {
     } else {
       // changing from or changing to a triplet division
       // triplets don't scale well, so use defaults when we change
-      uiStickings = root.myGrooveUtils.GetDefaultStickingsGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
-      uiHH = root.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
-      uiTom1 = root.myGrooveUtils.GetDefaultTom1Groove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
-      uiTom4 = root.myGrooveUtils.GetDefaultTom4Groove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
+      uiStickings = root.myGrooveUtils.GetDefaultStickingsGroove(new_notes_per_measure, class_number_of_measures);
+      uiHH = root.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_number_of_measures);
+      uiTom1 = root.myGrooveUtils.GetDefaultTom1Groove(new_notes_per_measure, class_number_of_measures);
+      uiTom4 = root.myGrooveUtils.GetDefaultTom4Groove(new_notes_per_measure, class_number_of_measures);
       uiSnare = root.myGrooveUtils.GetDefaultSnareGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
       uiKick = root.myGrooveUtils.GetDefaultKickGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
 

@@ -410,14 +410,13 @@ function GrooveUtils() {
     return retString;
   };
 
-  root.GetDefaultStickingsGroove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
-
+  root.GetDefaultStickingsGroove = function (notes_per_measure, numMeasures) {
     return root.GetEmptyGroove(notes_per_measure, numMeasures);
   };
 
   // build a string that looks like this
   // "|x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-|";
-  root.GetDefaultHHGroove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultHHGroove = function (notes_per_measure, numMeasures) {
     var retString = "";
     var oneMeasureString = "|";
     var i;
@@ -435,19 +434,19 @@ function GrooveUtils() {
     return retString;
   };
 
-  root.GetDefaultTom1Groove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultTom1Groove = function (notes_per_measure, numMeasures) {
 
     return root.GetEmptyGroove(notes_per_measure, numMeasures);
   };
 
-  root.GetDefaultTom4Groove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultTom4Groove = function (notes_per_measure, numMeasures) {
 
     return root.GetEmptyGroove(notes_per_measure, numMeasures);
   };
 
   // build a string that looks like this
   // |--------O---------------O-------|
-  root.GetDefaultSnareGroove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultSnareGroove = function (notes_per_measure, timeSigTop, numMeasures) {
     var retString = "";
     var oneMeasureString = "|";
     var i;
@@ -471,7 +470,7 @@ function GrooveUtils() {
 
   // build a string that looks like this
   // |o---------------o---------------|
-  root.GetDefaultKickGroove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultKickGroove = function (notes_per_measure, timeSigTop, numMeasures) {
     var retString = "";
     var oneMeasureString = "|";
     var i;
@@ -492,7 +491,7 @@ function GrooveUtils() {
     return retString;
   };
 
-  root.GetDefaultTomGroove = function (notes_per_measure, timeSigTop, timeSigBottom, numMeasures) {
+  root.GetDefaultTomGroove = function (notes_per_measure, numMeasures) {
 
     return root.GetEmptyGroove(notes_per_measure, numMeasures);
   };
@@ -822,7 +821,7 @@ function GrooveUtils() {
   // or  B=o---o---o----oo-o--oo---|
   //
   // Returns array that contains notesPerMeasure * numberOfMeasures entries.
-  root.noteArraysFromURLData = function (drumType, noteString, notesPerMeasure, numberOfMeasures) {
+  root.abcNoteArrayFromTabString = function (drumType, noteString, notesPerMeasure, numberOfMeasures) {
     var retArray = [];
 
     // decode the %7C url encoding types
@@ -970,14 +969,14 @@ function GrooveUtils() {
 
     Snare_string = root.getQueryVariableFromString("S", false, encodedURLData);
     if (!Snare_string) {
-      Snare_string = root.GetDefaultSnareGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue, myGrooveData.numberOfMeasures);
+      Snare_string = root.GetDefaultSnareGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.numberOfMeasures);
     }
 
     Kick_string = root.getQueryVariableFromString("K", false, encodedURLData);
     if (!Kick_string) {
       root.getQueryVariableFromString("B", false, encodedURLData);
       if (!Kick_string) {
-        Kick_string = root.GetDefaultKickGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue, myGrooveData.numberOfMeasures);
+        Kick_string = root.GetDefaultKickGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.numberOfMeasures);
       }
     }
 
@@ -986,19 +985,19 @@ function GrooveUtils() {
       // toms are named T1, T2, T3, T4
       var Tom_string = root.getQueryVariableFromString("T" + (i + 1), false, encodedURLData);
       if (!Tom_string) {
-        Tom_string = root.GetDefaultTomGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue, myGrooveData.numberOfMeasures);
+        Tom_string = root.GetDefaultTomGroove(myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
       } else {
         myGrooveData.showToms = true;
       }
 
       /// the toms array index starts at zero (0) the first one is T1
-      myGrooveData.toms_array[i] = root.noteArraysFromURLData("T" + (i + 1), Tom_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+      myGrooveData.toms_array[i] = root.abcNoteArrayFromTabString("T" + (i + 1), Tom_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
     }
 
-    myGrooveData.sticking_array = root.noteArraysFromURLData("Stickings", Stickings_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
-    myGrooveData.hh_array = root.noteArraysFromURLData("H", HH_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
-    myGrooveData.snare_array = root.noteArraysFromURLData("S", Snare_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
-    myGrooveData.kick_array = root.noteArraysFromURLData("K", Kick_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+    myGrooveData.sticking_array = root.abcNoteArrayFromTabString("Stickings", Stickings_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+    myGrooveData.hh_array = root.abcNoteArrayFromTabString("H", HH_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+    myGrooveData.snare_array = root.abcNoteArrayFromTabString("S", Snare_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+    myGrooveData.kick_array = root.abcNoteArrayFromTabString("K", Kick_string, myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
 
     myGrooveData.title = root.getQueryVariableFromString("title", "", encodedURLData);
     myGrooveData.title = decodeURIComponent(myGrooveData.title);
@@ -1327,7 +1326,7 @@ function GrooveUtils() {
       ABC_String += moveAccentsOrOtherModifiersOutsideOfGroup(abcNoteStrings, "!open!");
       ABC_String += moveAccentsOrOtherModifiersOutsideOfGroup(abcNoteStrings, "!///!");
 
-      // Look for '[' and ']'.   They are added on to the the kick and splash and could be added to other notes
+      // Look for '[' and ']'.   They are added on to the kick and splash and could be added to other notes
       // in the future.   They imply that the notes are on the same beat.   Since we are already putting multiple
       // notes on the same beat (see code below this line that adds '[' & ']'), we need to remove them or the
       // resulting ABC will be invalid
@@ -1514,7 +1513,6 @@ function GrooveUtils() {
     kick_array,
     toms_array,
     post_voice_abc,
-    num_notes,
     sub_division,
     notes_per_measure,
     kick_stems_up,
@@ -1546,6 +1544,7 @@ function GrooveUtils() {
     // By default we use the base sub_division but this can be set different below
     var faker_sub_division = sub_division;
 
+    const num_notes = HH_array.length;
     for (var i = 0; i < num_notes; i++) {
 
       // triplets are special.  We want to output a note or a rest for every space of time
@@ -1765,7 +1764,6 @@ function GrooveUtils() {
     kick_array,
     toms_array,
     post_voice_abc,
-    num_notes,
     sub_division,
     notes_per_measure,
     kick_stems_up,
@@ -1789,6 +1787,7 @@ function GrooveUtils() {
     if (kick_stems_up)
       all_drum_array_of_array = all_drum_array_of_array.concat([kick_array]);
 
+    const num_notes = HH_array.length;
     for (var i = 0; i < num_notes; i++) {
 
       var grouping_size_for_rests = abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom);
@@ -1982,7 +1981,6 @@ function GrooveUtils() {
     kick_array,
     toms_array,
     post_voice_abc,
-    num_notes,
     time_division,
     notes_per_measure,
     kick_stems_up,
@@ -2007,7 +2005,6 @@ function GrooveUtils() {
         kick_array,
         toms_array,
         post_voice_abc,
-        num_notes,
         time_division,
         notes_per_measure,
         kick_stems_up,
@@ -2021,7 +2018,6 @@ function GrooveUtils() {
         kick_array,
         toms_array,
         post_voice_abc,
-        num_notes,
         time_division,
         notes_per_measure,
         kick_stems_up,
@@ -2065,7 +2061,6 @@ function GrooveUtils() {
       FullNoteKickArray,
       FullNoteTomsArray,
       "|\n",
-      FullNoteHHArray.length,
       myGrooveData.timeDivision,
       root.notesPerMeasureInFullSizeArray(is_triplet_division, myGrooveData.numBeats, myGrooveData.noteValue), // notes_per_measure, We scaled up to 48/32 above
       myGrooveData.kickStemsUp,
@@ -3412,3 +3407,6 @@ function GrooveUtils() {
 } // end of class
 
 globalThis.GrooveUtils = GrooveUtils;
+globalThis.Subdivision = Subdivision;
+globalThis.GrooveData = GrooveData;
+globalThis.GrooveMetadata = GrooveMetadata;
