@@ -3407,4 +3407,8 @@ function GrooveUtils() {
     root.swingEnabled(root.doesDivisionSupportSwing(division));
   };
 
+  this.tablatureToABCNotationPerNote = tablatureToABCNotationPerNote;
+  this.abcNotationToTablaturePerNote = abcNotationToTablaturePerNote;
 } // end of class
+
+globalThis.GrooveUtils = GrooveUtils;
