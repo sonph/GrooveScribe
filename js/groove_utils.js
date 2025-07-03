@@ -35,6 +35,162 @@ var global_midiInitialized = false;
 // global constants
 var constant_MAX_MEASURES = 10;
 var constant_DEFAULT_TEMPO = 80;
+
+function setOf(...args) {
+  return new Set(args);
+}
+
+class DrumType {
+  static NONE = new DrumType('None');
+  static STICKINGS = new DrumType('Stickings');
+  static HIHAT = new DrumType('H');
+  static SNARE = new DrumType('S');
+  static KICK = new DrumType('K');
+  static TOM1 = new DrumType('T1');
+  static TOM2 = new DrumType('T2');
+  static TOM3 = new DrumType('T3');
+  static TOM4 = new DrumType('T4');
+
+  constructor(name) {
+    this.name = name;
+  }
+
+  static of(name) {
+    return new DrumType(name);
+  }
+
+  equals(other) {
+    if (!(other instanceof DrumType)) {
+      return false;
+    }
+    return this.name === other.name;
+  }
+}
+
+class AbcNote {
+  // TODO: Maybe switch note false to ''
+  static OFF = new AbcNote(DrumType.NONE, false, setOf('-'));
+  static STICK_R = new AbcNote(DrumType.STICKINGS, '"R"x', setOf('R'));
+  static STICK_L = new AbcNote(DrumType.STICKINGS, '"L"x', setOf('L'));
+  static STICK_BOTH = new AbcNote(DrumType.STICKINGS, '"R/L"x', setOf('b', 'B'));
+  static STICK_COUNT = new AbcNote(DrumType.STICKINGS, '"count"x', setOf('c'));
+  static STICK_OFF = new AbcNote(DrumType.STICKINGS, '""x', setOf('-', ''));
+
+  static HH_RIDE = new AbcNote(DrumType.HIHAT, "^A'", setOf('r'));
+  static HH_RIDE_BELl = new AbcNote(DrumType.HIHAT, "^B'", setOf('b', 'B'));
+  static HH_COW_BELL = new AbcNote(DrumType.HIHAT, "^D'", setOf('m', 'M'));
+  static HH_CRASH = new AbcNote(DrumType.HIHAT, "^c'", setOf('c'));
+  static HH_STACKER = new AbcNote(DrumType.HIHAT, "^d'", setOf('s'));
+  static HH_METRONOME_NORMAL = new AbcNote(DrumType.HIHAT, "^e'", setOf('n'));
+  static HH_METRONOME_ACCENT = new AbcNote(DrumType.HIHAT, "^f'", setOf('N'));
+  static HH_OPEN = new AbcNote(DrumType.HIHAT, "!open!^g", setOf('o'));
+  static HH_CLOSE = new AbcNote(DrumType.HIHAT, "!plus!^g", setOf('+'));
+  static HH_ACCENT = new AbcNote(DrumType.HIHAT, "!accent!^g", setOf('X'));
+  static HH_NORMAL = new AbcNote(DrumType.HIHAT, "^g", setOf('x'));
+
+  static SN_GHOST = new AbcNote(DrumType.SNARE, "!(.!!).!c", setOf('g'));
+  static SN_ACCENT = new AbcNote(DrumType.SNARE, "!accent!c", setOf('O'));
+  static SN_NORMAL = new AbcNote(DrumType.SNARE, "c", setOf('o'));
+  static SN_XSTICK = new AbcNote(DrumType.SNARE, "^c", setOf('x'));
+  static SN_BUZZ = new AbcNote(DrumType.SNARE, "!///!c", setOf('b'));
+  static SN_FLAM = new AbcNote(DrumType.SNARE, "!accent!{/c}c", setOf('f'));
+  static SN_DRAG = new AbcNote(DrumType.SNARE, "{/cc}c", setOf('d'));
+
+  static KI_SANDK = new AbcNote(DrumType.KICK, "[F^d,]", setOf('X')); // kick & splash
+  static KI_SPLASH = new AbcNote(DrumType.KICK, "^d,", setOf('x')); // splash only
+  static KI_NORMAL = new AbcNote(DrumType.KICK, "F", setOf('o'));
+
+  static T1_NORMAL = new AbcNote(DrumType.TOM1, "e", setOf('o'));
+  static T2_NORMAL = new AbcNote(DrumType.TOM2, "d", setOf('o'));
+  static T3_NORMAL = new AbcNote(DrumType.TOM3, "B", setOf('o'));
+  static T4_NORMAL = new AbcNote(DrumType.TOM4, "A", setOf('o'));
+
+  static ALL_NOTES = [
+    this.OFF,
+    this.STICK_R,
+    this.STICK_L,
+    this.STICK_BOTH,
+    this.STICK_COUNT,
+    this.STICK_OFF,
+    this.HH_RIDE,
+    this.HH_RIDE_BELl,
+    this.HH_COW_BELL,
+    this.HH_CRASH,
+    this.HH_STACKER,
+    this.HH_METRONOME_NORMAL,
+    this.HH_METRONOME_ACCENT,
+    this.HH_OPEN,
+    this.HH_CLOSE,
+    this.HH_ACCENT,
+    this.HH_NORMAL,
+    this.SN_GHOST,
+    this.SN_ACCENT,
+    this.SN_NORMAL,
+    this.SN_XSTICK,
+    this.SN_BUZZ,
+    this.SN_FLAM,
+    this.SN_DRAG,
+    this.KI_SANDK,
+    this.KI_SPLASH,
+    this.KI_NORMAL,
+    this.T1_NORMAL,
+    this.T2_NORMAL,
+    this.T3_NORMAL,
+    this.T4_NORMAL,
+  ];
+
+  // Map of drumType to map of tab char to abc note.
+  static ABC_NOTE_TO_TAB_CHAR = AbcNote.createAbcNoteToTabCharMap();
+
+  // Map of drumType to map of tab char to abc note.
+  static TAB_CHAR_TO_ABC_NOTE = AbcNote.createTabCharToAbcNoteMap();
+
+  constructor(drumType, note, tabChar) {
+    this.drumType = drumType;
+    this.note = note;
+    this.tabChar = tabChar || Set();
+  }
+
+  static createAbcNoteToTabCharMap() {
+    const m = new Map();
+    for (let abcNote of AbcNote.ALL_NOTES) {
+      const drumType = abcNote.drumType.name;
+      if (!m.has(drumType)) {
+        m.set(drumType, new Map());
+      }
+      m.get(drumType).set(abcNote.note, abcNote.tabChar);
+    }
+    return m;
+  }
+
+  static createTabCharToAbcNoteMap() {
+    const m = new Map();
+    for (let abcNote of AbcNote.ALL_NOTES) {
+      const drumType = abcNote.drumType.name;
+      if (!m.has(drumType)) {
+        m.set(drumType, new Map());
+      }
+      for (let tabChar of abcNote.tabChar) {
+        m.get(drumType).set(tabChar, abcNote);
+      }
+    }
+    return m;
+  }
+}
+
+// DrumType and note string to tab char string.
+function abcNoteToTabChar(drumType, abcNote) {
+  if (abcNote instanceof AbcNote) {
+    abcNote = abcNote.note;
+  }
+  return AbcNote.ABC_NOTE_TO_TAB_CHAR.get(drumType.name)?.get(abcNote)?.values().next().value || '';
+}
+
+// DrumType and tab char string to AbcNote.
+function tabCharToAbcNote(drumType, tabChar) {
+  return AbcNote.TAB_CHAR_TO_ABC_NOTE.get(drumType.name)?.get(tabChar) || AbcNote.OFF;
+}
+
 var constant_ABC_STICK_R = '"R"x';
 var constant_ABC_STICK_L = '"L"x';
 var constant_ABC_STICK_BOTH = '"R/L"x';
@@ -104,6 +260,106 @@ var global_total_midi_play_time_msecs = 0;
 var global_total_midi_notes = 0;
 var global_total_midi_repeats = 0;
 
+class Subdivision {
+  static NONE = new Subdivision(0);
+  static WHOLE = new Subdivision(1);
+  static HALF = new Subdivision(2);
+  static QUARTER = new Subdivision(4);
+  static EIGHTH = new Subdivision(8);
+  static EIGHTH_TRIPLET = new Subdivision(12);
+  static SIXTEENTH = new Subdivision(16);
+  static SIXTEENTH_TRIPLET = new Subdivision(24);
+  static S_32ND = new Subdivision(32);
+  static S_48TH = new Subdivision(48);
+
+  constructor(number) {
+    if (typeof number === 'number' && Number.isInteger(number) && number >= 0) {
+      this.value = number;
+    } else {
+      console.log(`Invalid Subdivision value: ${number}, default to QUARTER.`);
+      this.value = Subdivision.QUARTER;
+    }
+  }
+
+  isTriplet() {
+    return this.value % 12 == 0;
+  }
+
+  static of(number) {
+    return new Subdivision(number);
+  }
+
+  equals(other) {
+    if (!(other instanceof TimeSignature)) {
+      return false;
+    }
+    return this.top === other.top && this.bottom.value === other.bottom.value;
+  }
+}
+
+class TimeSignature {
+  static COMMON_TIME_44 = new TimeSignature(4, Subdivision.QUARTER);
+
+  constructor(top, bottom) {
+    if (typeof top !== 'number' || top <= 0 || !Number.isInteger(top)) {
+      throw new Error('TimeSignature numbers must be positive integers.');
+    }
+    if (!(bottom instanceof Subdivision)) {
+      throw new Error('TimeSignature bottom must be an instance of Subdivision.');
+    }
+    this.top = top;
+    this.bottom = bottom;
+  }
+
+  toString() {
+    return `TimeSignature[${this.top}/${this.bottom}]`;
+  }
+}
+
+class GrooveData {
+  constructor(timeSignature = TimeSignature.COMMON_TIME_44, numberOfMeasures = 1) {
+    this.timeSignature = timeSignature;
+    this.numberOfMeasures = numberOfMeasures;
+
+    this.timeDivision = Subdivision.SIXTEENTH;
+    this.notesPerMeasure = timeSignature.top * timeSignature.bottom;
+
+    this.numberOfMeasures = 1;
+
+    this.sticking_array = this.createEmptyArrayOfLength(16);
+    this.hh_array = this.createEmptyArrayOfLength(16);
+    this.snare_array = this.createEmptyArrayOfLength(16);
+    this.kick_array = this.createEmptyArrayOfLength(16);
+    // toms_array contains 4 toms  T1, T2, T3, T4 index starting at zero
+    // TODO: re-work this data structure to be more flexible for 2, 3 & 4 toms.
+    this.toms_array = [this.createEmptyArrayOfLength(16), this.createEmptyArrayOfLength(16), this.createEmptyArrayOfLength(16), this.createEmptyArrayOfLength(16)];
+  }
+
+  createEmptyArrayOfLength(length) {
+    const array = new Array(length);
+    array.fill(false);
+    return array;
+  }
+}
+
+class GrooveMetadata {
+  constructor() {
+    this.showToms = false;
+    this.showStickings = false;
+    this.title = "";
+    this.author = "";
+    this.comments = "";
+    this.showLegend = false;
+    this.swingPercent = 0;
+    this.tempo = constant_DEFAULT_TEMPO;
+    this.kickStemsUp = true;
+    this.metronomeFrequency = 0; // 0, 4, 8, 16
+    this.debugMode = root.debugMode;
+    this.grooveDBAuthoring = root.grooveDBAuthoring;
+    this.viewMode = root.viewMode;
+  }
+}
+
 // GrooveUtils class.   The only one in this file.
 function GrooveUtils() {
   "use strict";
@@ -153,8 +409,6 @@ function GrooveUtils() {
     this.notesPerMeasure = 16;
     this.timeDivision = 16;
     this.numberOfMeasures = 1;
-    this.numBeats = 4;  // TimeSigTop: Top part of Time Signture 3/4, 4/4, 5/4, 6/8, etc...
-    this.noteValue = 4; // TimeSigBottom: Bottom part of Time Sig   4 = quarter notes, 8 = 8th notes, 16ths, etc..
     this.sticking_array = class_empty_note_array.slice(0); // copy by value
     this.hh_array = class_empty_note_array.slice(0);    // copy by value
     this.snare_array = class_empty_note_array.slice(0); // copy by value
@@ -253,16 +507,14 @@ function GrooveUtils() {
     return (('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
   };
 
-  // the notes per measure is calculated from the note division and the time signature
-  // in 4/4 time the division is the division (as well as any time signature x/x)
-  // in 4/8 the num notes is half as many, etc
-  root.calc_notes_per_measure = function (division, time_sig_top, time_sig_bottom) {
-
-    var numNotes = (division / time_sig_bottom) * time_sig_top;
-
-    return numNotes;
+  // Division is the time subdivision for each of the note in the ascii tab.
+  // For example, division = 8 means each of the note '-' 'o' 'x' is an 8th note.
+  root.tabNumberOfNotesPerMeasure = function (subdivision, timeSig) {
+    if (subdivision instanceof Subdivision) {
+      subdivision = subdivision.value;
+    }
+    return (subdivision / timeSig.bottom.value) * timeSig.top;
   };
-
 
   // every document click passes through here.
   // close a popup if one is up and we click off of it.
@@ -273,12 +525,10 @@ function GrooveUtils() {
   };
 
   root.showContextMenu = function (contextMenu) {
-
     // if there is another context menu open, close it
     if (root.visible_context_menu) {
       root.hideContextMenu(root.visible_context_menu);
     }
-
     contextMenu.style.display = "block";
     root.visible_context_menu = contextMenu;
 
@@ -287,22 +537,18 @@ function GrooveUtils() {
       // the menu has gone off the bottom of the screen
       contextMenu.style.top = document.documentElement.clientHeight - contextMenu.clientHeight + 'px';
     }
-
     // use a timeout to setup the onClick handler.
     // otherwise the click that opened the menu will close it
     // right away.  :(
     setTimeout(function () {
       document.onclick = root.documentOnClickHanderCloseContextMenu;
       document.body.style.cursor = "pointer"; // make document.onclick work on iPad
-
     }, 100);
   };
 
   root.hideContextMenu = function (contextMenu) {
     document.onclick = false;
     document.body.style.cursor = "auto"; // make document.onclick work on iPad
-
-
     if (contextMenu) {
       contextMenu.style.display = "none";
     }
@@ -311,21 +557,14 @@ function GrooveUtils() {
 
   // figure it out from the division  Division is number of notes per measure 4, 6, 8, 12, 16, 24, 32, etc...
   // Triplets only support 4/4 and 2/4 time signatures for now
-  root.isTripletDivision = function (division) {
-    if (division % 12 === 0)  // we only support 12 & 24 & 48  1/8th, 1/16, & 1/32 note triplets
-      return true;
-
-    return false;
+  root.isTripletDivision = function (subdivision) {
+    return subdivision % 12 === 0  // we only support 12 & 24 & 48  1/8th, 1/16, & 1/32 note triplets
   };
 
   // figure out if it is triplets from the number of notes (implied division)
-  root.isTripletDivisionFromNotesPerMeasure = function (notesPerMeasure, timeSigTop, timeSigBottom) {
-    var division = (notesPerMeasure / timeSigTop) * timeSigBottom;
-
-    return root.isTripletDivision(division);
-
+  root.isTripletDivisionFromNotesPerMeasure = function (notesPerMeasure, timeSig) {
+    return root.isTripletDivision((notesPerMeasure / timeSig.top) * timeSig.bottom.value);
   };
-
 
   root.getMetronomeSolo = function () {
     return root.metronomeSolo;
@@ -350,13 +589,12 @@ function GrooveUtils() {
   // if the Metronome offset click start is set to rotate this
   // will advance the position of the rotation and return TRUE
   // returns FALSE if rotation is OFF
-  root.advanceMetronomeOptionsOffsetClickStartRotation = function (isTriplets) {
+  root.advanceMetronomeOptionsOffsetClickStartRotation = function () {
     if (root.getMetronomeOffsetClickStartIsRotating()) {
       root.metronomeOffsetClickStartRotation++;
       return true;
-    } else {
-      return false;
     }
+    return false;
   };
 
   root.getMetronomeOptionsOffsetClickStartRotation = function (isTriplets) {
@@ -395,64 +633,38 @@ function GrooveUtils() {
 
   // build a string that looks like this
   //  |----------------|----------------|
-  root.GetEmptyGroove = function (notes_per_measure, numMeasures) {
-    var retString = "";
-    var oneMeasureString = "|";
-    var i;
-
-    for (i = 0; i < notes_per_measure; i++) {
-      oneMeasureString += "-";
+  root.buildEmptyTabString = function (notes_per_measure, numMeasures) {
+    const oneMeasure = '-'.repeat(notes_per_measure);
+    const array = [];
+    for (let i = 0; i < numMeasures; i++) {
+      array.push(oneMeasure);
     }
-    for (i = 0; i < numMeasures; i++)
-      retString += oneMeasureString;
-    retString += "|";
-
-    return retString;
-  };
-
-  root.GetDefaultStickingsGroove = function (notes_per_measure, numMeasures) {
-    return root.GetEmptyGroove(notes_per_measure, numMeasures);
+    return '|' + array.join('|') + '|';
   };
 
   // build a string that looks like this
   // "|x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-|";
   root.GetDefaultHHGroove = function (notes_per_measure, numMeasures) {
-    var retString = "";
-    var oneMeasureString = "|";
-    var i;
-
-    for (i = 0; i < notes_per_measure; i++) {
+    var oneMeasureString = "";
+    for (let i = 0; i < notes_per_measure; i++) {
       if (notes_per_measure == 48)
         oneMeasureString += "-";
       else
         oneMeasureString += "x";
     }
-    for (i = 0; i < numMeasures; i++)
-      retString += oneMeasureString;
-    retString += "|";
-
-    return retString;
-  };
-
-  root.GetDefaultTom1Groove = function (notes_per_measure, numMeasures) {
-
-    return root.GetEmptyGroove(notes_per_measure, numMeasures);
-  };
-
-  root.GetDefaultTom4Groove = function (notes_per_measure, numMeasures) {
-
-    return root.GetEmptyGroove(notes_per_measure, numMeasures);
+    const array = [];
+    for (let i = 0; i < numMeasures; i++) {
+      array.push(oneMeasureString);
+    }
+    return '|' + array.join('|') + '|';
   };
 
   // build a string that looks like this
   // |--------O---------------O-------|
-  root.GetDefaultSnareGroove = function (notes_per_measure, timeSigTop, numMeasures) {
-    var retString = "";
-    var oneMeasureString = "|";
-    var i;
-    var notes_per_grouping = (notes_per_measure / timeSigTop);
-
-    for (i = 0; i < notes_per_measure; i++) {
+  root.GetDefaultSnareGroove = function (notes_per_measure, timeSig, numMeasures) {
+    var oneMeasureString = "";
+    var notes_per_grouping = (notes_per_measure / timeSig.top);
+    for (let i = 0; i < notes_per_measure; i++) {
       // if the note falls on the beginning of a group
       // and the group is odd
       if (i % notes_per_grouping === 0 && (i / notes_per_grouping) % 2 !== 0)
@@ -460,23 +672,19 @@ function GrooveUtils() {
       else
         oneMeasureString += "-";
     }
-    for (i = 0; i < numMeasures; i++)
-      retString += oneMeasureString;
-    retString += "|";
-
-    return retString;
-
+    const array = [];
+    for (let i = 0; i < numMeasures; i++) {
+      array.push(oneMeasureString);
+    }
+    return '|' + array.join('|') + '|';
   };
 
   // build a string that looks like this
   // |o---------------o---------------|
-  root.GetDefaultKickGroove = function (notes_per_measure, timeSigTop, numMeasures) {
-    var retString = "";
-    var oneMeasureString = "|";
-    var i;
-    var notes_per_grouping = (notes_per_measure / timeSigTop);
-
-    for (i = 0; i < notes_per_measure; i++) {
+  root.GetDefaultKickGroove = function (notes_per_measure, timeSig, numMeasures) {
+    var oneMeasureString = "";
+    var notes_per_grouping = (notes_per_measure / timeSig.top);
+    for (let i = 0; i < notes_per_measure; i++) {
       // if the note falls on the beginning of a group
       // and the group is even
       if (i % notes_per_grouping === 0 && (i / notes_per_grouping) % 2 === 0)
@@ -484,16 +692,11 @@ function GrooveUtils() {
       else
         oneMeasureString += "-";
     }
-    for (i = 0; i < numMeasures; i++)
-      retString += oneMeasureString;
-    retString += "|";
-
-    return retString;
-  };
-
-  root.GetDefaultTomGroove = function (notes_per_measure, numMeasures) {
-
-    return root.GetEmptyGroove(notes_per_measure, numMeasures);
+    const array = [];
+    for (let i = 0; i < numMeasures; i++) {
+      array.push(oneMeasureString);
+    }
+    return '|' + array.join('|') + '|';
   };
 
   // takes a character from tablature form and converts it to our ABC Notation form.
@@ -791,20 +994,18 @@ function GrooveUtils() {
   //
   // this is useful to take an accent tab and an "others" tab and creating one tab out of it.
   root.mergeDrumTabLines = function (dominateLine, subordinateLine) {
-    var maxLength = (dominateLine.length > subordinateLine.length ? dominateLine.length : subordinateLine.length);
     var newLine = "";
-
-    for (var i = 0; i < maxLength; i++) {
-      var newChar = "-";
-      if (dominateLine.charAt(i) !== "")
-        newChar = dominateLine.charAt(i);
-
-      if (newChar == "-" && subordinateLine.charAt(i) !== "")
-        newChar = subordinateLine.charAt(i);
-
-      newLine += newChar;
+    for (var i = 0; i < Math.max(dominateLine.length, subordinateLine.length); i++) {
+      const firstChar = dominateLine.charAt(i);
+      const secondChar = subordinateLine.charAt(i) || '-';
+      if (firstChar !== '-') {
+        newLine += firstChar;
+      } else if (secondChar !== '-') {
+        newLine += secondChar;
+      } else {
+        newLine += '-';
+      }
     }
-
     return newLine;
   };
 
@@ -851,7 +1052,7 @@ function GrooveUtils() {
 
     var retArrayIndex = 0;
     for (var j = 0; j < notes.length && retArrayIndex < retArraySize; j += noteStringScaler, retArrayIndex += displayScaler) {
-      retArray[retArrayIndex] = tablatureToABCNotationPerNote(drumType, notes[j]);
+      retArray[retArrayIndex] = tabCharToAbcNote(DrumType.of(drumType), notes[j]).note;
     }
 
     return retArray;
@@ -861,17 +1062,16 @@ function GrooveUtils() {
   // drumType - H, S, K, or Stickings
   // noteArray - pass in an ABC array of notes
   // getAccents - true to get accent notes.  (false to ignore accents)
-  // getOthers - true to get non-accent notes.  (false to ignore non-accents)
   // maxLength - set smaller than noteArray length to get fewer notes
   // separatorDistance - set to greater than zero integer to add "|" between measures
-  root.tabLineFromAbcNoteArray = function (drumType, noteArray, getAccents, getOthers, maxLength, separatorDistance) {
+  root.tabLineFromAbcNoteArray = function (drumType, noteArray, getAccents, maxLength, separatorDistance) {
     var returnTabLine = "";
 
     if (maxLength > noteArray.length)
       maxLength = noteArray.length;
 
     for (var i = 0; i < maxLength; i++) {
-      var newTabChar = abcNotationToTablaturePerNote(drumType, noteArray[i]);
+      var newTabChar = abcNoteToTabChar(DrumType.of(drumType), noteArray[i]) || '-';
 
       if (drumType == "H" && newTabChar == "X") {
         if (getAccents)
@@ -884,18 +1084,14 @@ function GrooveUtils() {
         else
           returnTabLine += "-";
       } else if (drumType == "K" && newTabChar == "X") {
-        if (getAccents && getOthers)
+        if (getAccents)
           returnTabLine += "X"; // kick & splash
         else if (getAccents)
           returnTabLine += "o"; // just kick
         else
           returnTabLine += "x"; // just splash
       } else {
-        // all the "others"
-        if (getOthers)
-          returnTabLine += newTabChar;
-        else
-          returnTabLine += "-";
+        returnTabLine += newTabChar;
       }
 
       if ((separatorDistance > 0) && ((i + 1) % separatorDistance) === 0)
@@ -909,8 +1105,9 @@ function GrooveUtils() {
   root.parseTimeSigString = function (timeSigString) {
     var split_arr = timeSigString.split("/");
 
-    if (split_arr.length != 2)
-      return [4, 4];
+    if (split_arr.length != 2) {
+      return TimeSignature.COMMON_TIME_44;
+    }
 
     var timeSigTop = parseInt(split_arr[0], 10);
     var timeSigBottom = parseInt(split_arr[1], 10);
@@ -922,7 +1119,7 @@ function GrooveUtils() {
     if (timeSigBottom != 2 && timeSigBottom != 4 && timeSigBottom != 8 && timeSigBottom != 16)
       timeSigBottom = 4;
 
-    return [timeSigTop, timeSigBottom];
+    return new TimeSignature(timeSigTop, Subdivision.of(timeSigBottom));
   };
 
   root.getGrooveDataFromUrlString = function (encodedURLData) {
@@ -936,12 +1133,10 @@ function GrooveUtils() {
 
     myGrooveData.debugMode = parseInt(root.getQueryVariableFromString("Debug", root.debugMode, encodedURLData), 10);
 
-    var timeSigArray = root.parseTimeSigString(root.getQueryVariableFromString("TimeSig", "4/4", encodedURLData));
-    myGrooveData.numBeats = timeSigArray[0];
-    myGrooveData.noteValue = timeSigArray[1];
+    myGrooveData.timeSig = root.parseTimeSigString(root.getQueryVariableFromString("TimeSig", "4/4", encodedURLData));
 
     myGrooveData.timeDivision = parseInt(root.getQueryVariableFromString("Div", 16, encodedURLData), 10);
-    myGrooveData.notesPerMeasure = root.calc_notes_per_measure(myGrooveData.timeDivision, myGrooveData.numBeats, myGrooveData.noteValue);
+    myGrooveData.notesPerMeasure = root.tabNumberOfNotesPerMeasure(myGrooveData.timeDivision, myGrooveData.timeSig);
 
     myGrooveData.metronomeFrequency = parseInt(root.getQueryVariableFromString("MetronomeFreq", "0", encodedURLData), 10);
 
@@ -953,7 +1148,7 @@ function GrooveUtils() {
 
     Stickings_string = root.getQueryVariableFromString("Stickings", false, encodedURLData);
     if (!Stickings_string) {
-      Stickings_string = root.GetDefaultStickingsGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue, myGrooveData.numberOfMeasures);
+      Stickings_string = root.buildEmptyTabString(myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
       myGrooveData.showStickings = false;
     } else {
       myGrooveData.showStickings = true;
@@ -963,20 +1158,20 @@ function GrooveUtils() {
     if (!HH_string) {
       root.getQueryVariableFromString("HH", false, encodedURLData);
       if (!HH_string) {
-        HH_string = root.GetDefaultHHGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue, myGrooveData.numberOfMeasures);
+        HH_string = root.GetDefaultHHGroove(myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
       }
     }
 
     Snare_string = root.getQueryVariableFromString("S", false, encodedURLData);
     if (!Snare_string) {
-      Snare_string = root.GetDefaultSnareGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.numberOfMeasures);
+      Snare_string = root.GetDefaultSnareGroove(myGrooveData.notesPerMeasure, myGrooveData.timeSig, myGrooveData.numberOfMeasures);
     }
 
     Kick_string = root.getQueryVariableFromString("K", false, encodedURLData);
     if (!Kick_string) {
       root.getQueryVariableFromString("B", false, encodedURLData);
       if (!Kick_string) {
-        Kick_string = root.GetDefaultKickGroove(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.numberOfMeasures);
+        Kick_string = root.GetDefaultKickGroove(myGrooveData.notesPerMeasure, myGrooveData.timeSig, myGrooveData.numberOfMeasures);
       }
     }
 
@@ -985,7 +1180,7 @@ function GrooveUtils() {
       // toms are named T1, T2, T3, T4
       var Tom_string = root.getQueryVariableFromString("T" + (i + 1), false, encodedURLData);
       if (!Tom_string) {
-        Tom_string = root.GetDefaultTomGroove(myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
+        Tom_string = root.buildEmptyTabString(myGrooveData.notesPerMeasure, myGrooveData.numberOfMeasures);
       } else {
         myGrooveData.showToms = true;
       }
@@ -1056,7 +1251,7 @@ function GrooveUtils() {
     if (myGrooveData.grooveDBAuthoring)
       fullURL += "GDB_Author=1&";
 
-    fullURL += 'TimeSig=' + myGrooveData.numBeats + '/' + myGrooveData.noteValue;
+    fullURL += 'TimeSig=' + myGrooveData.timeSig.top + '/' + myGrooveData.timeSig.bottom.value;
 
     // # of notes
     fullURL += "&Div=" + myGrooveData.timeDivision;
@@ -1085,22 +1280,22 @@ function GrooveUtils() {
 
     // notes
     var total_notes = myGrooveData.notesPerMeasure * myGrooveData.numberOfMeasures;
-    var HH = "&H=|" + root.tabLineFromAbcNoteArray('H', myGrooveData.hh_array, true, true, total_notes, myGrooveData.notesPerMeasure);
-    var Snare = "&S=|" + root.tabLineFromAbcNoteArray('S', myGrooveData.snare_array, true, true, total_notes, myGrooveData.notesPerMeasure);
-    var Kick = "&K=|" + root.tabLineFromAbcNoteArray('K', myGrooveData.kick_array, true, true, total_notes, myGrooveData.notesPerMeasure);
+    var HH = "&H=|" + root.tabLineFromAbcNoteArray('H', myGrooveData.hh_array, true, total_notes, myGrooveData.notesPerMeasure);
+    var Snare = "&S=|" + root.tabLineFromAbcNoteArray('S', myGrooveData.snare_array, true, total_notes, myGrooveData.notesPerMeasure);
+    var Kick = "&K=|" + root.tabLineFromAbcNoteArray('K', myGrooveData.kick_array, true, total_notes, myGrooveData.notesPerMeasure);
 
     fullURL += HH + Snare + Kick;
 
     // only add if we need them.  // they are long and ugly. :)
     if (myGrooveData.showToms) {
-      var Tom1 = "&T1=|" + root.tabLineFromAbcNoteArray('T1', myGrooveData.toms_array[0], true, true, total_notes, myGrooveData.notesPerMeasure);
-      var Tom4 = "&T4=|" + root.tabLineFromAbcNoteArray('T4', myGrooveData.toms_array[3], true, true, total_notes, myGrooveData.notesPerMeasure);
+      var Tom1 = "&T1=|" + root.tabLineFromAbcNoteArray('T1', myGrooveData.toms_array[0], true, total_notes, myGrooveData.notesPerMeasure);
+      var Tom4 = "&T4=|" + root.tabLineFromAbcNoteArray('T4', myGrooveData.toms_array[3], true, total_notes, myGrooveData.notesPerMeasure);
       fullURL += Tom1 + Tom4;
     }
 
     // only add if we need them.  // they are long and ugly. :)
     if (myGrooveData.showStickings) {
-      var Stickings = "&Stickings=|" + root.tabLineFromAbcNoteArray('stickings', myGrooveData.sticking_array, true, true, total_notes, myGrooveData.notesPerMeasure);
+      var Stickings = "&Stickings=|" + root.tabLineFromAbcNoteArray('stickings', myGrooveData.sticking_array, true, total_notes, myGrooveData.notesPerMeasure);
       fullURL += Stickings;
     }
 
@@ -1146,12 +1341,12 @@ function GrooveUtils() {
   }
 
   // the top stuff in the ABC that doesn't depend on the notes
-  root.get_top_ABC_BoilerPlate = function (isPermutation, tuneTitle, tuneAuthor, tuneComments, showLegend, isTriplets, kick_stems_up, timeSigTop, timeSigBottom, renderWidth) {
+  root.get_top_ABC_BoilerPlate = function (isPermutation, tuneTitle, tuneAuthor, tuneComments, showLegend, timeSig, renderWidth) {
 
     // boiler plate
     var fullABC = '%abc\n%%fullsvg _' + root.grooveUtilsUniqueIndex + '\nX:6\n';
 
-    fullABC += "M:" + timeSigTop + "/" + timeSigBottom + "\n";
+    fullABC += "M:" + timeSig.top + "/" + timeSig.bottom.value + "\n";
 
     // always add a Title even if it's blank
     fullABC += "T: " + tuneTitle + "\n";
@@ -1375,30 +1570,30 @@ function GrooveUtils() {
   // for triplets we group with 3
   // This function is for laying out the HTML
   // see abc_gen_note_grouping_size for the sheet music layout grouping size
-  root.noteGroupingSize = function (notes_per_measure, timeSigTop, timeSigBottom) {
+  root.noteGroupingSize = function (notes_per_measure, timeSig) {
     var note_grouping;
-    var usingTriplets = root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSigTop, timeSigBottom);
+    var usingTriplets = root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig);
 
     if (usingTriplets) {
       // triplets  ( we only support 2/4 here )
-      if (timeSigTop != 2 && timeSigBottom != 4)
+      if (timeSig.top != 2 && timeSig.bottom.value != 4)
         console.log("Triplets are only supported in 2/4 and 4/4 time");
-      note_grouping = notes_per_measure / (timeSigTop * (4 / timeSigBottom));
-    } else if (timeSigTop == 3) {
+      note_grouping = notes_per_measure / (timeSig.top * (4 / timeSig.bottom.value));
+    } else if (timeSig.top == 3) {
       // 3/4, 3/8, 3/16
       // 3 groups
       // not triplets
       note_grouping = (notes_per_measure) / 3
-    } else if (timeSigTop % 6 == 0 && timeSigBottom % 8 == 0) {
+    } else if (timeSig.top % 6 == 0 && timeSig.bottom.value % 8 == 0) {
       // 6/8, 12/8
       // 2 groups in 6/8 rather than 3 groups
       // 4 groups in 12/8
       // not triplets
-      note_grouping = notes_per_measure / (2 * timeSigTop / 6)
+      note_grouping = notes_per_measure / (2 * timeSig.top / 6)
     } else {
       // figure it out from the time signature
       // not triplets
-      note_grouping = (notes_per_measure / timeSigTop) * (timeSigBottom / 4);
+      note_grouping = (notes_per_measure / timeSig.top) * (timeSig.bottom.value / 4);
     }
     return note_grouping;
   };
@@ -1408,18 +1603,18 @@ function GrooveUtils() {
   // scale correctly
   // The base array is now 32 notes long to support 32nd notes
   // since we would normally group by 4 we need to group by 8 since we are scaling it
-  function abc_gen_note_grouping_size(usingTriplets, timeSigTop, timeSigBottom) {
+  function abc_gen_note_grouping_size(usingTriplets, timeSig) {
     var note_grouping;
 
     if (usingTriplets) {
       note_grouping = 12;
 
-    } else if (timeSigTop == 3) {
+    } else if (timeSig.top == 3) {
       // 3/4, 3/8, 3/16
-      note_grouping = 8 * (4 / timeSigBottom)
-    } else if (timeSigTop % 6 == 0 && timeSigBottom % 8 == 0) {
+      note_grouping = 8 * (4 / timeSig.bottom.value)
+    } else if (timeSig.top % 6 == 0 && timeSigBottom % 8 == 0) {
       // 3/4, 6/8, 9/8, 12/8
-      note_grouping = 12 * (8 / timeSigBottom);
+      note_grouping = 12 * (8 / timeSig.bottom.value);
     } else {
       //note_grouping = 8 * (4/timeSigBottom);
       note_grouping = 8;
@@ -1428,41 +1623,37 @@ function GrooveUtils() {
     return note_grouping;
   }
 
-  root.notesPerMeasureInFullSizeArray = function (is_triplet_division, timeSigTop, timeSigBottom) {
+  root.notesPerMeasureInFullSizeArray = function (is_triplet_division, timeSig) {
     // a full measure will be defined as 8 * timeSigTop.   (4 = 32, 5 = 40, 6 = 48, etc.)
     // that implies 32nd notes in quarter note beats
     // TODO: should we support triplets here?
-    if (is_triplet_division)
-      return 48 * (timeSigTop / timeSigBottom);
-    else
-      return 32 * (timeSigTop / timeSigBottom);
+    if (is_triplet_division) {
+      return 48 * (timeSig.top / timeSig.bottom.value);
+    }
+
+    return 32 * (timeSig.top / timeSig.bottom.value);
   }
 
   // since note values are 16ths or 12ths this corrects for that by multiplying note values
   // timeSigTop is the top number in a time signature (4/4, 5/4, 6/8, 7/4, etc)
-  root.getNoteScaler = function (notes_per_measure, timeSigTop, timeSigBottom) {
-    var scaler;
-
-    if (!timeSigTop || timeSigTop < 1 || timeSigTop > 36) {
-      console.log("Error in getNoteScaler, out of range: " + timeSigTop);
-      scaler = 1;
-    } else {
-      if (root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSigTop, timeSigBottom))
-        scaler = Math.ceil(root.notesPerMeasureInFullSizeArray(true, timeSigTop, timeSigBottom) / notes_per_measure);
-      else
-        scaler = Math.ceil(root.notesPerMeasureInFullSizeArray(false, timeSigTop, timeSigBottom) / notes_per_measure);
+  root.getNoteScaler = function (notes_per_measure, timeSig) {
+    if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36) {
+      console.log("Error in getNoteScaler, out of range: " + timeSig.top);
+      return 1.0;
     }
-
-    return scaler;
+    if (root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig))
+      return Math.ceil(root.notesPerMeasureInFullSizeArray(true, timeSig) / notes_per_measure);
+    return Math.ceil(root.notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
   };
 
   // take any size array and make it larger by padding it with rests in the spaces between
   // For triplets, expands to 48 notes per measure
   // For non Triplets, expands to 32 notes per measure
-  root.scaleNoteArrayToFullSize = function (note_array, num_measures, notes_per_measure, timeSigTop, timeSigBottom) {
-    var scaler = root.getNoteScaler(notes_per_measure, timeSigTop, timeSigBottom); // fill proportionally
+  root.scaleNoteArrayToFullSize = function (note_array, grooveData) {
+    const num_measures = grooveData.numberOfMeasures;
+    const notes_per_measure = grooveData.notesPerMeasure;
+    var scaler = root.getNoteScaler(grooveData.notesPerMeasure, grooveData.timeSig); // fill proportionally
     var retArray = [];
-    var isTriplets = root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSigTop, timeSigBottom);
     var i;
 
     if (scaler == 1)
@@ -1516,8 +1707,7 @@ function GrooveUtils() {
     sub_division,
     notes_per_measure,
     kick_stems_up,
-    timeSigTop,
-    timeSigBottom,
+    timeSig,
     numberOfMeasuresPerLine) {
 
     var scaler = 1; // we are always in 48 notes here, and the ABC needs to think we are in 48 since the specified division is 1/32
@@ -1562,7 +1752,7 @@ function GrooveUtils() {
         end_of_group = notes_per_measure - (i % num_notes);
       }
 
-      if (i % abc_gen_note_grouping_size(true, timeSigTop, timeSigBottom) === 0) {
+      if (i % abc_gen_note_grouping_size(true, timeSig) === 0) {
 
         // Look for some special cases that will format beats as non triplet groups.   Quarter notes, 1/8th and 1/16th notes only.
 
@@ -1724,20 +1914,20 @@ function GrooveUtils() {
         }
       }
 
-      if ((i % abc_gen_note_grouping_size(true, timeSigTop, timeSigBottom)) == abc_gen_note_grouping_size(true, timeSigTop, timeSigBottom) - 1) {
+      if ((i % abc_gen_note_grouping_size(true, timeSig)) == abc_gen_note_grouping_size(true, timeSig) - 1) {
         stickings_voice_string += " ";
         hh_snare_voice_string += " "; // Add a space to break the bar line every group notes
         kick_voice_string += " ";
       }
 
       // add a bar line every measure
-      if (((i + 1) % (12 * timeSigTop * (4 / timeSigBottom))) === 0) {
+      if (((i + 1) % (12 * timeSi.tgop * (4 / timeSig.bottom.value))) === 0) {
         stickings_voice_string += "|";
         hh_snare_voice_string += "|";
         kick_voice_string += "|";
 
         // add a line break every numberOfMeasuresPerLine measures
-        if (i < num_notes - 1 && ((i + 1) % ((12 * timeSigTop * (4 / timeSigBottom)) * numberOfMeasuresPerLine)) === 0) {
+        if (i < num_notes - 1 && ((i + 1) % ((12 * timeSig.top * (4 / timeSig.bottom.value)) * numberOfMeasuresPerLine)) === 0) {
           stickings_voice_string += "\n";
           hh_snare_voice_string += "\n";
           kick_voice_string += "\n";
@@ -1767,8 +1957,7 @@ function GrooveUtils() {
     sub_division,
     notes_per_measure,
     kick_stems_up,
-    timeSigTop,
-    timeSigBottom,
+    timeSig,
     numberOfMeasuresPerLine) {
 
     var scaler = 1; // we are always in 32ths notes here
@@ -1790,7 +1979,7 @@ function GrooveUtils() {
     const num_notes = HH_array.length;
     for (var i = 0; i < num_notes; i++) {
 
-      var grouping_size_for_rests = abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom);
+      var grouping_size_for_rests = abc_gen_note_grouping_size(false, timeSig);
       // make sure the group end doesn't go beyond the measure.   Happens in odd time sigs
       if ((i % notes_per_measure) + grouping_size_for_rests > notes_per_measure) {
         // if we are in an odd time signature then the last few notes will have a different grouping to reach the end of the measure
@@ -1798,10 +1987,10 @@ function GrooveUtils() {
       }
 
       var end_of_group;
-      if (i % abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom) === 0)
-        end_of_group = abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom);
+      if (i % abc_gen_note_grouping_size(false, timeSig) === 0)
+        end_of_group = abc_gen_note_grouping_size(false, timeSig);
       else
-        end_of_group = (abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom) - ((i) % abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom)));
+        end_of_group = (abc_gen_note_grouping_size(false, timeSig) - ((i) % abc_gen_note_grouping_size(false, timeSig)));
 
       // make sure the group end doesn't go beyond the measure.   Happens in odd time sigs
       if ((i % notes_per_measure) + end_of_group > notes_per_measure) {
@@ -1809,7 +1998,7 @@ function GrooveUtils() {
         end_of_group = notes_per_measure - (i % notes_per_measure);
       }
 
-      if (i % abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom) === 0) {
+      if (i % abc_gen_note_grouping_size(false, timeSig) === 0) {
         // we will only output a rest at the beginning of a beat phrase
         stickings_voice_string += getABCforRest([sticking_array], i, grouping_size_for_rests, scaler, true);
 
@@ -1832,7 +2021,7 @@ function GrooveUtils() {
         kick_voice_string += getABCforNote([kick_array], i, end_of_group, scaler);
       }
 
-      if ((i % abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom)) == abc_gen_note_grouping_size(false, timeSigTop, timeSigBottom) - 1) {
+      if ((i % abc_gen_note_grouping_size(false, timeSig)) == abc_gen_note_grouping_size(false, timeSig) - 1) {
 
         stickings_voice_string += " ";
         hh_snare_voice_string += " "; // Add a space to break the bar line every group notes
@@ -1840,13 +2029,13 @@ function GrooveUtils() {
       }
 
       // add a bar line every measure.   32 notes in 4/4 time.   (32/timeSigBottom * timeSigTop)
-      if (((i + 1) % ((32 / timeSigBottom) * timeSigTop)) === 0) {
+      if (((i + 1) % ((32 / timeSig.bottom.value) * timeSig.top)) === 0) {
         stickings_voice_string += "|";
         hh_snare_voice_string += "|";
         kick_voice_string += "|";
       }
       // add a line break every numberOfMeasuresPerLine measures, except the last
-      if (i < num_notes - 1 && ((i + 1) % ((32 / timeSigBottom) * timeSigTop * numberOfMeasuresPerLine)) === 0) {
+      if (i < num_notes - 1 && ((i + 1) % ((32 / timeSig.bottom.value) * timeSig.top * numberOfMeasuresPerLine)) === 0) {
         stickings_voice_string += "\n";
         hh_snare_voice_string += "\n";
         kick_voice_string += "\n";
@@ -1949,23 +2138,23 @@ function GrooveUtils() {
   };
 
   // converts the symbol for a sticking count to an actual count based on the time signature
-  root.convert_sticking_counts_to_actual_counts = function (sticking_array, time_division, timeSigTop, timeSigBottom) {
+  root.convert_sticking_counts_to_actual_counts = function (sticking_array, time_division, timeSig) {
 
     var cur_div_of_array = 32;
     if (root.isTripletDivision(time_division))
       cur_div_of_array = 48;
 
-    var actual_notes_per_measure_in_this_array = root.calc_notes_per_measure(cur_div_of_array, timeSigTop, timeSigBottom);
+    var actual_notes_per_measure_in_this_array = root.tabNumberOfNotesPerMeasure(cur_div_of_array, timeSig);
 
     // Time division is 4, 8, 16, 32, 12, 24, or 48
-    var notes_per_measure_in_time_division = ((time_division / 4) * timeSigTop) * (4 / timeSigBottom);
+    var notes_per_measure_in_time_division = ((time_division / 4) * timeSig.top) * (4 / timeSig.bottom.value);
 
     for (var i in sticking_array) {
       if (sticking_array[i] == constant_ABC_STICK_COUNT) {
         // convert the COUNT into an actual letter or number
         // convert the index into what it would have been if the array was "notes_per_measure" sized
         var adjusted_index = Math.floor(i / (actual_notes_per_measure_in_this_array / notes_per_measure_in_time_division));
-        var new_count = root.figure_out_sticking_count_for_index(adjusted_index, notes_per_measure_in_time_division, time_division, timeSigBottom);
+        var new_count = root.figure_out_sticking_count_for_index(adjusted_index, notes_per_measure_in_time_division, time_division, timeSig.bottom.value);
         var new_count_string = '"' + new_count + '"x';
         sticking_array[i] = new_count_string;
       }
@@ -1984,12 +2173,11 @@ function GrooveUtils() {
     time_division,
     notes_per_measure,
     kick_stems_up,
-    timeSigTop,
-    timeSigBottom) {
+    timeSig) {
 
     // convert sticking count symbol to the actual count
     // do this right before ABC output so it can't every get encoded into something that gets saved.
-    root.convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSigTop, timeSigBottom);
+    root.convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig);
 
     var numberOfMeasuresPerLine = 2;   // Default
 
@@ -1998,7 +2186,7 @@ function GrooveUtils() {
       numberOfMeasuresPerLine = 1;
     }
 
-    if (root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSigTop, timeSigBottom)) {
+    if (root.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig)) {
       return snare_HH_kick_ABC_for_triplets(sticking_array,
         HH_array,
         snare_array,
@@ -2008,8 +2196,7 @@ function GrooveUtils() {
         time_division,
         notes_per_measure,
         kick_stems_up,
-        timeSigTop,
-        timeSigBottom,
+        timeSig,
         numberOfMeasuresPerLine);
     } else {
       return snare_HH_kick_ABC_for_quads(sticking_array,
@@ -2021,8 +2208,7 @@ function GrooveUtils() {
         time_division,
         notes_per_measure,
         kick_stems_up,
-        timeSigTop,
-        timeSigBottom,
+        timeSig,
         numberOfMeasuresPerLine);
     }
   }
@@ -2032,27 +2218,24 @@ function GrooveUtils() {
 
   root.createABCFromGrooveData = function (myGrooveData, renderWidth) {
 
-    var FullNoteStickingArray = root.scaleNoteArrayToFullSize(myGrooveData.sticking_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    var FullNoteHHArray = root.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    var FullNoteSnareArray = root.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    var FullNoteKickArray = root.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
+    var FullNoteStickingArray = root.scaleNoteArrayToFullSize(myGrooveData.sticking_array, myGrooveData);
+    var FullNoteHHArray = root.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
+    var FullNoteSnareArray = root.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
+    var FullNoteKickArray = root.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
     var FullNoteTomsArray = [];
 
     for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
-      FullNoteTomsArray[i] = root.scaleNoteArrayToFullSize(myGrooveData.toms_array[i], myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
+      FullNoteTomsArray[i] = root.scaleNoteArrayToFullSize(myGrooveData.toms_array[i], myGrooveData);
     }
 
-    var is_triplet_division = root.isTripletDivisionFromNotesPerMeasure(myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
+    var is_triplet_division = root.isTripletDivisionFromNotesPerMeasure(myGrooveData.notesPerMeasure, myGrooveData.timeSig);
 
     var fullABC = root.get_top_ABC_BoilerPlate(false,
       myGrooveData.title,
       myGrooveData.author,
       myGrooveData.comments,
       myGrooveData.showLegend,
-      is_triplet_division,
-      myGrooveData.kickStemsUp,
-      myGrooveData.numBeats,
-      myGrooveData.noteValue,
+      myGrooveData.timeSig,
       renderWidth);
 
     fullABC += root.create_ABC_from_snare_HH_kick_arrays(FullNoteStickingArray,
@@ -2062,10 +2245,9 @@ function GrooveUtils() {
       FullNoteTomsArray,
       "|\n",
       myGrooveData.timeDivision,
-      root.notesPerMeasureInFullSizeArray(is_triplet_division, myGrooveData.numBeats, myGrooveData.noteValue), // notes_per_measure, We scaled up to 48/32 above
+      root.notesPerMeasureInFullSizeArray(is_triplet_division, myGrooveData.timeSig), // notes_per_measure, We scaled up to 48/32 above
       myGrooveData.kickStemsUp,
-      myGrooveData.numBeats,
-      myGrooveData.noteValue);
+      myGrooveData.timeSig);
 
     root.note_mapping_array = root.create_note_mapping_array_for_highlighting(FullNoteHHArray,
       FullNoteSnareArray,
@@ -2339,7 +2521,7 @@ function GrooveUtils() {
     root.midiEventCallbacks.noteHasChangedSinceLastDataLoad = false;
   };
 
-  root.MIDI_build_midi_url_count_in_track = function (timeSigTop, timeSigBottom) {
+  root.MIDI_build_midi_url_count_in_track = function (timeSig) {
 
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
@@ -2354,15 +2536,15 @@ function GrooveUtils() {
     midiTrack.addNoteOff(9, 60, 1); // add a blank note for spacing
 
     var noteDelay = 128;  // quarter notes over x/4 time
-    if (timeSigBottom == 8)
+    if (timeSig.bottom.value == 8)
       noteDelay = 64;  // 8th notes over x/8 time
-    else if (timeSigBottom == 16)
+    else if (timeSig.bottom.value == 16)
       noteDelay = 32;  // 16th notes over x/16 time
 
     // add count in
     midiTrack.addNoteOn(9, constant_OUR_MIDI_METRONOME_1, 0, constant_OUR_MIDI_VELOCITY_NORMAL);
     midiTrack.addNoteOff(9, constant_OUR_MIDI_METRONOME_1, noteDelay);
-    for (var i = 1; i < timeSigTop; i++) {
+    for (var i = 1; i < timeSig.top; i++) {
       midiTrack.addNoteOn(9, constant_OUR_MIDI_METRONOME_NORMAL, 0, constant_OUR_MIDI_VELOCITY_NORMAL);
       midiTrack.addNoteOff(9, constant_OUR_MIDI_METRONOME_NORMAL, noteDelay);
     }
@@ -2382,7 +2564,7 @@ function GrooveUtils() {
    *
    * The arrays passed in contain the ABC notation for a given note value or false for a rest.
    */
-  root.MIDI_from_HH_Snare_Kick_Arrays = function (midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSigTop, timeSigBottom) {
+  root.MIDI_from_HH_Snare_Kick_Arrays = function (midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig) {
     var prev_metronome_note = false;
     var prev_hh_note = 46;  // default to open hi-hat so that the first hi-hat note also mutes any previous hh open.
     var prev_snare_note = false;
@@ -2402,7 +2584,7 @@ function GrooveUtils() {
       midiTrack.addNoteOff(midi_channel, 60, 1); // add a blank note for spacing
     }
 
-    var isTriplets = root.isTripletDivisionFromNotesPerMeasure(num_notes, timeSigTop, timeSigBottom);
+    var isTriplets = root.isTripletDivisionFromNotesPerMeasure(num_notes, timeSig);
     var offsetClickStartBeat = root.getMetronomeOptionsOffsetClickStartRotation(isTriplets);
     var delay_for_next_note = 0;
 
@@ -2489,7 +2671,7 @@ function GrooveUtils() {
 
         if (metronome_specific_index >= 0) { // can go negative due to MetronomeOffsetClickStart shift above
           // Special sound on the one
-          if (metronome_specific_index === 0 || (metronome_specific_index % (quarterNoteFrequency * timeSigTop * (4 / timeSigBottom))) === 0) {
+          if (metronome_specific_index === 0 || (metronome_specific_index % (quarterNoteFrequency * timeSig.top * (4 / timeSig.bottom.value))) === 0) {
             metronome_note = constant_OUR_MIDI_METRONOME_1; // 1 count
 
           } else if ((metronome_specific_index % quarterNoteFrequency) === 0) {
@@ -2738,9 +2920,9 @@ function GrooveUtils() {
 
     // the midi converter expects all the arrays to be 32 or 48 notes long.
     // Expand them
-    var FullNoteHHArray = root.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    var FullNoteSnareArray = root.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    var FullNoteKickArray = root.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
+    var FullNoteHHArray = root.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
+    var FullNoteSnareArray = root.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
+    var FullNoteKickArray = root.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
 
     // the midi functions expect just one measure at a time to work correctly
     // call once for each measure
@@ -2750,11 +2932,7 @@ function GrooveUtils() {
       var FullNoteTomsArray = [];
       for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
         var orig_measure_notes = myGrooveData.notesPerMeasure;
-        FullNoteTomsArray[i] = root.scaleNoteArrayToFullSize(myGrooveData.toms_array[i].slice(orig_measure_notes * measureIndex, orig_measure_notes * (measureIndex + 1)),
-          1,
-          myGrooveData.notesPerMeasure,
-          myGrooveData.numBeats,
-          myGrooveData.noteValue);
+        FullNoteTomsArray[i] = root.scaleNoteArrayToFullSize(myGrooveData.toms_array[i].slice(orig_measure_notes * measureIndex, orig_measure_notes * (measureIndex + 1)), myGrooveData);
       }
 
       root.MIDI_from_HH_Snare_Kick_Arrays(midiTrack,
@@ -2767,8 +2945,7 @@ function GrooveUtils() {
         measure_notes,
         myGrooveData.timeDivision,
         swing_percentage,
-        myGrooveData.numBeats,
-        myGrooveData.noteValue);
+        myGrooveData.timeSig);
     }
 
     var midi_url = "data:audio/midi;base64," + btoa(midiFile.toBytes());
@@ -3404,9 +3581,16 @@ function GrooveUtils() {
 
   this.tablatureToABCNotationPerNote = tablatureToABCNotationPerNote;
   this.abcNotationToTablaturePerNote = abcNotationToTablaturePerNote;
+  // this.tabNumberOfNotesPerMeasure = root.tabNumberOfNotesPerMeasure;
+  // this.tabLineFromAbcNoteArray = root.tabLineFromAbcNoteArray;
 } // end of class
 
 globalThis.GrooveUtils = GrooveUtils;
 globalThis.Subdivision = Subdivision;
 globalThis.GrooveData = GrooveData;
 globalThis.GrooveMetadata = GrooveMetadata;
+globalThis.TimeSignature = TimeSignature;
+globalThis.AbcNote = AbcNote;
+globalThis.DrumType = DrumType;
+globalThis.abcNoteToTabChar = abcNoteToTabChar;
+globalThis.tabCharToAbcNote = tabCharToAbcNote;

@@ -42,10 +42,10 @@ function GrooveWriter() {
 
   // public class vars
   var class_number_of_measures = 1;
-  var class_time_division = parseInt(root.myGrooveUtils.getQueryVariableFromURL("Div", "16"), 10); // default to 16ths
-  var class_num_beats_per_measure = 4;     // TimeSigTop
-  var class_note_value_per_measure = 4;     // TimeSigBottom
-  var class_notes_per_measure = root.myGrooveUtils.calc_notes_per_measure(class_time_division, class_num_beats_per_measure, class_note_value_per_measure);
+  // TODO: change this to Subdivision instance
+  var class_subDivision = parseInt(root.myGrooveUtils.getQueryVariableFromURL("Div", "16"), 10); // default to 16ths
+  var class_timeSig = TimeSignature.COMMON_TIME_44;
+  var class_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(Subdivision.of(class_subDivision), class_timeSig);
   var class_metronome_auto_speed_up_active = false;
   var class_metronome_count_in_active = false;
   var class_metronome_count_in_is_playing = false;
@@ -149,7 +149,7 @@ function GrooveWriter() {
 
   // is the division a triplet groove?   12, 24, or 48 notes
   function usingTriplets() {
-    if (root.myGrooveUtils.isTripletDivision(class_time_division))
+    if (root.myGrooveUtils.isTripletDivision(class_subDivision))
       return true;
 
     return false;
@@ -712,7 +712,7 @@ function GrooveWriter() {
         document.getElementById("sticking_both" + id).style.color = constant_sticking_both_on_color_rgb;
         break;
       case "count":
-        var count_state = root.myGrooveUtils.figure_out_sticking_count_for_index(id, class_notes_per_measure, class_time_division, class_note_value_per_measure);
+        var count_state = root.myGrooveUtils.figure_out_sticking_count_for_index(id, class_notes_per_measure, class_subDivision, class_timeSigBottom);
 
         document.getElementById("sticking_count" + id).style.color = constant_sticking_count_on_color_rgb;
         document.getElementById("sticking_count" + id).innerHTML = "" + count_state;
@@ -900,8 +900,8 @@ function GrooveWriter() {
     if (class_permutation_type != "none")
       percent_complete = (percent_complete * get_numberOfActivePermutationSections()) % 1.0;
 
-    var note_id_in_32 = Math.floor(percent_complete * root.myGrooveUtils.calc_notes_per_measure((usingTriplets() ? 48 : 32), class_num_beats_per_measure, class_note_value_per_measure) * class_number_of_measures);
-    var real_note_id = (note_id_in_32 / root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure));
+    var note_id_in_32 = Math.floor(percent_complete * root.myGrooveUtils.tabNumberOfNotesPerMeasure((usingTriplets() ? 48 : 32), class_timeSig) * class_number_of_measures);
+    var real_note_id = (note_id_in_32 / root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_timeSig));
 
     //hilight_individual_note(instrument, id);
     hilight_all_notes_on_same_beat(instrument, real_note_id);
@@ -1045,7 +1045,7 @@ function GrooveWriter() {
   // the user has clicked on the permutation menu
   root.permutationAnchorClick = function (event) {
 
-    if (class_num_beats_per_measure != 4 || class_note_value_per_measure != 4)
+    if (class_timeSig.top != 4 || class_timeSig.bottom.value != 4)
       return;   // permutations disabled except in 4/4 time
 
     var contextMenu = document.getElementById("permutationContextMenu");
@@ -1255,7 +1255,7 @@ function GrooveWriter() {
 
   function setupPermutationMenu() {
 
-    if (class_num_beats_per_measure == 4 && class_note_value_per_measure == 4) {
+    if (class_timeSig.top == 4 && class_timeSig.bottom.value== 4) {
 
       addOrRemoveKeywordFromClassById("permutationAnchor", "enabled", true);
 
@@ -1495,7 +1495,7 @@ function GrooveWriter() {
         set_snare_state(i, "ghost", i == startIndex);
 
       } else if (instrument == "kick" && action == "hh_foot_nums_on") {
-        var num_notes_per_count = class_time_division / class_note_value_per_measure
+        var num_notes_per_count = class_subDivision / class_timeSig.bottom.value;
         var cur_state = get_kick_state(i, "ABC");
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
@@ -1503,7 +1503,7 @@ function GrooveWriter() {
         set_kick_state(i, (i % num_notes_per_count === 0 ? (kick_is_on ? "kick_and_splash" : "splash") : (kick_is_on ? "normal" : "off")), i == (startIndex));
 
       } else if (instrument == "kick" && action == "hh_foot_ands_on") {
-        var num_notes_per_count = class_time_division / class_note_value_per_measure
+        var num_notes_per_count = class_subDivision / class_timeSig.bottom.value;
         var cur_state = get_kick_state(i, "ABC");
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
@@ -2156,7 +2156,7 @@ function GrooveWriter() {
     var notes_per_4_beats = 32;
     if (usingTriplets())
       notes_per_4_beats = 48;
-    var num_notes = (class_num_beats_per_measure * notes_per_4_beats) / class_note_value_per_measure;
+    var num_notes = (class_timeSig.top * notes_per_4_beats) / class_timeSig.bottom.value;
 
     return get_empty_note_array(num_notes);
   }
@@ -2375,7 +2375,7 @@ function GrooveWriter() {
   // Return value is the number of notes.
   function get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI) {
 
-    var scaler = root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure); // fill proportionally
+    var scaler = root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_timeSig.top, class_timeSig.bottom.value); // fill proportionally
 
     // fill in the arrays from the clickable UI
     for (var i = 0; i < class_notes_per_measure; i++) {
@@ -2523,7 +2523,7 @@ function GrooveWriter() {
             Kick_Array = filter_kick_array_for_permutation(Kick_Array);
             new_kick_array = merge_kick_arrays(new_kick_array, Kick_Array);
 
-            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_num_beats_per_measure, class_note_value_per_measure);
+            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
           }
         }
         break;
@@ -2543,7 +2543,7 @@ function GrooveWriter() {
               new_snare_array = get_snare_permutation_array(i);
 
 
-            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_num_beats_per_measure, class_note_value_per_measure);
+            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
           }
         }
         break;
@@ -2551,12 +2551,12 @@ function GrooveWriter() {
       case "none":
       /* falls through */
       default:
-        if (class_time_division < 16)
-          num_notes_for_swing = 8 * class_num_beats_per_measure / class_note_value_per_measure;
+        if (class_subDivision < 16)
+          num_notes_for_swing = 8 * class_timeSig.top / class_timeSig.bottom.value;
         else
-          num_notes_for_swing = 16 * class_num_beats_per_measure / class_note_value_per_measure;
+          num_notes_for_swing = 16 * class_timeSig.top / class_timeSig.bottom.value;
 
-        root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_num_beats_per_measure, class_note_value_per_measure);
+        root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
 
         for (i = 1; i < class_number_of_measures; i++) {
           // reset arrays
@@ -2571,7 +2571,7 @@ function GrooveWriter() {
           get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, class_notes_per_measure * i);
           muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
 
-          root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_num_beats_per_measure, class_note_value_per_measure);
+          root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
         }
         break;
     }
@@ -2594,10 +2594,9 @@ function GrooveWriter() {
     var myGrooveData = new root.myGrooveUtils.grooveDataNew();
 
     myGrooveData.notesPerMeasure = class_notes_per_measure;
-    myGrooveData.timeDivision = class_time_division;
+    myGrooveData.timeDivision = class_subDivision;
     myGrooveData.numberOfMeasures = class_number_of_measures;
-    myGrooveData.numBeats = class_num_beats_per_measure;
-    myGrooveData.noteValue = class_note_value_per_measure;
+    myGrooveData.timeSig = class_timeSig;
     myGrooveData.showStickings = isStickingsVisible();
     myGrooveData.showToms = isTomsVisible();
     myGrooveData.title = document.getElementById("tuneTitle").value;
@@ -2671,16 +2670,16 @@ function GrooveWriter() {
 
     var myGrooveData = root.grooveDataFromClickableUI();
 
-    var notesPerMeasureInTab = root.myGrooveUtils.calc_notes_per_measure((usingTriplets() ? 48 : 32), class_num_beats_per_measure, class_note_value_per_measure);
+    var notesPerMeasureInTab = root.myGrooveUtils.tabNumberOfNotesPerMeasure((usingTriplets() ? 48 : 32), class_timeSig);
     var maxNotesInTab = myGrooveData.numberOfMeasures * notesPerMeasureInTab;
 
     // scale up all the arrays to 48 or 32 notes so that they look normalized
 
-    myGrooveData.hh_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    myGrooveData.snare_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    myGrooveData.kick_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    myGrooveData.toms_array[0] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[0], myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
-    myGrooveData.toms_array[3] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[3], myGrooveData.numberOfMeasures, myGrooveData.notesPerMeasure, myGrooveData.numBeats, myGrooveData.noteValue);
+    myGrooveData.hh_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
+    myGrooveData.snare_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
+    myGrooveData.kick_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
+    myGrooveData.toms_array[0] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[0], myGrooveData);
+    myGrooveData.toms_array[3] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[3], myGrooveData);
 
     var DBString = "{{GrooveTab";
 
@@ -2689,14 +2688,14 @@ function GrooveWriter() {
     DBString += "\n|HasDivision=" + myGrooveData.notesPerMeasure;
     DBString += "\n|HasMeasures=" + myGrooveData.numberOfMeasures;
     DBString += "\n|HasNotesPerMeasure=" + notesPerMeasureInTab;
-    DBString += "\n|HasTimeSignature=" + myGrooveData.numBeats + "/" + myGrooveData.noteValue;
-    DBString += "\n|HasHiHatTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("H", myGrooveData.hh_array, true, true, maxNotesInTab, 0);
-    DBString += "\n|HasSnareAccentTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, true, false, maxNotesInTab, 0);
-    DBString += "\n|HasSnareOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, false, true, maxNotesInTab, 0);
-    DBString += "\n|HasKickTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, true, false, maxNotesInTab, 0);
-    DBString += "\n|HasFootOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, false, true, maxNotesInTab, 0);
-    DBString += "\n|HasTom1Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T1", myGrooveData.toms_array[0], false, true, maxNotesInTab, 0);
-    DBString += "\n|HasTom4Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T4", myGrooveData.toms_array[3], false, true, maxNotesInTab, 0);
+    DBString += "\n|HasTimeSignature=" + myGrooveData.timeSig.top + "/" + myGrooveData.timeSig.bottom.value;
+    DBString += "\n|HasHiHatTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("H", myGrooveData.hh_array, true, maxNotesInTab, 0);
+    DBString += "\n|HasSnareAccentTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, true, maxNotesInTab, 0);
+    DBString += "\n|HasSnareOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, false, maxNotesInTab, 0);
+    DBString += "\n|HasKickTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, true, maxNotesInTab, 0);
+    DBString += "\n|HasFootOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, false, maxNotesInTab, 0);
+    DBString += "\n|HasTom1Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T1", myGrooveData.toms_array[0], false, maxNotesInTab, 0);
+    DBString += "\n|HasTom4Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T4", myGrooveData.toms_array[3], false, maxNotesInTab, 0);
     DBString += "\n|HasEditData=" + class_undo_stack[class_undo_stack.length - 1]
 
     DBString += "\n}}";
@@ -2842,7 +2841,7 @@ function GrooveWriter() {
       case "kick_16ths": // use the hh & snare from the user
         numSections = get_numSectionsFor_permutation_array();
 
-        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, usingTriplets(), false, class_num_beats_per_measure, class_note_value_per_measure, renderWidth);
+        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, class_timeSig, renderWidth);
         root.myGrooveUtils.note_mapping_array = [];
 
         // compute sections with different kick patterns
@@ -2862,7 +2861,7 @@ function GrooveWriter() {
             post_abc = get_permutation_post_ABC(i);
 
             fullABC += get_permutation_pre_ABC(i);
-            fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, Snare_Array, new_kick_array, Toms_Array, post_abc, num_notes, class_time_division, num_notes, true, class_num_beats_per_measure, class_note_value_per_measure);
+            fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, Snare_Array, new_kick_array, Toms_Array, post_abc, num_notes, class_subDivision, num_notes, true, class_timeSig);
             root.myGrooveUtils.note_mapping_array = root.myGrooveUtils.note_mapping_array.concat(root.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes));
           }
         }
@@ -2871,7 +2870,7 @@ function GrooveWriter() {
       case "snare_16ths": // use the hh & kick from the user
         numSections = get_numSectionsFor_permutation_array();
 
-        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, usingTriplets(), false, class_num_beats_per_measure, class_note_value_per_measure, renderWidth);
+        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, class_timeSig, renderWidth);
         root.myGrooveUtils.note_mapping_array = [];
 
         //compute 16 sections with different snare patterns
@@ -2888,7 +2887,7 @@ function GrooveWriter() {
             post_abc = get_permutation_post_ABC(i);
 
             fullABC += get_permutation_pre_ABC(i);
-            fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, new_snare_array, Kick_Array, Toms_Array, post_abc, num_notes, class_time_division, num_notes, true, class_num_beats_per_measure, class_note_value_per_measure);
+            fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, new_snare_array, Kick_Array, Toms_Array, post_abc, class_subDivision, num_notes, true, class_timeSig);
             root.myGrooveUtils.note_mapping_array = root.myGrooveUtils.note_mapping_array.concat(root.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes));
           }
         }
@@ -2897,7 +2896,7 @@ function GrooveWriter() {
       case "none":
       /* falls through */
       default:
-        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, usingTriplets(), true, class_num_beats_per_measure, class_note_value_per_measure, renderWidth);
+        fullABC = root.myGrooveUtils.get_top_ABC_BoilerPlate(class_permutation_type != "none", tuneTitle, tuneAuthor, tuneComments, showLegend, class_timeSig, renderWidth);
         root.myGrooveUtils.note_mapping_array = [];
 
         var numberOfMeasuresPerLine = 2;
@@ -2931,7 +2930,7 @@ function GrooveWriter() {
             // continuation measure
             addon_abc = "\\\n";
           }
-          fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, addon_abc, num_notes, class_time_division, num_notes, true, class_num_beats_per_measure, class_note_value_per_measure);
+          fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, addon_abc, num_notes, class_subDivision, true, class_timeSig);
           root.myGrooveUtils.note_mapping_array = root.myGrooveUtils.note_mapping_array.concat(root.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes));
         }
 
@@ -3073,7 +3072,7 @@ function GrooveWriter() {
 
     root.expandAuthoringViewWhenNecessary(class_notes_per_measure, class_number_of_measures);
 
-    changeDivisionWithNotes(class_time_division, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
 
     updateSheetMusic();
   };
@@ -3116,7 +3115,7 @@ function GrooveWriter() {
 
     root.expandAuthoringViewWhenNecessary(class_notes_per_measure, class_number_of_measures);
 
-    changeDivisionWithNotes(class_time_division, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
 
     // reference the button and scroll it into view
     var add_measure_button = document.getElementById("addMeasureButton");
@@ -3377,7 +3376,7 @@ function GrooveWriter() {
     selectButton(document.getElementById("subdivision_" + class_notes_per_measure + "ths"));
 
     // add html for the midi player
-    root.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", class_time_division);
+    root.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", class_subDivision);
 
     // load the groove from the URL data if it was passed in.
     set_Default_notes(window.location.search);
@@ -3387,7 +3386,7 @@ function GrooveWriter() {
 
       if (playStarting && class_metronome_count_in_active) {
 
-        midiURL = root.myGrooveUtils.MIDI_build_midi_url_count_in_track(class_num_beats_per_measure, class_note_value_per_measure);
+        midiURL = root.myGrooveUtils.MIDI_build_midi_url_count_in_track(class_timeSig);
         root.myGrooveUtils.midiNoteHasChanged(); // this track is temporary
         class_metronome_count_in_is_playing = true;
       } else {
@@ -3850,13 +3849,13 @@ function GrooveWriter() {
   root.setTimeDivisionSelectionOnOrOff = function () {
 
     // check for incompatible odd time signature division  9/16 and 1/8 notes for instance
-    if ((8 * class_num_beats_per_measure / class_note_value_per_measure) % 1 != 0) {
+    if ((8 * class_timeSig.top / class_timeSig.bottom.value) % 1 != 0) {
       addOrRemoveKeywordFromClassById("subdivision_8ths", "disabled", true);
     } else {
       addOrRemoveKeywordFromClassById("subdivision_8ths", "disabled", false);
     }
 
-    if (class_note_value_per_measure != 4) {
+    if (class_timeSig.bottom .value!= 4) {
       // triplets are too complicated right now outside of x/4 time.
       // disable them
 
@@ -3877,7 +3876,7 @@ function GrooveWriter() {
     // turn on/off special features that are only available in 4/4 time
 
     // set the label
-    document.getElementById("timeSigLabel").innerHTML = '<sup>' + class_num_beats_per_measure + "</sup>/<sub>" + class_note_value_per_measure + "</sub>";
+    document.getElementById("timeSigLabel").innerHTML = '<sup>' + class_timeSig.top + "</sup>/<sub>" + class_timeSig.bottom.value+ "</sub>";
   };
 
   root.timeSigPopupClose = function (type, callback) {
@@ -3888,22 +3887,21 @@ function GrooveWriter() {
 
     // ignore type "cancel"
     if (type == "ok") {
-      var newTimeSigTop = document.getElementById("timeSigPopupTimeSigTop").value;
-      var newTimeSigBottom = document.getElementById("timeSigPopupTimeSigBottom").value;
+      var newTimeSigTop = parseInt(document.getElementById("timeSigPopupTimeSigTop").value);
+      var newTimeSigBottom = parseInt(document.getElementById("timeSigPopupTimeSigBottom").value);
 
       if (usingTriplets() && newTimeSigBottom != 4) {
         root.changeDivision(16);  // switch to a non triplet division since they are not supported in this time signature
       }
 
-      class_num_beats_per_measure = newTimeSigTop;
-      class_note_value_per_measure = newTimeSigBottom;
-      var new_notes_per_measure = root.myGrooveUtils.calc_notes_per_measure(class_time_division, class_num_beats_per_measure, class_note_value_per_measure);
+      class_timeSig = new TimeSignature(newTimeSigTop, Subdivision.of(newTimeSigBottom));
+      var new_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(Subdivision.of(class_subDivision), class_timeSig);
       // If new_notes_per_measure is greater it will cause the changeDivision code to error
       // as it tries to read the notes from the UI.   Setting it lower will allow the code to truncate
       // the groove properly to something smaller rather than interpolating the groove into something weird
       if (new_notes_per_measure < class_notes_per_measure)
         class_notes_per_measure = new_notes_per_measure;
-      root.changeDivision(class_time_division);   // use this function because it will relayout everything
+      root.changeDivision(class_subDivision);   // use this function because it will relayout everything
     }
     if (callback) {
       callback();
@@ -4086,9 +4084,6 @@ function GrooveWriter() {
 
     var myGrooveData = root.myGrooveUtils.getGrooveDataFromUrlString(encodedURLData);
 
-    class_num_beats_per_measure = myGrooveData.numBeats;     // TimeSigTop
-    class_note_value_per_measure = myGrooveData.noteValue;   // TimeSigBottom
-
     if (myGrooveData.notesPerMeasure != class_notes_per_measure || class_number_of_measures != myGrooveData.numberOfMeasures) {
       class_number_of_measures = myGrooveData.numberOfMeasures;
       changeDivisionWithNotes(myGrooveData.timeDivision);
@@ -4154,12 +4149,12 @@ function GrooveWriter() {
   // OMG this needs to be refactored really bad.   There is a GrooveData struct from groove utils that
   //      would make this whole thing much easier.  :(
   function changeDivisionWithNotes(newDivision, Stickings, HH, Tom1, Tom4, Snare, Kick) {
-    var oldDivision = class_time_division;
+    var oldDivision = class_subDivision;
     var wasStickingsVisable = isStickingsVisible();
     var wasTomsVisable = isTomsVisible();
 
-    class_time_division = newDivision;
-    class_notes_per_measure = root.myGrooveUtils.calc_notes_per_measure(class_time_division, class_num_beats_per_measure, class_note_value_per_measure);
+    class_subDivision = newDivision;
+    class_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(class_subDivision, class_timeSig);
 
     var newHTML = "";
     for (var cur_measure = 1; cur_measure <= class_number_of_measures; cur_measure++) {
@@ -4193,7 +4188,7 @@ function GrooveWriter() {
     unselectButton(document.getElementById("subdivision_" + oldDivision + "ths"));
 
     // highlight the new div
-    selectButton(document.getElementById("subdivision_" + class_time_division + "ths"));
+    selectButton(document.getElementById("subdivision_" + class_subDivision + "ths"));
 
     // This may disable or enable the menu
     setupPermutationMenu();
@@ -4240,15 +4235,15 @@ function GrooveWriter() {
     }
 
     var isNewDivisionTriplets = root.myGrooveUtils.isTripletDivision(newDivision);
-    var new_notes_per_measure = root.myGrooveUtils.calc_notes_per_measure((isNewDivisionTriplets ? 48 : 32), class_num_beats_per_measure, class_note_value_per_measure);
+    var new_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure((isNewDivisionTriplets ? 48 : 32), class_timeSig);
 
     // check for incompatible odd time signature division   9/8 and 1/4notes for instance or 9/16 and 1/8notes
-    if ((newDivision * class_num_beats_per_measure / class_note_value_per_measure) % 1 != 0) {
-      alert("1/" + newDivision + " notes are disabled in " + class_num_beats_per_measure + "/" + class_note_value_per_measure + " time.  This combination would result in a half note.");
+    if ((newDivision * class_timeSig.top / class_timeSig.bottom.value) % 1 != 0) {
+      alert("1/" + newDivision + " notes are disabled in " + class_timeSig.top + "/" + class_timeSig.bottom .value+ " time.  This combination would result in a half note.");
       return;
     }
-    if (isNewDivisionTriplets && class_note_value_per_measure != 4) {
-      alert("Triplets are disabled in " + class_num_beats_per_measure + "/" + class_note_value_per_measure + " time.  Use x/4 time for triplets.");
+    if (isNewDivisionTriplets && class_timeSig.bottom .value!= 4) {
+      alert("Triplets are disabled in " + class_timeSig.top + "/" + class_timeSig.bottom .value+ " time.  Use x/4 time for triplets.");
       return;
     }
 
@@ -4272,12 +4267,12 @@ function GrooveWriter() {
     } else {
       // changing from or changing to a triplet division
       // triplets don't scale well, so use defaults when we change
-      uiStickings = root.myGrooveUtils.GetDefaultStickingsGroove(new_notes_per_measure, class_number_of_measures);
+      uiStickings = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
       uiHH = root.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_number_of_measures);
-      uiTom1 = root.myGrooveUtils.GetDefaultTom1Groove(new_notes_per_measure, class_number_of_measures);
-      uiTom4 = root.myGrooveUtils.GetDefaultTom4Groove(new_notes_per_measure, class_number_of_measures);
-      uiSnare = root.myGrooveUtils.GetDefaultSnareGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
-      uiKick = root.myGrooveUtils.GetDefaultKickGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
+      uiTom1 = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
+      uiTom4 = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
+      uiSnare = root.myGrooveUtils.GetDefaultSnareGroove(new_notes_per_measure, class_timeSig, class_number_of_measures);
+      uiKick = root.myGrooveUtils.GetDefaultKickGroove(new_notes_per_measure, class_timeSig, class_number_of_measures);
 
       // reset the metronome click, since it has different options
       root.resetMetronomeOptionsMenuOffsetClick();
@@ -4320,7 +4315,7 @@ function GrooveWriter() {
 													');
 
       // add space between notes, exept on the last note
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div>\n');
       }
     }
@@ -4357,7 +4352,7 @@ function GrooveWriter() {
       newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" >\
 												</div>\n');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4385,7 +4380,7 @@ function GrooveWriter() {
 														</div>\n\
 													');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4403,7 +4398,7 @@ function GrooveWriter() {
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4469,7 +4464,7 @@ function GrooveWriter() {
 
 
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }
@@ -4487,7 +4482,7 @@ function GrooveWriter() {
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4507,7 +4502,7 @@ function GrooveWriter() {
 														</div> \n\
 													');
 
-      if ((j - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure) === 0 && j < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((j - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && j < class_notes_per_measure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }

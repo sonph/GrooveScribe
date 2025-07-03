@@ -32,6 +32,27 @@ describe('ABCtoTab', () => {
     expect(utils.abcNotationToTablaturePerNote('', false)).toEqual('-');
     expect(utils.abcNotationToTablaturePerNote('Stickings', false)).toEqual('-');
   });
+
+  test('should return empty string if no note is given', () => {
+    expect(abcNoteToTabChar(DrumType.STICKINGS, AbcNote.OFF)).toEqual('');
+    expect(tabCharToAbcNote(DrumType.STICKINGS, '').note).toEqual('""x');
+    expect(abcNoteToTabChar(DrumType.SNARE, AbcNote.OFF)).toEqual('');
+    expect(tabCharToAbcNote(DrumType.SNARE, '')).toEqual(AbcNote.OFF);
+  });
+
+  test('should return corresponding tab character', () => {
+    expect(abcNoteToTabChar(DrumType.STICKINGS, AbcNote.STICK_R)).toEqual('R');
+    expect(abcNoteToTabChar(DrumType.HIHAT, AbcNote.HH_RIDE)).toEqual('r');
+    expect(abcNoteToTabChar(DrumType.SNARE, AbcNote.SN_GHOST)).toEqual('g');
+    expect(abcNoteToTabChar(DrumType.KICK, AbcNote.KI_NORMAL)).toEqual('o');
+  });
+
+  test('should return corresponding abc note', () => {
+    expect(tabCharToAbcNote(DrumType.KICK, 'o').note).toEqual('F');
+    expect(tabCharToAbcNote(DrumType.TOM1, 'o').note).toEqual('e');
+    expect(tabCharToAbcNote(DrumType.HIHAT, 'X').note).toEqual('!accent!^g');
+    expect(tabCharToAbcNote(DrumType.HIHAT, 'M').note).toEqual("^D'");
+  });
 });
 
 describe('mergeDrumTabLines', () => {
@@ -53,29 +74,6 @@ describe('mergeDrumTabLines', () => {
   });
 });
 
-describe('parseTimeSigString', () => {
-  beforeAll(() => {
-    require('../js/groove_utils.js');
-    utils = new global.GrooveUtils();
-  });
-
-  test('should return result', () => {
-    expect(utils.parseTimeSigString('4/4')).toEqual([4, 4]);
-    expect(utils.parseTimeSigString('9/8')).toEqual([9, 8]);
-  });
-
-  test('should return default 4/4 if malformatted', () => {
-    expect(utils.parseTimeSigString('invalid')).toEqual([4, 4]);
-    expect(utils.parseTimeSigString('4/4/4')).toEqual([4, 4]);
-  });
-
-  test('should default to quarter notes if bottom number is not 2 4 8 16', () => {
-    expect(utils.parseTimeSigString('4/3')).toEqual([4, 4]);
-    expect(utils.parseTimeSigString('9/5')).toEqual([9, 4]);
-    expect(utils.parseTimeSigString('3/7')).toEqual([3, 4]);
-  });
-});
-
 describe('noteArraysFromURLData', () => {
   beforeAll(() => {
     require('../js/groove_utils.js');
@@ -90,6 +88,18 @@ describe('noteArraysFromURLData', () => {
     const expectedArray =
       ['F', false, false, false, 'F', false, false, false, 'F', false, false, false, 'F', false, false, false, 'F', false, false, false, 'F', false, false, false, 'F', false, false, false, 'F', false, false, false];
     expect(utils.abcNoteArrayFromTabString('K', 'o---o---o---o---o---o---o---o---', 16, 2)).toEqual(expectedArray);
+  });
+});
+
+describe('tabLineFromAbcNoteArray', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    utils = new global.GrooveUtils();
+  });
+
+  test('should return valid tab line', () => {
+    const noteArray = [AbcNote.HH_NORMAL.note, false, AbcNote.HH_NORMAL.note, false, AbcNote.HH_NORMAL.note, false, AbcNote.HH_NORMAL.note, false];
+    expect(utils.tabLineFromAbcNoteArray('H', noteArray, false, noteArray.length, 8)).toEqual('x-x-x-x-|');
   });
 });
 
@@ -122,7 +132,7 @@ describe('arraysToABC', () => {
     toms = [];
     post_voice_abc = "|\n";
     const time_division = 8;
-    const abc = utils.create_ABC_from_snare_HH_kick_arrays(stickings, hh, snare, kick, toms, post_voice_abc, time_division, 32, true, 4, 4);
+    const abc = utils.create_ABC_from_snare_HH_kick_arrays(stickings, hh, snare, kick, toms, post_voice_abc, time_division, 32, true, TimeSignature.COMMON_TIME_44);
     expect(abc).toContain('[^g4F4]^g4 [c4^g4]^g4 [^g4F4]^g4 [c4^g4]^g4 ||');
   });
 });
