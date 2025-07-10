@@ -1,12 +1,17 @@
-describe('GrooveUtils', () => {
+describe('Subdivision', () => {
   beforeAll(() => {
     require('../js/groove_utils.js');
-    utils = new global.GrooveUtils();
   });
 
-  test('should initialize with default values', () => {
-    expect(utils.data.viewMode).toBe(true);
-    expect(utils.data.grooveDBAuthoring).toBe(false);
+  test('should create Subdivision instances', () => {
+    expect(Subdivision.of(1)).toEqual(Subdivision.WHOLE);
+    expect(Subdivision.of(2)).toEqual(Subdivision.HALF);
+    expect(Subdivision.of(4)).toEqual(Subdivision.QUARTER);
+    expect(Subdivision.of(8)).toEqual(Subdivision.EIGHTH);
+  });
+
+  test('divideBy', () => {
+    expect(Subdivision.HALF.divideBy(Subdivision.SIXTEENTH)).toEqual(8);
   });
 });
 
@@ -58,8 +63,13 @@ describe('Measure', () => {
   });
 
   test('should get correct string from array value', () => {
-    measure.arrays[DrumType.KICK.name] = [null, 'o', null, 'o', 'o'];
+    measure.arrays.set(DrumType.KICK.name, [null, 'o', null, 'o', 'o']);
     expect(measure.toString(DrumType.KICK)).toEqual('-o-oo');
+  });
+
+  test('should get correct scaled array', () => {
+    measure.arrays[DrumType.KICK.name] = [null, 'o', null, 'o', 'o'];
+    expect(measure.getScaledArray(DrumType.KICK, 10)).toEqual([null, null, 'o', null, null, null, 'o', null, 'o', null]);
   });
 });
 
@@ -104,12 +114,12 @@ describe('GrooveData', () => {
   });
 
   test('toUrl should encode params', () => {
-    expect(grooveData.toUrl()).toContain('Mode=view&TimeSig=2/4&Div=16&Tempo=80&H=|x-x-x-x-|x-x-x-x-|&S=|oooo----|o-o-o-o-|&K=|o-------|o-------|');
+    expect(grooveData.toUrl()).toContain('TimeSig=2/4&Div=16&Tempo=80&H=|x-x-x-x-|x-x-x-x-|&S=|oooo----|o-o-o-o-|&K=|o-------|o-------|');
   });
 
   test('toUrl should not encode stickings if not shown', () => {
     grooveData.showStickings = false;
-    grooveData.measures[0].arrays[DrumType.STICKINGS.name][0] = 'b';
+    grooveData.measures[0].arrays.get(DrumType.STICKINGS.name)[0] = 'b';
     expect(grooveData.toUrl()).not.toContain('Stickings');
   });
 });
@@ -117,7 +127,7 @@ describe('GrooveData', () => {
 describe('tabNumberOfNotesPerMeasure', () => {
   beforeAll(() => {
     require('../js/groove_utils.js');
-    utils = new global.GrooveUtils();
+    utils = new global.GrooveUtils(excludeAbcForTesting = true);
   });
 
   test('should return correct calculations', () => {
@@ -148,5 +158,90 @@ describe('TimeSignature.fromString', () => {
     expect(TimeSignature.fromString('4/3')).toEqual(new TimeSignature(4, Subdivision.QUARTER));
     expect(TimeSignature.fromString('9/5')).toEqual(new TimeSignature(9, Subdivision.QUARTER));
     expect(TimeSignature.fromString('3/7')).toEqual(new TimeSignature(3, Subdivision.QUARTER));
+  });
+});
+
+describe('ABCtoTab', () => {
+  beforeAll(() => {
+    require('../tsjs/groove_utils.js');
+    utils = new global.GrooveUtils(excludeAbcForTesting = true);
+  });
+
+  test('should return empty string if no note is given', () => {
+    expect(abcNoteToTabChar(DrumType.STICKINGS, AbcNote.OFF)).toEqual(null);
+    expect(abcNoteToTabChar(DrumType.SNARE, AbcNote.OFF)).toEqual(null);
+    expect(tabCharToAbcNote(DrumType.SNARE, '')).toEqual(null);
+  });
+
+  test('should return corresponding tab character', () => {
+    expect(abcNoteToTabChar(DrumType.STICKINGS, AbcNote.STICK_R)).toEqual('R');
+    expect(abcNoteToTabChar(DrumType.HIHAT, AbcNote.HH_RIDE)).toEqual('r');
+    expect(abcNoteToTabChar(DrumType.SNARE, AbcNote.SN_GHOST)).toEqual('g');
+    expect(abcNoteToTabChar(DrumType.KICK, AbcNote.KI_NORMAL)).toEqual('o');
+  });
+
+  test('should return corresponding abc note', () => {
+    expect(tabCharToAbcNote(DrumType.KICK, 'o').note).toEqual('F');
+    expect(tabCharToAbcNote(DrumType.TOM1, 'o').note).toEqual('e');
+    expect(tabCharToAbcNote(DrumType.HIHAT, 'X').note).toEqual('^g');
+    expect(tabCharToAbcNote(DrumType.HIHAT, 'M').note).toEqual("^D'");
+  });
+
+  test('should return first tab char', () => {
+    expect(AbcNote.HH_NORMAL.getFirstTabChar()).toEqual('x');
+  });
+});
+
+describe('mergeDrumTabLines', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    utils = new global.GrooveUtils(excludeAbcForTesting = true);
+  });
+
+  test('should return merged result', () => {
+    expect(utils.mergeDrumTabLines('o---o---', '-xxx-xxx')).toEqual('oxxxoxxx');
+  });
+
+  test('should defer to dominate line', () => {
+    expect(utils.mergeDrumTabLines('x---o---', 'o---x---')).toEqual('x---o---');
+  });
+
+  test('merge unequal lines', () => {
+    expect(utils.mergeDrumTabLines('x---x---', '-oo-')).toEqual('xoo-x---');
+  });
+});
+
+describe('Measure to ABC', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    data = new GrooveData();
+  });
+
+  test('should convert measure to ABC notation -- basic', () => {
+    data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    data.measures[0].arrays.get(DrumType.SNARE.name).fill(null);
+    data.measures[0].arrays.get(DrumType.KICK.name).fill(null);
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('^g1^g1 ^g1^g1 ^g1^g1 ^g1^g1');
+  });
+
+  test('should convert measure to ABC notation', () => {
+    data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('[^g1F1]^g1 [^g1c1]^g1 [^g1F1]^g1 [^g1c1]^g1');
+  });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=8&Tempo=80&Measures=1&H=|x-------|&S=|--------|&K=|o--o-oo-|
+  test('should convert measure to ABC notation -- with rests', () => {
+    data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|x-------|&S=|--------|&K=|o--o-oo-|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('[^g2F2] z1F1 z1F1 F2');
+  });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=8&Tempo=80&Measures=1&H=|X---X-o-|&S=|--O-O-O-|&K=|o-------|
+  test('should convert measure to ABC notation -- multi measures', () => {
+    data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&Measures=1&H=|X---X-o-|&S=|--O-O-O-|&K=|o-------|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('!accent![^g2F2] !accent!c2 !accent![^g2c2] !open!!accent![^g2c2]');
   });
 });
