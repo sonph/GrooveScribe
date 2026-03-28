@@ -26,83 +26,83 @@
 /*jslint browser:true devel:true */
 /*global Abc, MIDI, Midi */
 
-var global_num_GrooveUtilsCreated = 0;
-var global_grooveUtilsScriptSrc = "";
+window.global_num_GrooveUtilsCreated = 0;
+window.global_grooveUtilsScriptSrc = "";
 if (document.currentScript)
   global_grooveUtilsScriptSrc = document.currentScript.src;
-var global_midiInitialized = false;
+window.global_midiInitialized = false;
 
 // global constants
-var constant_MAX_MEASURES = 10;
-var constant_DEFAULT_TEMPO = 80;
-var constant_ABC_STICK_R = '"R"x';
-var constant_ABC_STICK_L = '"L"x';
-var constant_ABC_STICK_BOTH = '"R/L"x';
-var constant_ABC_STICK_COUNT = '"count"x';
-var constant_ABC_STICK_OFF = '""x';
-var constant_ABC_HH_Ride = "^A'";
-var constant_ABC_HH_Ride_Bell = "^B'";
-var constant_ABC_HH_Cow_Bell = "^D'";
-var constant_ABC_HH_Crash = "^c'";
-var constant_ABC_HH_Stacker = "^d'";
-var constant_ABC_HH_Metronome_Normal = "^e'";
-var constant_ABC_HH_Metronome_Accent = "^f'";
-var constant_ABC_HH_Open = "!open!^g";
-var constant_ABC_HH_Close = "!plus!^g";
-var constant_ABC_HH_Accent = "!accent!^g";
-var constant_ABC_HH_Normal = "^g";
-var constant_ABC_SN_Ghost = "!(.!!).!c";
-var constant_ABC_SN_Accent = "!accent!c";
-var constant_ABC_SN_Normal = "c";
-var constant_ABC_SN_XStick = "^c";
-var constant_ABC_SN_Buzz = "!///!c";
-var constant_ABC_SN_Flam = "!accent!{/c}c";
-var constant_ABC_SN_Drag = "{/cc}c";
-var constant_ABC_KI_SandK = "[F^d,]"; // kick & splash
-var constant_ABC_KI_Splash = "^d,"; // splash only
-var constant_ABC_KI_Normal = "F";
-var constant_ABC_T1_Normal = "e";
-var constant_ABC_T2_Normal = "d";
-var constant_ABC_T3_Normal = "B";
-var constant_ABC_T4_Normal = "A";
-var constant_NUMBER_OF_TOMS = 4;
-var constant_ABC_OFF = false;
+window.constant_MAX_MEASURES = 10;
+window.constant_DEFAULT_TEMPO = 80;
+window.constant_ABC_STICK_R = '"R"x';
+window.constant_ABC_STICK_L = '"L"x';
+window.constant_ABC_STICK_BOTH = '"R/L"x';
+window.constant_ABC_STICK_COUNT = '"count"x';
+window.constant_ABC_STICK_OFF = '""x';
+window.constant_ABC_HH_Ride = "^A'";
+window.constant_ABC_HH_Ride_Bell = "^B'";
+window.constant_ABC_HH_Cow_Bell = "^D'";
+window.constant_ABC_HH_Crash = "^c'";
+window.constant_ABC_HH_Stacker = "^d'";
+window.constant_ABC_HH_Metronome_Normal = "^e'";
+window.constant_ABC_HH_Metronome_Accent = "^f'";
+window.constant_ABC_HH_Open = "!open!^g";
+window.constant_ABC_HH_Close = "!plus!^g";
+window.constant_ABC_HH_Accent = "!accent!^g";
+window.constant_ABC_HH_Normal = "^g";
+window.constant_ABC_SN_Ghost = "!(.!!).!c";
+window.constant_ABC_SN_Accent = "!accent!c";
+window.constant_ABC_SN_Normal = "c";
+window.constant_ABC_SN_XStick = "^c";
+window.constant_ABC_SN_Buzz = "!///!c";
+window.constant_ABC_SN_Flam = "!accent!{/c}c";
+window.constant_ABC_SN_Drag = "{/cc}c";
+window.constant_ABC_KI_SandK = "[F^d,]"; // kick & splash
+window.constant_ABC_KI_Splash = "^d,"; // splash only
+window.constant_ABC_KI_Normal = "F";
+window.constant_ABC_T1_Normal = "e";
+window.constant_ABC_T2_Normal = "d";
+window.constant_ABC_T3_Normal = "B";
+window.constant_ABC_T4_Normal = "A";
+window.constant_NUMBER_OF_TOMS = 4;
+window.constant_ABC_OFF = false;
 
-var constant_OUR_MIDI_VELOCITY_NORMAL = 85;
-var constant_OUR_MIDI_VELOCITY_ACCENT = 120;
-var constant_OUR_MIDI_VELOCITY_GHOST = 50;
-var constant_OUR_MIDI_METRONOME_1 = 76;
-var constant_OUR_MIDI_METRONOME_NORMAL = 77;
-var constant_OUR_MIDI_HIHAT_NORMAL = 42;
-var constant_OUR_MIDI_HIHAT_OPEN = 46;
-var constant_OUR_MIDI_HIHAT_ACCENT = 108;
-var constant_OUR_MIDI_HIHAT_CRASH = 49;
-var constant_OUR_MIDI_HIHAT_STACKER = 52;
-var constant_OUR_MIDI_HIHAT_METRONOME_NORMAL = 77;
-var constant_OUR_MIDI_HIHAT_METRONOME_ACCENT = 76;
-var constant_OUR_MIDI_HIHAT_RIDE = 51;
-var constant_OUR_MIDI_HIHAT_RIDE_BELL = 53;
-var constant_OUR_MIDI_HIHAT_COW_BELL = 105;
-var constant_OUR_MIDI_HIHAT_FOOT = 44;
-var constant_OUR_MIDI_SNARE_NORMAL = 38;
-var constant_OUR_MIDI_SNARE_ACCENT = 22;
-var constant_OUR_MIDI_SNARE_GHOST = 21;
-var constant_OUR_MIDI_SNARE_XSTICK = 37;
-var constant_OUR_MIDI_SNARE_BUZZ = 104;
-var constant_OUR_MIDI_SNARE_FLAM = 107;
-var constant_OUR_MIDI_SNARE_DRAG = 103;
-var constant_OUR_MIDI_KICK_NORMAL = 35;
-var constant_OUR_MIDI_TOM1_NORMAL = 48;
-var constant_OUR_MIDI_TOM2_NORMAL = 47;
-var constant_OUR_MIDI_TOM3_NORMAL = 45;
-var constant_OUR_MIDI_TOM4_NORMAL = 43;
+window.constant_OUR_MIDI_VELOCITY_NORMAL = 85;
+window.constant_OUR_MIDI_VELOCITY_ACCENT = 120;
+window.constant_OUR_MIDI_VELOCITY_GHOST = 50;
+window.constant_OUR_MIDI_METRONOME_1 = 76;
+window.constant_OUR_MIDI_METRONOME_NORMAL = 77;
+window.constant_OUR_MIDI_HIHAT_NORMAL = 42;
+window.constant_OUR_MIDI_HIHAT_OPEN = 46;
+window.constant_OUR_MIDI_HIHAT_ACCENT = 108;
+window.constant_OUR_MIDI_HIHAT_CRASH = 49;
+window.constant_OUR_MIDI_HIHAT_STACKER = 52;
+window.constant_OUR_MIDI_HIHAT_METRONOME_NORMAL = 77;
+window.constant_OUR_MIDI_HIHAT_METRONOME_ACCENT = 76;
+window.constant_OUR_MIDI_HIHAT_RIDE = 51;
+window.constant_OUR_MIDI_HIHAT_RIDE_BELL = 53;
+window.constant_OUR_MIDI_HIHAT_COW_BELL = 105;
+window.constant_OUR_MIDI_HIHAT_FOOT = 44;
+window.constant_OUR_MIDI_SNARE_NORMAL = 38;
+window.constant_OUR_MIDI_SNARE_ACCENT = 22;
+window.constant_OUR_MIDI_SNARE_GHOST = 21;
+window.constant_OUR_MIDI_SNARE_XSTICK = 37;
+window.constant_OUR_MIDI_SNARE_BUZZ = 104;
+window.constant_OUR_MIDI_SNARE_FLAM = 107;
+window.constant_OUR_MIDI_SNARE_DRAG = 103;
+window.constant_OUR_MIDI_KICK_NORMAL = 35;
+window.constant_OUR_MIDI_TOM1_NORMAL = 48;
+window.constant_OUR_MIDI_TOM2_NORMAL = 47;
+window.constant_OUR_MIDI_TOM3_NORMAL = 45;
+window.constant_OUR_MIDI_TOM4_NORMAL = 43;
 
 // make these global so that they are shared among all the GrooveUtils classes invoked
-var global_current_midi_start_time = 0;
-var global_last_midi_update_time = 0;
-var global_total_midi_play_time_msecs = 0;
-var global_total_midi_notes = 0;
-var global_total_midi_repeats = 0;
+window.global_current_midi_start_time = 0;
+window.global_last_midi_update_time = 0;
+window.global_total_midi_play_time_msecs = 0;
+window.global_total_midi_notes = 0;
+window.global_total_midi_repeats = 0;
 
 // GrooveUtils class.   The only one in this file.
 function GrooveUtils() {
@@ -2254,7 +2254,7 @@ function GrooveUtils() {
     }
 
     if (baseLocation.length < 1) {
-      baseLocation = "https://b125c4f8bf7d89726feec9ab8202d31e0c8d14d8.googledrive.com/host/0B2wxVWzVoWGYfnB5b3VTekxyYUowVjZ5YVE3UllLaVk5dVd4TzF4Q2ZaUXVsazhNSTdRM1E/";
+      baseLocation = "/";
     }
 
     return baseLocation;
@@ -3408,3 +3408,4 @@ function GrooveUtils() {
   };
 
 } // end of class
+export { GrooveUtils };

@@ -6,3 +6,32 @@ cordova/platforms/
 mikeLessons.html
 cordova/plugins/
 .idea/
+
+# Node
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS & Editor
+.DS_Store
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+
+# Python caching (for any Python cleanup scripts like fix_css.py)
+__pycache__/
+*.py[cod]
