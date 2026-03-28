@@ -35,4 +35,39 @@ describe('GrooveUtils', () => {
     const merged = utils.mergeDrumTabLines(dominate, sub);
     expect(merged).toBe("|x---o---x---o---|");
   });
+
+  test('should generate expected ABC notation components from GrooveData for a 4/4 Rock Groove', () => {
+    // An 8th note rock groove representation
+    const urlString = "?TimeSig=4/4&Div=8&Tempo=80&Measures=1&H=|xxxxxxxx|&S=|----O-------O---|&K=|o-------o-------|";
+    const grooveData = utils.getGrooveDataFromUrlString(urlString);
+    
+    // We expect GrooveData to accurately reflect the URL parameters
+    expect(grooveData.timeDivision).toBe(8);
+    expect(grooveData.numBeats).toBe(4);
+    expect(grooveData.noteValue).toBe(4);
+
+    const abcOutput = utils.createABCFromGrooveData(grooveData, 800);
+    
+    // The generated ABC should include standard staff layout properties
+    expect(abcOutput).toContain("%%staves"); 
+    expect(abcOutput).toContain("V:Stickings"); // Stickings voice
+    expect(abcOutput).toContain("V:Hands"); // Hands voice
+    
+    // Should include the time signature
+    expect(abcOutput).toContain("M:4/4");
+  });
+
+  test('should generate expected ABC notation components from GrooveData for a 6/8 Triplet Groove', () => {
+    // A triplet 6/8 groove representation
+    const urlString = "?TimeSig=6/8&Div=12&Tempo=120&Measures=1&H=|x-xx-xx-xx-x|&S=|-g--g-Og--g-|&K=|o----o-----o|";
+    const grooveData = utils.getGrooveDataFromUrlString(urlString);
+    
+    expect(grooveData.timeDivision).toBe(12);
+    expect(grooveData.numBeats).toBe(6);
+    expect(grooveData.noteValue).toBe(8);
+
+    const abcOutput = utils.createABCFromGrooveData(grooveData, 800);
+    
+    expect(abcOutput).toContain("M:6/8");
+  });
 });
