@@ -296,7 +296,7 @@
 		color: rgb(0, 0, 0);
 	}
 	.notes-row-container .note-off{
-		color: rgb(255, 255, 255);
+		color: #CCCCCC;
 		border-color: #999;
 	}
 	.notes-row-container .note-hidden{

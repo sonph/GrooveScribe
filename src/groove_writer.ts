@@ -499,51 +499,44 @@ class GrooveWriter {
     return null;
   }
 
+  // All notes belonging to a drum type (used to hide non-selected variants),
+  // paired with the note whose element renders the "off" placeholder icon.
+  private static DRUM_TYPE_NOTES = {
+    [DrumType.KICK.name]:      { all: [AbcNote.KI_NORMAL, AbcNote.KI_SPLASH],                       placeholder: AbcNote.KI_NORMAL },
+    [DrumType.SNARE.name]:     { all: AbcNote.SN_ALL,                                               placeholder: AbcNote.SN_NORMAL },
+    [DrumType.TOM1.name]:      { all: [AbcNote.T1_NORMAL],                                          placeholder: AbcNote.T1_NORMAL },
+    [DrumType.TOM4.name]:      { all: [AbcNote.T4_NORMAL],                                          placeholder: AbcNote.T4_NORMAL },
+    [DrumType.HIHAT.name]:     { all: AbcNote.HH_ALL,                                               placeholder: AbcNote.HH_NORMAL },
+    [DrumType.STICKINGS.name]: { all: [AbcNote.STICK_R, AbcNote.STICK_L, AbcNote.STICK_BOTH, AbcNote.STICK_COUNT], placeholder: AbcNote.STICK_R },
+  };
+
   // If note is AbcNote.OFF, drumType must be set.
   setDrumNote(id: number, note: AbcNote, makeSound: boolean = false, offDrumType: DrumType | null = null): void {
-    // First hide all notes.
     const drumType = note.drumType === DrumType.NONE ? offDrumType : note.drumType;
-    const notes = {
-      [DrumType.KICK.name]: [AbcNote.KI_NORMAL, AbcNote.KI_SPLASH],
-      [DrumType.SNARE.name]: AbcNote.SN_ALL,
-      [DrumType.TOM1.name]: [AbcNote.T1_NORMAL],
-      [DrumType.TOM4.name]: [AbcNote.T4_NORMAL],
-      [DrumType.HIHAT.name]: AbcNote.HH_ALL,
-      [DrumType.STICKINGS.name]: [AbcNote.STICK_R, AbcNote.STICK_L, AbcNote.STICK_BOTH, AbcNote.STICK_COUNT]
-    }[drumType.name];
+    const { all: notes, placeholder } = GrooveWriter.DRUM_TYPE_NOTES[drumType.name];
+
+    // Hide all variants for this drum type.
     for (const n of notes) {
-      const prefixes = getAsSet(n.htmlAttrs.html_id_prefix);
-      for (const prefix of prefixes) {
+      for (const prefix of getAsSet(n.htmlAttrs.html_id_prefix)) {
         const element = document.getElementById(prefix + id);
         if (!element) continue;
-        element.classList.remove("note-on");
-        element.classList.remove("note-off");
+        element.classList.remove("note-on", "note-off");
         element.classList.add("note-hidden");
       }
     }
 
-    // Play note.
     if (makeSound && note?.midiNote) {
       this.playSingleNote(note.midiNote);
     }
 
-    // Set UI state.
-    if (note.isOff()) {
-      // Show the first "default" element for this drumType as off (so the row visually collapses to off state).
-      const defaultNote = notes[0];
-      for (const prefix of getAsSet(defaultNote.htmlAttrs.html_id_prefix)) {
-        const element = document.getElementById(prefix + id);
-        if (!element) continue;
-        element.classList.remove("note-hidden");
-        element.classList.add("note-off");
-      }
-      return;
-    }
-    for (const prefix of getAsSet(note.htmlAttrs.html_id_prefix)) {
+    // Off state: show only the placeholder element as a faded outline/icon.
+    const target = note.isOff() ? placeholder : note;
+    const stateClass = note.isOff() ? "note-off" : "note-on";
+    for (const prefix of getAsSet(target.htmlAttrs.html_id_prefix)) {
       const element = document.getElementById(prefix + id);
       if (!element) continue;
       element.classList.remove("note-hidden");
-      element.classList.add("note-on");
+      element.classList.add(stateClass);
     }
   }
 

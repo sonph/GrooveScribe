@@ -106,6 +106,29 @@ describe('State setters and getters', () => {
     writer.set_hh_state('0', 'normal');
     expect(writer.is_hh_on('0')).toBe(true);
   });
+
+  test('hi-hat off shows hh_cross as placeholder (not blank / not hh_ride)', () => {
+    writer.set_hh_state(0, 'normal');
+    writer.set_hh_state(0, 'off');
+    expect(document.getElementById('hh_cross0').classList.contains('note-off')).toBe(true);
+    expect(document.getElementById('hh_ride0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('hh_open0').classList.contains('note-hidden')).toBe(true);
+  });
+
+  test('snare off shows snare_circle as placeholder (not snare_ghost)', () => {
+    writer.set_snare_state(0, 'accent');
+    writer.set_snare_state(0, 'off');
+    expect(document.getElementById('snare_circle0').classList.contains('note-off')).toBe(true);
+    expect(document.getElementById('snare_ghost0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('snare_accent0').classList.contains('note-hidden')).toBe(true);
+  });
+
+  test('kick off shows kick_circle as placeholder', () => {
+    writer.set_kick_state(0, 'normal');
+    writer.set_kick_state(0, 'off');
+    expect(document.getElementById('kick_circle0').classList.contains('note-off')).toBe(true);
+    expect(document.getElementById('kick_splash0').classList.contains('note-hidden')).toBe(true);
+  });
 });
 
 describe('Note context menu lifecycle', () => {
