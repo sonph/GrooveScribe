@@ -1624,19 +1624,12 @@ class GrooveWriter {
   }
 
   handlePopUpKeyEventListeners = (event) => {
-    if (!this.insertNoteContextMenu) {
-      console.log("No insertNoteContextMenu set");
-      return;
-    }
-    console.log("Handling key event for insert note context menu: " + event.key);
+    if (!this.insertNoteContextMenu) return;
     const mapForType = POPUP_KEY_SHORTCUT_MAPPING.get(this.insertNoteContextMenu.id);
     const new_setting = mapForType?.note_mapping.get(event.key);
     if (new_setting) {
-      console.log("Setting " + mapForType.type + " to " + new_setting);
-      this.notePopupClick(mapForType.type, new_setting);
       event.preventDefault();
-      this.myGrooveUtils.hideContextMenu(this.insertNoteContextMenu);
-      this.removeAllPopUpKeyEventListeners();
+      this.notePopupClick(mapForType.type, new_setting);
     }
   };
 
@@ -1676,34 +1669,34 @@ class GrooveWriter {
     }
   };
 
-  notePopupClick(type: string, new_setting: string) {
-    var id = this.class_which_index_last_clicked;
-
+  private _setDrumStateByType(type: string, id: number, new_setting: string) {
     switch (type) {
-      case "sticking":
-        this.set_sticking_state(id, new_setting, true);
-        break;
-      case "hh":
-        this.set_hh_state(id, new_setting, true);
-        break;
-      case "tom1":
-        this.set_tom1_state(id, new_setting, true);
-        break;
-      case "tom4":
-        this.set_tom4_state(id, new_setting, true);
-        break;
-      case "snare":
-        this.set_snare_state(id, new_setting, true);
-        break;
-      case "kick":
-        this.set_kick_state(id, new_setting, true);
-        break;
+      case "sticking": this.set_sticking_state(id, new_setting, true); break;
+      case "hh":       this.set_hh_state(id, new_setting, true); break;
+      case "tom1":     this.set_tom1_state(id, new_setting, true); break;
+      case "tom4":     this.set_tom4_state(id, new_setting, true); break;
+      case "snare":    this.set_snare_state(id, new_setting, true); break;
+      case "kick":     this.set_kick_state(id, new_setting, true); break;
       default:
-        console.log("Bad case in contextMenuClick");
-        break;
+        console.log("Bad case in _setDrumStateByType: " + type);
     }
+  }
+
+  notePopupClick(type: string, new_setting: string) {
+    this._setDrumStateByType(type, this.class_which_index_last_clicked, new_setting);
+    this.closeNoteContextMenu();
     this.updateSheetMusic();
   };
+
+  // Close the currently-open note context menu (if any) and detach its
+  // keyboard shortcut listener. Safe to call when no menu is open.
+  closeNoteContextMenu() {
+    if (this.insertNoteContextMenu) {
+      this.myGrooveUtils.hideContextMenu(this.insertNoteContextMenu);
+    }
+    this.removeAllPopUpKeyEventListeners();
+    this.insertNoteContextMenu = null;
+  }
 
   // called when we initially mouseOver a note.
   // We can use it to sense left or right mouse or ctrl events

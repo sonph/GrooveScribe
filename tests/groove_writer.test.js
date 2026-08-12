@@ -107,3 +107,91 @@ describe('State setters and getters', () => {
     expect(writer.is_hh_on('0')).toBe(true);
   });
 });
+
+describe('Note context menu lifecycle', () => {
+  let grooveUtils, writer;
+
+  const CONTEXT_MENU_IDS = ['hhContextMenu', 'snareContextMenu', 'kickContextMenu',
+    'stickingContextMenu', 'tom1ContextMenu', 'tom4ContextMenu'];
+
+  const menuMarkup = CONTEXT_MENU_IDS.map(id => `<div id="${id}"></div>`).join('');
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    writer = new GrooveWriter(grooveUtils);
+    document.body.innerHTML = menuMarkup + writer.HTMLforStaffContainer(0, 0);
+    // Avoid real ABC/SVG re-rendering and MIDI playback in UI-focused tests.
+    writer.updateSheetMusic = jest.fn();
+    writer.playSingleNote = jest.fn();
+  });
+
+  const openMenu = (type, id = 0) => {
+    const event = { clientX: 10, clientY: 10, preventDefault: () => {} };
+    writer.noteRightClick(event, type, id);
+  };
+
+  test.each([
+    ['hh', 'hhContextMenu'],
+    ['snare', 'snareContextMenu'],
+    ['kick', 'kickContextMenu'],
+    ['sticking', 'stickingContextMenu'],
+    ['tom1', 'tom1ContextMenu'],
+    ['tom4', 'tom4ContextMenu'],
+  ])('noteRightClick(%s) shows %s and remembers id', (type, menuId) => {
+    openMenu(type, 3);
+    const menu = document.getElementById(menuId);
+    expect(menu.style.display).toBe('block');
+    expect(writer.insertNoteContextMenu).toBe(menu);
+    expect(writer.class_which_index_last_clicked).toBe(3);
+    expect(grooveUtils.visible_context_menu).toBe(menu);
+  });
+
+  test('notePopupClick applies the setting and closes the menu', () => {
+    openMenu('hh', 0);
+    writer.notePopupClick('hh', 'open');
+    expect(writer.is_hh_on(0)).toBe(true);
+    expect(writer.get_hh_state(0).url).toBe('o');
+    expect(document.getElementById('hhContextMenu').style.display).toBe('none');
+    expect(writer.insertNoteContextMenu).toBeNull();
+    expect(grooveUtils.visible_context_menu).toBe(false);
+    expect(writer.updateSheetMusic).toHaveBeenCalledTimes(1);
+  });
+
+  test('notePopupClick("off") clears the note and closes the menu', () => {
+    openMenu('hh', 0);
+    writer.notePopupClick('hh', 'off');
+    expect(writer.is_hh_on(0)).toBe(false);
+    expect(document.getElementById('hhContextMenu').style.display).toBe('none');
+  });
+
+  test('opening a second menu closes the first', () => {
+    openMenu('hh', 0);
+    openMenu('snare', 0);
+    expect(document.getElementById('hhContextMenu').style.display).toBe('none');
+    expect(document.getElementById('snareContextMenu').style.display).toBe('block');
+  });
+
+  test('keyboard shortcut applies setting and closes menu', () => {
+    openMenu('hh', 0);
+    writer.handlePopUpKeyEventListeners({ key: 'o', preventDefault: () => {} });
+    expect(writer.get_hh_state(0).url).toBe('o');
+    expect(document.getElementById('hhContextMenu').style.display).toBe('none');
+    expect(writer.insertNoteContextMenu).toBeNull();
+  });
+
+  test('keyboard shortcut for unrecognized key is a no-op', () => {
+    openMenu('hh', 0);
+    writer.handlePopUpKeyEventListeners({ key: 'q', preventDefault: () => {} });
+    expect(document.getElementById('hhContextMenu').style.display).toBe('block');
+    expect(writer.insertNoteContextMenu).not.toBeNull();
+  });
+
+  test('closeNoteContextMenu is safe when no menu is open', () => {
+    expect(() => writer.closeNoteContextMenu()).not.toThrow();
+    expect(writer.insertNoteContextMenu).toBeNull();
+  });
+});

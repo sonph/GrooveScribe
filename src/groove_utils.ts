@@ -1221,15 +1221,16 @@ class GrooveUtils {
 
   // every document click passes through here.
   // close a popup if one is up and we click off of it.
-  documentOnClickHanderCloseContextMenu(event) {
+  documentOnClickHanderCloseContextMenu = (event) => {
     if (this.visible_context_menu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
     }
   };
 
   showContextMenu(contextMenu) {
+    if (!contextMenu) return;
     // if there is another context menu open, close it
-    if (this.visible_context_menu) {
+    if (this.visible_context_menu && this.visible_context_menu !== contextMenu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
     }
     contextMenu.style.display = "block";
@@ -1240,20 +1241,20 @@ class GrooveUtils {
       // the menu has gone off the bottom of the screen
       contextMenu.style.top = document.documentElement.clientHeight - contextMenu.clientHeight + 'px';
     }
-    // use a timeout to setup the onClick handler.
-    // otherwise the click that opened the menu will close it
-    // right away.  :(
-    setTimeout(function () {
+    // Defer wiring the outside-click handler so the click that opened the
+    // menu doesn't immediately close it. Arrow function preserves `this`.
+    setTimeout(() => {
       document.onclick = this.documentOnClickHanderCloseContextMenu;
       document.body.style.cursor = "pointer"; // make document.onclick work on iPad
     }, 100);
   };
 
-  hideContextMenu(contextMenu: HTMLElement) {
+  hideContextMenu(contextMenu?: HTMLElement) {
     document.onclick = () => { };
     document.body.style.cursor = "auto"; // make document.onclick work on iPad
-    if (contextMenu) {
-      contextMenu.style.display = "none";
+    const target = (contextMenu || this.visible_context_menu) as HTMLElement | false;
+    if (target) {
+      target.style.display = "none";
     }
     this.visible_context_menu = false;
   };
