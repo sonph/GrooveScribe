@@ -3864,30 +3864,32 @@ class GrooveWriter {
     }
   };
 
+  // Propagate parsed measure data onto the clickable UI. get_*_state reads
+  // note-on classes off these DOM elements, so without this call MIDI
+  // generation sees an empty grid and produces a silent track.
+  applyMeasuresToUI() {
+    const drumTypes = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
+    for (let m = 0; m < this.data.numberOfMeasures; m++) {
+      const measure = this.data.measures[m];
+      if (!measure) continue;
+      for (const drumType of drumTypes) {
+        const arr = measure.getArray(drumType);
+        for (let i = 0; i < arr.length; i++) {
+          const id = i + m * this.data.notesPerMeasure;
+          const note = arr[i] ? tabCharToAbcNote(drumType, arr[i]) : null;
+          if (note) {
+            this.setDrumNote(id, note, false);
+          } else {
+            this.setDrumNote(id, AbcNote.OFF, false, drumType);
+          }
+        }
+      }
+    }
+  }
+
   set_Default_notes(encodedURLData) {
-    var Division;
-    var Stickings;
-    var HH;
-    var Snare;
-    var Kick;
-    var stickings_set_from_URL = false;
-
     this.data.fromUrl(encodedURLData);
-
-    // TODO
-    // if (this.myGrooveData.notesPerMeasure != this.data.notesPerMeasure || this.data.numberOfMeasures != this.myGrooveData.numberOfMeasures) {
-    //   this.data.numberOfMeasures = this.myGrooveData.numberOfMeasures;
-    //   changeDivisionWithNotes(this.myGrooveData.timeDivision);
-    // }
-
-    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
-
-    // setNotesFromABCArray("Stickings", this.myGrooveData.sticking_array, this.data.numberOfMeasures);
-    // setNotesFromABCArray("H", this.myGrooveData.hh_array, this.data.numberOfMeasures);
-    // setNotesFromABCArray("T1", this.myGrooveData.toms_array[0], this.data.numberOfMeasures);
-    // setNotesFromABCArray("T4", this.myGrooveData.toms_array[3], this.data.numberOfMeasures);
-    // setNotesFromABCArray("S", this.myGrooveData.snare_array, this.data.numberOfMeasures);
-    // setNotesFromABCArray("K", this.myGrooveData.kick_array, this.data.numberOfMeasures);
+    this.applyMeasuresToUI();
 
     if (this.data.showToms)
       this.showHideToms(true, true, true);
