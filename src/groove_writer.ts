@@ -2335,10 +2335,12 @@ class GrooveWriter {
   // 5/4 would be 40 notes
   // 2/4 would be 16 notes
   // 4/2 would be 32 notes
-  get_empty_note_array_in_32nds(): Array<string | null> {
+  // Filled with `false` so unset positions match the `case false` arms in the
+  // MIDI array switches (get_*_state also returns `false` for empty cells).
+  get_empty_note_array_in_32nds(): Array<string | false> {
     const notesPer4Beats = this.usingTriplets() ? 48 : 32;
     const num_notes = (this.data.timeSig.top * notesPer4Beats) / this.data.timeSig.bottom.value;
-    return new Array(num_notes).fill(null);
+    return new Array(num_notes).fill(false);
   }
 
 

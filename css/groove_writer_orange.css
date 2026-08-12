@@ -303,16 +303,10 @@
 		color: transparent;
 		background-color: transparent;
 	}
-	.notes-row-container .snare-circle .note-on {
-		color: black;
-		border-color: #999;
-	}
-	.notes-row-container .kick-circle .note-on {
-		color: black;
-		border-color: #999;
-	}
-	.notes-row-container .tom-circle .note-on {
-		color: black;
+	.notes-row-container .snare_circle.note-on,
+	.notes-row-container .kick_circle.note-on,
+	.notes-row-container [class^="tom_circle"].note-on {
+		background-color: #000;
 		border-color: #999;
 	}
 	.heading1 {
