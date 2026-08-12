@@ -131,11 +131,9 @@ describe('tabNumberOfNotesPerMeasure', () => {
   });
 
   test('should return correct calculations', () => {
-    expect(utils.tabNumberOfNotesPerMeasure(Subdivision.EIGHTH, new TimeSignature(4, Subdivision.QUARTER))).toEqual(8);
-    expect(utils.tabNumberOfNotesPerMeasure(Subdivision.EIGHTH, new TimeSignature(9, Subdivision.EIGHTH))).toEqual(9);
-    expect(utils.tabNumberOfNotesPerMeasure(Subdivision.SIXTEENTH, new TimeSignature(4, Subdivision.EIGHTH))).toEqual(8);
-    expect(utils.tabNumberOfNotesPerMeasure(Subdivision.QUARTER, new TimeSignature(8, Subdivision.EIGHTH))).toEqual(4);
-    expect(utils.tabNumberOfNotesPerMeasure(Subdivision.EIGHTH_TRIPLET, new TimeSignature(8, Subdivision.EIGHTH))).toEqual(12);
+    utils.data = new GrooveData(new TimeSignature(3, Subdivision.QUARTER), Subdivision.SIXTEENTH);
+    expect(utils.data.notesPerMeasure).toEqual(12);
+    expect(utils.data.notesPerBeat).toEqual(4);
   });
 });
 
@@ -163,7 +161,7 @@ describe('TimeSignature.fromString', () => {
 
 describe('ABCtoTab', () => {
   beforeAll(() => {
-    require('../tsjs/groove_utils.js');
+    require('../js/groove_utils.js');
     utils = new global.GrooveUtils(excludeAbcForTesting = true);
   });
 
@@ -208,6 +206,22 @@ describe('mergeDrumTabLines', () => {
 
   test('merge unequal lines', () => {
     expect(utils.mergeDrumTabLines('x---x---', '-oo-')).toEqual('xoo-x---');
+  });
+});
+
+describe('Parse URLs', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  test('parse url options', () => {
+    const data = new GrooveData();
+    data.fromUrl('Title=a%20b%20c&Author=foo&Comments=bar&Mode=view&TimeSig=2/4&Div=16&Tempo=120&H=|x-x-x-x-|&S=|o-o-o-o-|&K=|o---o---|');
+    expect(data.timeSig.toString()).toEqual('2/4');
+    expect(data.viewMode).toEqual(true);
+    expect(data.title).toEqual('a b c');
+    expect(data.author).toEqual('foo');
+    expect(data.comments).toEqual('bar');
   });
 });
 

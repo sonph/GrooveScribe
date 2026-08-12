@@ -4,7 +4,10 @@
   "description": "Readme for Groove Scribe",
   "main": "MIDI.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "python3 -m http.server 8001"
   },
   "repository": {
     "type": "git",
@@ -20,6 +23,10 @@
   "homepage": "https://github.com/sonph/GrooveScribe#readme",
   "devDependencies": {
     "jest": "^30.0.3",
-    "jest-environment-jsdom": "^30.0.2"
+    "jest-environment-jsdom": "^30.0.2",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "webpack": "^5.100.0"
   }
 }

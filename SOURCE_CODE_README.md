@@ -32,3 +32,65 @@ Readme for Groove Scribe Source Code
 * Javascript files
     * groove_display.js   -- includes a function call to embed the groove display in an HTML page
 	* groove_utils.js   -- all the functions to display grooves and play them.
+
+### Terminology ###
+
+Use the following terms consistently in the code:
+
+- Term
+
+    Definition.
+
+## Local Development ##
+
+### Prerequisites ###
+
+- **Node.js** (v16+) and **npm**
+- **Python 3**
+
+### TypeScript Compilation ###
+
+TypeScript source files are located in `src/` and compiled to JavaScript output files in `js/` according to `tsconfig.json`.
+
+Build once:
+```bash
+npm run build
+# or
+npx tsc
+```
+
+Watch mode (auto-recompile on save):
+```bash
+npm run watch
+# or
+npx tsc --watch
+```
+
+### Local Web Server ###
+
+GrooveScribe runs statically in the browser. Serve the root directory on port 8001 with:
+
+```bash
+npm run serve
+# or
+python3 -m http.server 8001
+```
+
+Then open:
+- Main app: [http://localhost:8001/](http://localhost:8001/)
+- Groove DB view: [http://localhost:8001/GrooveDBCreateGroove.html](http://localhost:8001/GrooveDBCreateGroove.html)
+
+### Running Tests ###
+
+```bash
+npm test
+# or
+npx jest
+```
+
+### Recommended Workflow ###
+
+Open two terminals in the project root:
+
+1. **TypeScript watcher:** `npm run watch`
+2. **Web server:** `npm run serve`

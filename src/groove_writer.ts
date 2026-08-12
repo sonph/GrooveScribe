@@ -25,839 +25,889 @@
 /*jslint browser:true devel:true */
 
 /*global GrooveUtils, Midi, Share */
-/*global MIDI, constant_MAX_MEASURES, constant_DEFAULT_TEMPO, constant_ABC_STICK_R, constant_ABC_STICK_L, constant_ABC_STICK_BOTH, constant_ABC_STICK_OFF, constant_ABC_STICK_COUNT, constant_ABC_HH_Ride, constant_ABC_HH_Ride_Bell, constant_ABC_HH_Cow_Bell, constant_ABC_HH_Crash, constant_ABC_HH_Stacker, constant_ABC_HH_Open, constant_ABC_HH_Close, constant_ABC_HH_Accent, constant_ABC_HH_Normal, constant_ABC_SN_Ghost, constant_ABC_SN_Accent, constant_ABC_SN_Normal, constant_ABC_SN_XStick, constant_ABC_SN_Buzz, constant_ABC_SN_Flam, constant_ABC_SN_Drag, constant_ABC_KI_SandK, constant_ABC_KI_Splash, constant_ABC_KI_Normal, constant_ABC_T1_Normal, constant_ABC_T2_Normal, constant_ABC_T3_Normal, constant_ABC_T4_Normal, constant_NUMBER_OF_TOMS, constant_ABC_OFF, constant_OUR_MIDI_VELOCITY_NORMAL, constant_OUR_MIDI_VELOCITY_ACCENT, constant_OUR_MIDI_VELOCITY_GHOST, constant_OUR_MIDI_METRONOME_1, constant_OUR_MIDI_METRONOME_NORMAL, constant_OUR_MIDI_HIHAT_NORMAL, constant_OUR_MIDI_HIHAT_OPEN, constant_OUR_MIDI_HIHAT_ACCENT, constant_OUR_MIDI_HIHAT_CRASH, constant_OUR_MIDI_HIHAT_STACKER, constant_OUR_MIDI_HIHAT_RIDE, constant_OUR_MIDI_HIHAT_FOOT, constant_OUR_MIDI_SNARE_NORMAL, constant_OUR_MIDI_SNARE_ACCENT, constant_OUR_MIDI_SNARE_GHOST, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_FLAM, onstant_OUR_MIDI_SNARE_DRAG, constant_OUR_MIDI_KICK_NORMAL, constant_OUR_MIDI_TOM1_NORMAL, constant_OUR_MIDI_TOM2_NORMAL, constant_OUR_MIDI_TOM4_NORMAL, constant_OUR_MIDI_TOM4_NORMAL */
+/*global MIDI, constant_MAX_MEASURES, constant_DEFAULT_TEMPO, constant_ABC_STICK_R, constant_ABC_STICK_L, constant_ABC_STICK_BOTH, constant_ABC_STICK_OFF, constant_ABC_STICK_COUNT, constant_ABC_HH_Ride, constant_ABC_HH_Ride_Bell, constant_ABC_HH_Cow_Bell, constant_ABC_HH_Crash, constant_ABC_HH_Stacker, constant_ABC_HH_Open, constant_ABC_HH_Close, constant_ABC_HH_Accent, constant_ABC_HH_Normal, constant_ABC_SN_Ghost, constant_ABC_SN_Accent, constant_ABC_SN_Normal, constant_ABC_SN_XStick, constant_ABC_SN_Buzz, constant_ABC_SN_Flam, constant_ABC_SN_Drag, constant_ABC_KI_SandK, constant_ABC_KI_Splash, constant_ABC_KI_Normal, constant_ABC_T1_Normal, constant_ABC_T2_Normal, constant_ABC_T3_Normal, constant_ABC_T4_Normal, constant_NUMBER_OF_TOMS, constant_ABC_OFF, MIDI_VELOCITY_NORMAL, MIDI_VELOCITY_ACCENT, MIDI_VELOCITY_GHOST, constant_OUR_MIDI_METRONOME_1, constant_OUR_MIDI_METRONOME_NORMAL, constant_OUR_MIDI_HIHAT_NORMAL, constant_OUR_MIDI_HIHAT_OPEN, constant_OUR_MIDI_HIHAT_ACCENT, constant_OUR_MIDI_HIHAT_CRASH, constant_OUR_MIDI_HIHAT_STACKER, constant_OUR_MIDI_HIHAT_RIDE, constant_OUR_MIDI_HIHAT_FOOT, constant_OUR_MIDI_SNARE_NORMAL, constant_OUR_MIDI_SNARE_ACCENT, constant_OUR_MIDI_SNARE_GHOST, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_FLAM, onstant_OUR_MIDI_SNARE_DRAG, constant_OUR_MIDI_KICK_NORMAL, constant_OUR_MIDI_TOM1_NORMAL, constant_OUR_MIDI_TOM2_NORMAL, constant_OUR_MIDI_TOM4_NORMAL, constant_OUR_MIDI_TOM4_NORMAL */
 
-// GrooveWriter class.   The only one in this file.
-function GrooveWriter() {
-  "use strict";
+const SNARE_FLAM_SVG = `
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
+        	<style type="text/css">
+        		.flam_fill {fill: currentColor}
+        		.flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}
+        	</style>
+        	<defs>
+        		<path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
+        		<ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>
+        	</defs>
+        	<g id="note" transform="translate(-44 -35)">
+        		<path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>
+        		<use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>
+        		<path class="flam_stroke" d="m49.5 49.34l9-5"></path>
+        		<path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>
+        	</g>
+        </svg>'
+        `;
 
-  var root = this;
+const SNARE_DRAG_SVG = `
+       <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
+       	<style type="text/css">
+       		.flam_fill {fill: currentColor}
+       		.flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}
+       	</style>
+       	<defs>
+       		<path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
+       		<ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>
+       	</defs>
+       	<g id="note" transform="translate(-44 -35)">
+       		<path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>
+       		<use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>
+       		<path class="flam_stroke" d="m49.5 49.34l9-5"></path>
+       		<path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>
+       	</g>
+       </svg>
+        `;
 
-  root.myGrooveUtils = new GrooveUtils();
-  root.data = root.myGrooveUtils.data;
-  root.myGrooveData = root.data;
+type KeyShortcutMapping = Map<string, { type: string, note_mapping: Map<string, string> }>;
 
-  var class_undo_stack = [];
-  var class_redo_stack = [];
-  var constant_undo_stack_max_size = 40;
+const UNDO_STACK_MAX_SIZE = 40;
 
-  // public class vars
-  var class_number_of_measures = 1;
-  // TODO: change this to Subdivision instance
-  var class_subDivision = parseInt(root.myGrooveUtils.getQueryVariableFromURL("Div", "16"), 10); // default to 16ths
-  var class_timeSig = TimeSignature.COMMON_TIME_44;
-  var class_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(Subdivision.of(class_subDivision), class_timeSig);
-  var class_metronome_auto_speed_up_active = false;
-  var class_metronome_count_in_active = false;
-  var class_metronome_count_in_is_playing = false;
+const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
+  ["stickingContextMenu", {
+    type: "sticking",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["r", "right"],
+      ["l", "left"],
+      ["b", "both"],
+      ["c", "count"]])
+  }],
+  ["hhContextMenu", {
+    type: "hh",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["x", "normal"],
+      ["o", "open"],
+      ["X", "accent"],
+      ["c", "crash"],
+      ["r", "ride"],
+      ["b", "ride_bell"],
+      ["m", "cow_bell"],
+      ["s", "stacker"],
+      ["k", "metronome_normal"],
+      ["K", "metronome_accent"],
+    ])
+  }],
+  ["snareContextMenu", {
+    type: "snare",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["o", "normal"],
+      ["O", "accent"],
+      ["g", "ghost"],
+      ["x", "xstick"],
+      ["d", "buzz"],
+      ["f", "flam"]])
+  }],
+  ["kickContextMenu", {
+    type: "kick",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["o", "normal"],
+      ["x", "splash"],
+      ["X", "kick_and_splash"]])
+  }]]);
 
-  // set debugMode immediately so we can use it in index.html
-  root.myGrooveUtils.debugMode = parseInt(root.myGrooveUtils.getQueryVariableFromURL("Debug", "0"), 10);
-  root.myGrooveUtils.grooveDBAuthoring = parseInt(root.myGrooveUtils.getQueryVariableFromURL("GDB_Author", "0"), 10);
+class E {
+  tag: string;
+  id?: string;
+  classList?: string | Array<string>;
+  content?: string;
+  onclick?: (ev: MouseEvent) => void;
+  oncontextmenu?: (ev: MouseEvent) => void;
+  onmouseenter?: (ev: MouseEvent) => void;
+  children?: Array<E | null>;
+  innerHTML?: string;
 
-  // private vars in the scope of the class
-  var class_app_title = "Groove Scribe";
-  var class_permutation_type = "none";
-  var class_advancedEditIsOn = false;
-  var class_measure_for_note_label_click = 0;
-  var class_which_index_last_clicked = 0; // which note was last clicked for the context menu
+  constructor(tag: string) {
+    this.tag = tag;
+  }
 
-  // local constants
-  var constant_default_tempo = 80;
-  var constant_note_stem_off_color = "transparent";
-  var constant_note_on_color_hex = "#000000"; // black
-  var constant_note_on_color_rgb = 'rgb(0, 0, 0)'; // black
-  var constant_note_off_color_hex = "#FFF";
-  var constant_note_off_color_rgb = 'rgb(255, 255, 255)'; // white
-  var constant_note_border_color_hex = "#999";
-  var constant_hihat_note_off_color_hex = "#CCC";
-  var constant_hihat_note_off_color_rgb = 'rgb(204, 204, 204)'; // grey
-  var constant_note_hidden_color_rgb = "transparent";
-  var constant_sticking_right_on_color_rgb = "rgb(36, 132, 192)";
-  var constant_sticking_left_on_color_rgb = "rgb(57, 57, 57)";
-  var constant_sticking_both_on_color_rgb = "rgb(57, 57, 57)";
-  var constant_sticking_count_on_color_rgb = "rgb(57, 57, 57)";
-  var constant_sticking_right_off_color_rgb = "rgb(204, 204, 204)";
-  var constant_sticking_left_off_color_rgb = "rgb(204, 204, 204)";
-  var constant_snare_accent_on_color_hex = "#FFF";
-  var constant_snare_accent_on_color_rgb = "rgb(255, 255, 255)";
+  static of(tag: string, id?: string, classList?: string | Array<string>, children?: Array<E | null>): E {
+    const e = new E(tag);
+    e.id = id;
+    e.classList = classList;
+    e.children = children;
+    return e;
+  }
 
-  var insertNoteContextMenu = null;
+  setContent(content: string): E {
+    this.content = content;
+    return this;
+  }
 
-  const popup_key_shortcut_mapping = {
-    "stickingContextMenu": {
-      type: "sticking",
-      note_mapping: {
-        "Escape": "off",
-        "-": "off",
-        "r": "right",
-        "l": "left",
-        "b": "both",
-        "c": "count"
-      }
-    },
-    "hhContextMenu": {
-      type: "hh",
-      note_mapping: {
-        "Escape": "off",
-        "-": "off",
-        "x": "normal",
-        "o": "open",
-        "X": "accent",
-        "c": "crash",
-        "r": "ride",
-        "b": "ride_bell",
-        "m": "cow_bell",
-        "s": "stacker",
-        "k": "metronome_normal",
-        "K": "metronome_accent"
-      }
-    },
-    "snareContextMenu": {
-      type: "snare",
-      note_mapping: {
-        "Escape": "off",
-        "-": "off",
-        "o": "normal",
-        "O": "accent",
-        "g": "ghost",
-        "x": "xstick",
-        "d": "buzz",
-        "f": "flam",
-      }
-    },
-    "kickContextMenu": {
-      type: "kick",
-      note_mapping: {
-        "Escape": "off",
-        "-": "off",
-        "o": "normal",
-        "x": "splash",
-        "X": "kick_and_splash"
+  addHandlers(handlers: {
+    onclick?: (ev: MouseEvent) => void,
+    oncontextmenu?: (ev: MouseEvent) => void,
+    onmouseenter?: (ev: MouseEvent) => void,
+  }): E {
+    this.onclick = handlers.onclick;
+    this.oncontextmenu = handlers.oncontextmenu;
+    this.onmouseenter = handlers.onmouseenter;
+    return this;
+  }
+
+  addTo(parent: HTMLElement) {
+    console.log("Adding element: ", this.tag, " with id: ", this.id, " to parent: ", parent);
+    const element = document.createElement(this.tag);
+    if (this.id) {
+      element.id = this.id;
+    }
+    if (this.classList) {
+      if (typeof this.classList === "string") {
+        element.classList.add(this.classList);
+      } else {
+        this.classList.forEach((cls) => {
+          element.classList.add(cls);
+        });
       }
     }
-  };
+    if (this.content) {
+      element.textContent = this.content;
+    }
+    if (this.innerHTML) {
+      element.innerHTML = this.innerHTML;
+    }
+    if (this.onclick) {
+      element.onclick = this.onclick;
+    }
+    if (this.oncontextmenu) {
+      element.oncontextmenu = this.oncontextmenu
+    }
+    if (this.onmouseenter) {
+      element.onmouseenter = this.onmouseenter;
+    }
+    parent.appendChild(element);
+    for (const child of this.children || []) {
+      if (child) {
+        child.addTo(element);
+      }
+    }
+  }
 
-  // functions below
+  addChild(child: E): E {
+    if (!this.children) {
+      this.children = [];
+    }
+    this.children.push(child);
+    return this;
+  }
+}
 
-  root.numberOfMeasures = function () {
-    return class_number_of_measures;
-  };
+class GrooveWriter {
+  myGrooveUtils: GrooveUtils;
+  data: GrooveData;
+  myGrooveData: GrooveData;
+  global_tempoChangeCallbackTimeout: number | null = null;
+  class_metronome_frequency: number = 0;
+  class_metronome_auto_speed_up_active: boolean;
+  class_metronome_count_in_active: boolean;
+  class_metronome_count_in_is_playing: boolean;
+  class_permutation_type: string;
+  class_advancedEditIsOn: boolean;
+  class_cur_hh_highlight_id: number;
+  class_cur_tom1_highlight_id: number;
+  class_cur_tom4_highlight_id: number;
+  class_cur_snare_highlight_id: number;
+  class_cur_kick_highlight_id: number;
+  class_cur_all_notes_highlight_id: number;
+  insertNoteContextMenu: HTMLElement | null = null;
+  class_which_index_last_clicked: number;
+  class_undo_stack: Array<string>;
+  class_redo_stack: Array<string>;
+  browserInfo: any;
+  class_our_midi_start_time: any | null;
+  class_our_midi_start_tempo: number;
+  class_our_last_midi_tempo_increase_time: any | null;
+  class_our_last_midi_tempo_increase_remainder: number;
+  have_shown_mixed_division_message: boolean;
+  class_app_title: string;
+  class_measure_for_note_label_click: number;
 
-  root.notesPerMeasure = function () {
-    return class_notes_per_measure;
-  };
+  constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
+    this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
+    this.data = this.myGrooveUtils.data;
+    this.data.fromUrl(window.location.search);
+
+    var class_undo_stack = [];
+    var class_redo_stack = [];
+
+    // public class vars
+    var class_metronome_auto_speed_up_active = false;
+    var class_metronome_count_in_active = false;
+    var class_metronome_count_in_is_playing = false;
+
+    var class_our_midi_start_time = null;
+    var class_our_midi_start_tempo = 0;
+    var class_our_last_midi_tempo_increase_time = null;
+    var class_our_last_midi_tempo_increase_remainder = 0;
+
+    var have_shown_mixed_division_message = false;
+
+    // private vars in the scope of the class
+    var class_app_title = "Groove Scribe";
+    var class_permutation_type = "none";
+    var class_advancedEditIsOn = false;
+    var class_measure_for_note_label_click = 0;
+    var class_which_index_last_clicked = 0; // which note was last clicked for the context menu
+
+    // local constants
+    var constant_default_tempo = 80;
+    var constant_note_stem_off_color = "transparent";
+
+    // Use .notes-row-container .note-on
+    var constant_note_on_color_hex = "#000000"; // black
+    var constant_note_on_color_rgb = 'rgb(0, 0, 0)'; // black
+
+    // Use .notes-row-container .note-on
+    var constant_note_off_color_hex = "#FFF";
+    var constant_note_off_color_rgb = 'rgb(255, 255, 255)'; // white
+
+    var constant_note_border_color_hex = "#999";
+    var constant_hihat_note_off_color_hex = "#CCC";
+    var constant_hihat_note_off_color_rgb = 'rgb(204, 204, 204)'; // grey
+
+    // Use .notes-row-container .note-hidden
+    var constant_note_hidden_color_rgb = "transparent";
+
+    var constant_sticking_right_on_color_rgb = "rgb(36, 132, 192)";
+    var constant_sticking_left_on_color_rgb = "rgb(57, 57, 57)";
+    var constant_sticking_both_on_color_rgb = "rgb(57, 57, 57)";
+    var constant_sticking_count_on_color_rgb = "rgb(57, 57, 57)";
+    var constant_sticking_right_off_color_rgb = "rgb(204, 204, 204)";
+    var constant_sticking_left_off_color_rgb = "rgb(204, 204, 204)";
+    var constant_snare_accent_on_color_hex = "#FFF";
+    var constant_snare_accent_on_color_rgb = "rgb(255, 255, 255)";
+
+    var insertNoteContextMenu = null;
+
+    // called every time the tempo changes, which can be a lot of times due to the range slider
+    // update the main URL with the tempo, but only do it every third of a second at the most
+    var global_tempoChangeCallbackTimeout = null;
+    var class_metronome_frequency = 0;
+  }
 
   // is the division a triplet groove?   12, 24, or 48 notes
-  function usingTriplets() {
-    if (root.myGrooveUtils.isTripletDivision(class_subDivision))
-      return true;
+  usingTriplets() {
+    return this.data.subdivision.isTriplet();
+  }
 
+  removeClass(element: HTMLElement, cssClass: string) {
+    element.classList.remove(cssClass);
+  }
+
+  addClass(element: HTMLElement, cssClass: string, addElseRemove: boolean = true) {
+    if (addElseRemove) {
+      element.classList.add(cssClass);
+      return true;
+    }
+    if (element.classList.contains(cssClass)) {
+      element.classList.remove(cssClass);
+      return true;
+    }
     return false;
   }
 
-  function addOrRemoveKeywordFromClass(tag_class, keyword, addElseRemove) {
-    var return_val = true;
-
-    if (tag_class) {
-
-      if (tag_class.className != undefined) {
-        if (addElseRemove) {
-          if (tag_class.className.indexOf(keyword) < 0) {
-            tag_class.className += " " + keyword;
-          }
-        } else {
-          tag_class.className = tag_class.className.replace(" " + keyword, "");
-        }
-      } else {
-        console.log("Warning in addOrRemoveKeywordFromClassName: null className for tag id: " + tag_class.id);
-        console.trace();
-        return_val = false;
-      }
-    } else {
-      console.log("Warning in addOrRemoveKeywordFromClassName: null tag_class passed in");
-      return_val = false;
+  addClassById(elementId: string, cssClass: string, addElseRemove: boolean = true) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      console.log("addClassById: element not found for id: ", elementId);
+      return false;
     }
-
-    return return_val;
+    return this.addClass(element, cssClass, addElseRemove);
   }
 
-  function addOrRemoveKeywordFromClassById(tagId, keyword, addElseRemove) {
-    var tag_class = document.getElementById(tagId);
-
-    if (!addOrRemoveKeywordFromClass(tag_class, keyword, addElseRemove))
-      console.log("Warning in addOrRemoveKeywordFromClassById bad ID: " + tagId);
+  numberOfMeasures(): number {
+    return this.data.numberOfMeasures;
   }
 
-  function selectButton(element) {
+  notesPerMeasure(): number {
+    return this.data.notesPerMeasure;
+  }
+
+  setNoteState(elementId: string, state: "on" | "off" | "hidden") {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      throw new Error("setNoteState: element not found for id: " + elementId);
+    }
+    element.classList.remove("note-on");
+    element.classList.remove("note-off");
+    element.classList.remove("note-hidden");
+    element.classList.add("note-" + state);
+  }
+
+  isNoteOn(id: string): boolean {
+    return this.getNoteState(id) === "on";
+  }
+
+  getNoteState(id: string): "on" | "off" | "hidden" {
+    const element = document.getElementById(id);
+    if (!element) {
+      throw new Error("getNoteState: element not found for id: " + id);
+    }
+    if (element.classList.contains("note-on")) {
+      return "on";
+    }
+    if (element.classList.contains("note-off")) {
+      return "off";
+    }
+    if (element.classList.contains("note-hidden")) {
+      return "hidden";
+    }
+    return "off";
+  }
+
+  selectButton(element: HTMLElement) {
     // highlight the new div by adding selected css class
-    addOrRemoveKeywordFromClass(element, "buttonSelected", true);
+    this.addClass(element, "buttonSelected", true);
   }
 
-  function unselectButton(element) {
+  unselectButton(element: HTMLElement) {
     // remove selected class if it exists
-    addOrRemoveKeywordFromClass(element, "buttonSelected", false);
+    this.addClass(element, "buttonSelected", false);
   }
 
-  function is_snare_on(id) {
-    var state = get_snare_state(id, "ABC");
-
-    if (state !== false)
-      return true;
-
-    return false;
-  }
-
-  function play_single_note_for_note_setting(note_val) {
+  playSingleNote(note_val: number) {
     if (MIDI.WebAudio) {
-      MIDI.WebAudio.noteOn(9, note_val, constant_OUR_MIDI_VELOCITY_NORMAL, 0);
+      MIDI.WebAudio.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
     } else if (MIDI.AudioTag) {
-      MIDI.AudioTag.noteOn(9, note_val, constant_OUR_MIDI_VELOCITY_NORMAL, 0);
+      MIDI.AudioTag.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
     }
   }
 
-  // returns the ABC notation for the snare state
-  // false = off
-  //
-  //  c == Snare Normal</li>
-  //  !accent!c == Snare Accent</li>
-  //  _c == Ghost Note    shows an x with a circle around it.   Needs improvement
-  //  ^c == xstick   shows an x
-  function get_snare_state(id, returnType) {
+  // // returns the ABC notation for the Tom state
+  // // false = off
+  // // "x" = normal tom
+  // get_tom_state(id: string, tom_num: number): { abc: string, url: string } | false {
+  //   const note: AbcNote = {
+  //     1: AbcNote.T1_NORMAL,
+  //     4: AbcNote.T4_NORMAL
+  //   }[tom_num];
+  //   if (this.isNoteOn(note.htmlAttrs.html_id_prefix + id)) {
+  //     return { abc: note.note, url: note.getFirstTabChar() };
+  //   }
+  //   return false;
+  // }
 
-    if (returnType != "ABC" && returnType != "URL") {
-      console.log("bad returnType in get_snare_state()");
-      returnType = "ABC";
-    }
+  // set_tom_state(id: number, tomNum: number, mode: 'off' | 'normal', makeSound: boolean): void {
+  //   const note = {
+  //     1: AbcNote.T1_NORMAL,
+  //     4: AbcNote.T4_NORMAL
+  //   }[tomNum];
+  //   if (mode === 'off') {
+  //     this.setNoteState(note.htmlAttrs.html_id_prefix + id, mode === 'off' ? 'off' : 'on');
+  //   } else {
+  //     this.setNoteState(note.htmlAttrs.html_id_prefix + id, "on");
+  //     if (makeSound) {
+  //       this.playSingleNote(note.midiNote);
+  //     }
+  //   }
+  // }
 
-    if (document.getElementById("snare_flam" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Flam; // snare flam
-      else if (returnType == "URL")
-        return "f"; // snare flam
-    }
-    if (document.getElementById("snare_drag" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Drag; // snare drag
-      else if (returnType == "URL")
-        return "d"; // snare drag
-    }
-    if (document.getElementById("snare_ghost" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Ghost; // ghost note
-      else if (returnType == "URL")
-        return "g"; // ghost note
-    }
-    if (document.getElementById("snare_accent" + id).style.color == constant_snare_accent_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Accent; // snare accent
-      else if (returnType == "URL")
-        return "O"; // snare accent
-    }
-    if (document.getElementById("snare_circle" + id).style.backgroundColor == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Normal; // snare normal
-      else if (returnType == "URL")
-        return "o"; // snare normal
-    }
-    if (document.getElementById("snare_xstick" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_XStick; // snare Xstick
-      else if (returnType == "URL")
-        return "x"; // snare xstick
-    }
-    if (document.getElementById("snare_buzz" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_SN_Buzz; // snare Buzz
-      else if (returnType == "URL")
-        return "b"; // snare Buzz
-    }
+  // // silly helpers, but needed for argument compatibility with the other set states
+  // set_tom1_state(id, mode, make_sound) {
+  //   set_tom_state(id, 1, mode, make_sound);
+  // }
 
-    if (returnType == "ABC")
-      return false; // off (rest)
-    else if (returnType == "URL")
-      return "-"; // off (rest)
-  }
+  // set_tom4_state(id, mode, make_sound) {
+  //   set_tom_state(id, 4, mode, make_sound);
+  // }
 
-  function is_tom_on(id, tom_num) {
-    var state = get_tom_state(id, tom_num, "ABC");
-
-    if (state !== false)
-      return true;
-
-    return false;
-  }
-
-  // returns the ABC notation for the Tom state
-  // false = off
-  // "x" = normal tom
-  function get_tom_state(id, tom_num, returnType) {
-
-    var tomOn = (document.getElementById("tom_circle" + tom_num + "-" + id).style.backgroundColor == constant_note_on_color_rgb);
-
-    if (returnType != "ABC" && returnType != "URL") {
-      console.log("bad returnType in get_kick_state()");
-      returnType = "ABC";
-    }
-
-    if (tomOn) {
-      if (returnType == "ABC")
-        switch (tom_num) {
-          case 1:
-            return constant_ABC_T1_Normal; // normal
-            break;
-          case 4:
-            return constant_ABC_T4_Normal; // normal
-            break;
-          default:
-            console.log("bad switch in get_tom_state. bad tom num:" + tom_num);
-            break;
-        }
-      else if (returnType == "URL")
-        return "x"; // normal
-    }
-
-    if (returnType == "ABC")
-      return false; // off (rest)
-    else if (returnType == "URL")
-      return "-"; // off (rest)
-  }
-
-  // set the tom note on with type
-  function set_tom_state(id, tom_num, mode, make_sound) {
-    // turn stuff on conditionally
-    switch (mode) {
-      case "off":
-        document.getElementById("tom_circle" + tom_num + "-" + id).style.backgroundColor = constant_note_off_color_hex;
-        document.getElementById("tom_circle" + tom_num + "-" + id).style.borderColor = constant_note_border_color_hex;
-        break;
-      case "normal":
-        document.getElementById("tom_circle" + tom_num + "-" + id).style.backgroundColor = constant_note_on_color_hex;
-        document.getElementById("tom_circle" + tom_num + "-" + id).style.borderColor = constant_note_border_color_hex;
-        if (make_sound)
-          switch (tom_num) {
-            case 1:
-              play_single_note_for_note_setting(constant_OUR_MIDI_TOM1_NORMAL);
-              break;
-            case 4:
-              play_single_note_for_note_setting(constant_OUR_MIDI_TOM4_NORMAL);
-              break;
-            default:
-              console.log("bad switch in set_tom_state. bad tom num:" + tom_num);
-              break;
-          }
-        break;
-      default:
-        console.log("bad switch in set_tom_state");
-        break;
-    }
-  }
-
-  // silly helpers, but needed for argument compatibility with the other set states
-  function set_tom1_state(id, mode, make_sound) {
-    set_tom_state(id, 1, mode, make_sound);
-  }
-
-  function set_tom4_state(id, mode, make_sound) {
-    set_tom_state(id, 4, mode, make_sound);
-  }
-
-  // is the any kick note on for this note in the measure?
-  function is_kick_on(id) {
-    var state = get_kick_state(id, "ABC");
-
-    if (state !== false)
-      return true;
-
-    return false;
-  }
+  // is_kick_on(id: number): boolean {
+  //   return get_kick_state(id) !== false;
+  // }
 
   // returns the ABC notation for the kick state
   // false = off
   // "F" = normal kick
   // "^d," = splash
   // "F^d,"  = kick & splash
-  function get_kick_state(id, returnType) {
+  // get_kick_state(id: number): { abc: string, url: string } | false {
+  //   const splashOn = isNoteOn(AbcNote.KI_SPLASH.htmlAttrs.html_id_prefix + id);
+  //   const kickOn = isNoteOn(AbcNote.KI_SPLASH.htmlAttrs.html_id_prefix + id);
+  //   var note;
+  //   if (splashOn && kickOn) {
+  //     note = AbcNote.KI_SANDK;
+  //   } else if (splashOn) {
+  //     note = AbcNote.KI_SPLASH;
+  //   } else if (kickOn) {
+  //     note = AbcNote.KI_NORMAL;
+  //   }
+  //   if (note) {
+  //     return { abc: note.note, url: note.getFirstTabChar() };
+  //   }
+  //   return false;
+  // }
 
-    var splashOn = (document.getElementById("kick_splash" + id).style.color == constant_note_on_color_rgb);
-    var kickOn = (document.getElementById("kick_circle" + id).style.backgroundColor == constant_note_on_color_rgb);
-
-    if (returnType != "ABC" && returnType != "URL") {
-      console.log("bad returnType in get_kick_state()");
-      returnType = "ABC";
+  getDrumNote(idNum: number, drumType: DrumType): AbcNote | null {
+    const id = idNum.toString();
+    switch (drumType.name) {
+      case DrumType.KICK.name:
+        // For kick, two notes maybe represented on the same line. Thus we need to handle this a little differently.
+        const splashOn = this.isNoteOn(AbcNote.KI_SPLASH.getFirstHtmlIdPrefix() + id);
+        const kickOn = this.isNoteOn(AbcNote.KI_NORMAL.getFirstHtmlIdPrefix() + id);
+        if (splashOn && kickOn) {
+          return AbcNote.KI_SANDK;
+        }
+        if (splashOn) {
+          return AbcNote.KI_SPLASH;
+        }
+        if (kickOn) {
+          return AbcNote.KI_NORMAL;
+        }
+        return null;
+      case DrumType.SNARE.name:
+        for (const note of AbcNote.SN_ALL) {
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
+            return note;
+          }
+        }
+      case DrumType.TOM1.name:
+        if (this.isNoteOn(AbcNote.T1_NORMAL.getFirstHtmlIdPrefix() + id)) {
+          return AbcNote.T1_NORMAL;
+        }
+        return null;
+      case DrumType.TOM4.name:
+        if (this.isNoteOn(AbcNote.T4_NORMAL.getFirstHtmlIdPrefix() + id)) {
+          return AbcNote.T4_NORMAL;
+        }
+        return null;
+      case DrumType.HIHAT.name:
+        for (const note of AbcNote.HH_ALL) {
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
+            return note;
+          }
+        }
+      case DrumType.STICKINGS.name:
+        for (const note of AbcNote.STICKINGS_ALL) {
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
+            return note;
+          }
+        }
     }
-
-    if (splashOn && kickOn) {
-      if (returnType == "ABC")
-        return constant_ABC_KI_SandK; // kick & splash
-      else if (returnType == "URL")
-        return "X"; // kick & splash
-    } else if (splashOn) {
-      if (returnType == "ABC")
-        return constant_ABC_KI_Splash; // splash only
-      else if (returnType == "URL")
-        return "x"; // splash only
-    } else if (kickOn) {
-      if (returnType == "ABC")
-        return constant_ABC_KI_Normal; // kick normal
-      else if (returnType == "URL")
-        return "o"; // kick normal
-    }
-
-    if (returnType == "ABC")
-      return false; // off (rest)
-    else if (returnType == "URL")
-      return "-"; // off (rest)
+    return null;
   }
 
-  // set the kick note on with type
-  function set_kick_state(id, mode, make_sound) {
-
-    // hide everything optional
-    document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_hidden_color_rgb;
-    document.getElementById("kick_splash" + id).style.color = constant_note_hidden_color_rgb;
-
-    // turn stuff on conditionally
-    switch (mode) {
-      case "off":
-        document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_off_color_hex;
-        document.getElementById("kick_circle" + id).style.borderColor = constant_note_border_color_hex;
-        break;
-      case "normal":
-        document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_on_color_hex;
-        document.getElementById("kick_circle" + id).style.borderColor = constant_note_border_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_KICK_NORMAL);
-        break;
-      case "splash":
-        document.getElementById("kick_splash" + id).style.color = constant_note_on_color_hex;
-        document.getElementById("kick_circle" + id).style.borderColor = constant_note_hidden_color_rgb;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_FOOT);
-        break;
-      case "kick_and_splash":
-        document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_on_color_hex;
-        document.getElementById("kick_splash" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_FOOT);
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_KICK_NORMAL);
-        break;
-      default:
-        console.log("bad switch in set_kick_state");
-        break;
+  // If note is AbcNote.OFF, drumType must be set.
+  setDrumNote(id: number, note: AbcNote, makeSound: boolean = false, offDrumType: DrumType | null = null): void {
+    // First hide all notes.
+    const drumType = note.drumType === DrumType.NONE ? offDrumType : note.drumType;
+    const notes = {
+      [DrumType.KICK.name]: [AbcNote.KI_NORMAL, AbcNote.KI_SPLASH],
+      [DrumType.SNARE.name]: AbcNote.SN_ALL,
+      [DrumType.TOM1.name]: [AbcNote.T1_NORMAL],
+      [DrumType.TOM4.name]: [AbcNote.T4_NORMAL],
+      [DrumType.HIHAT.name]: AbcNote.HH_ALL,
+      [DrumType.STICKINGS.name]: [AbcNote.STICK_R, AbcNote.STICK_L, AbcNote.STICK_BOTH, AbcNote.STICK_COUNT]
+    }[drumType.name];
+    for (const n of notes) {
+      const prefixes = getAsSet(n.htmlAttrs.html_id_prefix);
+      for (const prefix of prefixes) {
+        const element = document.getElementById(prefix + id);
+        if (!element) continue;
+        element.classList.remove("note-on");
+        element.classList.remove("note-off");
+        element.classList.add("note-hidden");
+      }
     }
-  }
 
-  function set_snare_state(id, mode, make_sound) {
+    // Play note.
+    if (makeSound && note?.midiNote) {
+      this.playSingleNote(note.midiNote);
+    }
 
-    // hide everything optional
-    document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_hidden_color_rgb;
-    document.getElementById("snare_circle" + id).style.borderColor = constant_note_hidden_color_rgb;
-    document.getElementById("snare_ghost" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("snare_accent" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("snare_xstick" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("snare_buzz" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("snare_flam" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("snare_drag" + id).style.color = constant_note_hidden_color_rgb;
-
-    // turn stuff on conditionally
-    switch (mode) {
-      case "off":
-        document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_off_color_hex;
-        document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
-        break;
-      case "normal":
-        document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_on_color_hex;
-        document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_NORMAL);
-        break;
-      case "flam":
-        document.getElementById("snare_flam" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_FLAM);
-        break;
-      case "drag":
-        document.getElementById("snare_drag" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_DRAG);
-        break;
-      case "ghost":
-        document.getElementById("snare_ghost" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_GHOST);
-        break;
-      case "accent":
-        document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_on_color_hex;
-        document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
-        document.getElementById("snare_accent" + id).style.color = constant_snare_accent_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_ACCENT);
-        break;
-      case "xstick":
-        document.getElementById("snare_xstick" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_XSTICK);
-        break;
-      case "buzz":
-        document.getElementById("snare_buzz" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_SNARE_BUZZ);
-        break;
-      default:
-        console.log("bad switch in set_snare_state");
-        break;
+    // Set UI state.
+    if (note.isOff()) {
+      // Show the first "default" element for this drumType as off (so the row visually collapses to off state).
+      const defaultNote = notes[0];
+      for (const prefix of getAsSet(defaultNote.htmlAttrs.html_id_prefix)) {
+        const element = document.getElementById(prefix + id);
+        if (!element) continue;
+        element.classList.remove("note-hidden");
+        element.classList.add("note-off");
+      }
+      return;
+    }
+    for (const prefix of getAsSet(note.htmlAttrs.html_id_prefix)) {
+      const element = document.getElementById(prefix + id);
+      if (!element) continue;
+      element.classList.remove("note-hidden");
+      element.classList.add("note-on");
     }
   }
 
-  function is_hh_on(id) {
-    var state = get_hh_state(id, "ABC");
+  // // set the kick note on with type
+  // set_kick_state(id: number, mode: string, makeSound: boolean, note: AbcNote | null = null) {
+  //   // Hide all.
+  //   const notes = [AbcNote.KI_NORMAL, AbcNote.KI_SPLASH];
+  //   notes.forEach((note) => { setNoteState(note.htmlAttrs.html_id_prefix + id, "hidden"); });
 
-    if (state !== false)
-      return true;
+  //   if (makeSound && note.midiNote) {
+  //     this.play_single_note_for_note_setting(note.midiNote);
+  //   }
 
-    return false;
-  }
+  //   switch (mode) {
+  //     case "off":
+  //       document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_off_color_hex;
+  //       document.getElementById("kick_circle" + id).style.borderColor = constant_note_border_color_hex;
+  //       break;
+  //     case "normal":
+  //       document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_on_color_hex;
+  //       document.getElementById("kick_circle" + id).style.borderColor = constant_note_border_color_hex;
+  //       if (makeSound)
+  //         playSingleNote(constant_OUR_MIDI_KICK_NORMAL);
+  //       break;
+  //     case "splash":
+  //       document.getElementById("kick_splash" + id).style.color = constant_note_on_color_hex;
+  //       document.getElementById("kick_circle" + id).style.borderColor = constant_note_hidden_color_rgb;
+  //       if (makeSound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_FOOT);
+  //       break;
+  //     case "kick_and_splash":
+  //       document.getElementById("kick_circle" + id).style.backgroundColor = constant_note_on_color_hex;
+  //       document.getElementById("kick_splash" + id).style.color = constant_note_on_color_hex;
+  //       if (makeSound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_FOOT);
+  //       if (makeSound)
+  //         playSingleNote(constant_OUR_MIDI_KICK_NORMAL);
+  //       break;
+  //     default:
+  //       console.log("bad switch in set_kick_state");
+  //       break;
+  //   }
+  // }
 
-  // returns the ABC notation for the HH state
-  // false = off
-  // see the top constants for mappings
-  function get_hh_state(id, returnType) {
+  // function set_snare_state(id: number, mode: string, make_sound: boolean, note: AbcNote | null = null): void {
+  //   for (const idPrefix in AbcNote.SN_IDS) {
+  //     setNoteState(idPrefix + id, "hidden");
+  //   }
+  //   if (make_sound && note?.midiNote) {
+  //     playSingleNote(note.midiNote);
+  //   }
 
-    if (returnType != "ABC" && returnType != "URL") {
-      console.log("bad returnType in get_hh_state()");
-      returnType = "ABC";
-    }
+  //   // turn stuff on conditionally
+  //   switch (mode) {
+  //     case "off":
+  //       document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_off_color_hex;
+  //       document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
+  //       break;
+  //     case "normal":
+  //       document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_on_color_hex;
+  //       document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_NORMAL);
+  //       break;
+  //     case "flam":
+  //       document.getElementById("snare_flam" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_FLAM);
+  //       break;
+  //     case "drag":
+  //       document.getElementById("snare_drag" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_DRAG);
+  //       break;
+  //     case "ghost":
+  //       document.getElementById("snare_ghost" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_GHOST);
+  //       break;
+  //     case "accent":
+  //       document.getElementById("snare_circle" + id).style.backgroundColor = constant_note_on_color_hex;
+  //       document.getElementById("snare_circle" + id).style.borderColor = constant_note_border_color_hex;
+  //       document.getElementById("snare_accent" + id).style.color = constant_snare_accent_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_ACCENT);
+  //       break;
+  //     case "xstick":
+  //       document.getElementById("snare_xstick" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_XSTICK);
+  //       break;
+  //     case "buzz":
+  //       document.getElementById("snare_buzz" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_SNARE_BUZZ);
+  //       break;
+  //     default:
+  //       console.log("bad switch in set_snare_state");
+  //       break;
+  //   }
+  // }
 
-    if (document.getElementById("hh_ride" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Ride; // ride
-      else if (returnType == "URL")
-        return "r"; // ride
-    }
-    if (document.getElementById("hh_ride_bell" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Ride_Bell; // ride bell
-      else if (returnType == "URL")
-        return "b"; // ride bell
-    }
-    if (document.getElementById("hh_cow_bell" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Cow_Bell; // cow bell
-      else if (returnType == "URL")
-        return "m"; // (more) cow bell
-    }
-    if (document.getElementById("hh_crash" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Crash; // crash
-      else if (returnType == "URL")
-        return "c"; // crash
-    }
-    if (document.getElementById("hh_stacker" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Stacker; // stacker
-      else if (returnType == "URL")
-        return "s"; // stacker
-    }
-    if (document.getElementById("hh_metronome_normal" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Metronome_Normal; // beep
-      else if (returnType == "URL")
-        return "n"; // beep
-    }
-    if (document.getElementById("hh_metronome_accent" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Metronome_Accent; // beep
-      else if (returnType == "URL")
-        return "N"; // beep
-    }
-    if (document.getElementById("hh_open" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Open; // hh Open
-      else if (returnType == "URL")
-        return "o"; // hh Open
+  // function is_hh_on(id: string): boolean {
+  //   return get_hh_state(id) !== false;
+  // }
 
-    }
-    if (document.getElementById("hh_close" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Close; // hh close
-      else if (returnType == "URL")
-        return "+"; // hh close
-    }
-    if (document.getElementById("hh_accent" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Accent; // hh accent
-      else if (returnType == "URL")
-        return "X"; // hh accent
-    }
-    if (document.getElementById("hh_cross" + id).style.color == constant_note_on_color_rgb) {
-      if (returnType == "ABC")
-        return constant_ABC_HH_Normal; // hh normal
-      else if (returnType == "URL")
-        return "x"; // hh normal
-    }
+  // // returns the ABC notation for the HH state
+  // // false = off
+  // // see the top constants for mappings
+  // function get_hh_state(id: string): AbcNote | null {
+  //   for (const note of AbcNote.HH_ALL) {
+  //     if (isNoteOn(note.htmlAttrs.html_id_prefix + id)) {
+  //       return note;
+  //     }
+  //   }
+  //   return null;
+  // }
 
-    if (returnType == "ABC")
-      return false; // off (rest)
-    else if (returnType == "URL")
-      return "-"; // off (rest)
-  }
+  // // TODO: refactor this using a lookup table of constants
+  // function set_hh_state(id, mode, make_sound) {
 
-  // TODO: refactor this using a lookup table of constants
-  function set_hh_state(id, mode, make_sound) {
+  //   // hide everything optional
+  //   document.getElementById("hh_cross" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_ride" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_ride_bell" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_cow_bell" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_crash" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_stacker" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_metronome_normal" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_metronome_accent" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_open" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_close" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("hh_accent" + id).style.color = constant_note_hidden_color_rgb;
 
-    // hide everything optional
-    document.getElementById("hh_cross" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_ride" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_ride_bell" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_cow_bell" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_crash" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_stacker" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_metronome_normal" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_metronome_accent" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_open" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_close" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("hh_accent" + id).style.color = constant_note_hidden_color_rgb;
+  //   // turn stuff on conditionally
+  //   switch (mode) {
+  //     case "off":
+  //       document.getElementById("hh_cross" + id).style.color = constant_hihat_note_off_color_hex;
+  //       break;
+  //     case "normal":
+  //       document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_NORMAL);
+  //       break;
+  //     case "ride":
+  //       document.getElementById("hh_ride" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_RIDE);
+  //       break;
+  //     case "ride_bell":
+  //       document.getElementById("hh_ride_bell" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_RIDE_BELL);
+  //       break;
+  //     case "cow_bell":
+  //       document.getElementById("hh_cow_bell" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_COW_BELL);
+  //       break;
+  //     case "crash":
+  //       document.getElementById("hh_crash" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_CRASH);
+  //       break;
+  //     case "stacker":
+  //       document.getElementById("hh_stacker" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_STACKER);
+  //       break;
+  //     case "metronome_normal":
+  //       document.getElementById("hh_metronome_normal" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_METRONOME_NORMAL);
+  //       break;
+  //     case "metronome_accent":
+  //       document.getElementById("hh_metronome_accent" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_METRONOME_ACCENT);
+  //       break;
+  //     case "open":
+  //       document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
+  //       document.getElementById("hh_open" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_OPEN);
+  //       break;
+  //     case "close":
+  //       document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
+  //       document.getElementById("hh_close" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_NORMAL);
+  //       break;
+  //     case "accent":
+  //       document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
+  //       document.getElementById("hh_accent" + id).style.color = constant_note_on_color_hex;
+  //       if (make_sound)
+  //         playSingleNote(constant_OUR_MIDI_HIHAT_ACCENT);
+  //       break;
+  //     default:
+  //       console.log("bad switch in set_hh_state");
+  //       break;
+  //   }
+  // }
 
-    // turn stuff on conditionally
-    switch (mode) {
-      case "off":
-        document.getElementById("hh_cross" + id).style.color = constant_hihat_note_off_color_hex;
-        break;
-      case "normal":
-        document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_NORMAL);
-        break;
-      case "ride":
-        document.getElementById("hh_ride" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_RIDE);
-        break;
-      case "ride_bell":
-        document.getElementById("hh_ride_bell" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_RIDE_BELL);
-        break;
-      case "cow_bell":
-        document.getElementById("hh_cow_bell" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_COW_BELL);
-        break;
-      case "crash":
-        document.getElementById("hh_crash" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_CRASH);
-        break;
-      case "stacker":
-        document.getElementById("hh_stacker" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_STACKER);
-        break;
-      case "metronome_normal":
-        document.getElementById("hh_metronome_normal" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_METRONOME_NORMAL);
-        break;
-      case "metronome_accent":
-        document.getElementById("hh_metronome_accent" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_METRONOME_ACCENT);
-        break;
-      case "open":
-        document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
-        document.getElementById("hh_open" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_OPEN);
-        break;
-      case "close":
-        document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
-        document.getElementById("hh_close" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_NORMAL);
-        break;
-      case "accent":
-        document.getElementById("hh_cross" + id).style.color = constant_note_on_color_hex;
-        document.getElementById("hh_accent" + id).style.color = constant_note_on_color_hex;
-        if (make_sound)
-          play_single_note_for_note_setting(constant_OUR_MIDI_HIHAT_ACCENT);
-        break;
-      default:
-        console.log("bad switch in set_hh_state");
-        break;
-    }
-  }
+  // function set_sticking_state(id, new_state, make_sound) {
 
-  function set_sticking_state(id, new_state, make_sound) {
+  //   // turn both off
+  //   document.getElementById("sticking_right" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("sticking_left" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("sticking_both" + id).style.color = constant_note_hidden_color_rgb;
+  //   document.getElementById("sticking_count" + id).style.color = constant_note_hidden_color_rgb;
 
-    // turn both off
-    document.getElementById("sticking_right" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("sticking_left" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("sticking_both" + id).style.color = constant_note_hidden_color_rgb;
-    document.getElementById("sticking_count" + id).style.color = constant_note_hidden_color_rgb;
+  //   switch (new_state) {
+  //     case "off":
+  //       // show them all greyed out.
+  //       document.getElementById("sticking_right" + id).style.color = constant_sticking_right_off_color_rgb;
+  //       document.getElementById("sticking_left" + id).style.color = constant_sticking_left_off_color_rgb;
+  //       break;
+  //     case "right":
+  //       document.getElementById("sticking_right" + id).style.color = constant_sticking_right_on_color_rgb;
+  //       break;
+  //     case "left":
+  //       document.getElementById("sticking_left" + id).style.color = constant_sticking_left_on_color_rgb;
+  //       break;
+  //     case "both":
+  //       document.getElementById("sticking_both" + id).style.color = constant_sticking_both_on_color_rgb;
+  //       break;
+  //     case "count":
+  //       var count_state = this.myGrooveUtils.figure_out_sticking_count_for_index(id, this.data.notesPerMeasure, class_subDivision, this.data.timeSigBottom);
 
-    switch (new_state) {
-      case "off":
-        // show them all greyed out.
-        document.getElementById("sticking_right" + id).style.color = constant_sticking_right_off_color_rgb;
-        document.getElementById("sticking_left" + id).style.color = constant_sticking_left_off_color_rgb;
-        break;
-      case "right":
-        document.getElementById("sticking_right" + id).style.color = constant_sticking_right_on_color_rgb;
-        break;
-      case "left":
-        document.getElementById("sticking_left" + id).style.color = constant_sticking_left_on_color_rgb;
-        break;
-      case "both":
-        document.getElementById("sticking_both" + id).style.color = constant_sticking_both_on_color_rgb;
-        break;
-      case "count":
-        var count_state = root.myGrooveUtils.figure_out_sticking_count_for_index(id, class_notes_per_measure, class_subDivision, class_timeSigBottom);
+  //       document.getElementById("sticking_count" + id).style.color = constant_sticking_count_on_color_rgb;
+  // IMPORTANT
+  //       document.getElementById("sticking_count" + id).innerHTML = "" + count_state;
+  //       break;
 
-        document.getElementById("sticking_count" + id).style.color = constant_sticking_count_on_color_rgb;
-        document.getElementById("sticking_count" + id).innerHTML = "" + count_state;
-        break;
+  //     default:
+  //       console.log("Bad state in set_sticking_state: " + new_state);
+  //       break;
+  //   }
+  // }
 
-      default:
-        console.log("Bad state in set_sticking_state: " + new_state);
-        break;
-    }
-  }
+  // function get_sticking_state(id: string): { abc: string, url: string } | false; {
+  //   var sticking_state = false;
+  //   if (returnType != "ABC" && returnType != "URL") {
+  //     console.log("bad returnType in get_kick_state()");
+  //     returnType = "ABC";
+  //   }
 
-  function get_sticking_state(id, returnType) {
-    var sticking_state = false;
-    if (returnType != "ABC" && returnType != "URL") {
-      console.log("bad returnType in get_kick_state()");
-      returnType = "ABC";
-    }
+  //   var right_ele = document.getElementById("sticking_right" + id);
+  //   var left_ele = document.getElementById("sticking_left" + id);
+  //   var both_ele = document.getElementById("sticking_both" + id);
+  //   var count_ele = document.getElementById("sticking_count" + id);
 
-    var right_ele = document.getElementById("sticking_right" + id);
-    var left_ele = document.getElementById("sticking_left" + id);
-    var both_ele = document.getElementById("sticking_both" + id);
-    var count_ele = document.getElementById("sticking_count" + id);
+  //   if (both_ele.style.color == constant_sticking_both_on_color_rgb) {
+  //     // both is on
+  //     if (returnType == "ABC")
+  //       return constant_ABC_STICK_BOTH;
+  //     else if (returnType == "URL")
+  //       return "B";
+  //   } else if (right_ele.style.color == constant_sticking_right_on_color_rgb) {
 
-    if (both_ele.style.color == constant_sticking_both_on_color_rgb) {
-      // both is on
-      if (returnType == "ABC")
-        return constant_ABC_STICK_BOTH;
-      else if (returnType == "URL")
-        return "B";
-    } else if (right_ele.style.color == constant_sticking_right_on_color_rgb) {
+  //     if (returnType == "ABC")
+  //       return constant_ABC_STICK_R;
+  //     else if (returnType == "URL")
+  //       return "R";
 
-      if (returnType == "ABC")
-        return constant_ABC_STICK_R;
-      else if (returnType == "URL")
-        return "R";
+  //   } else if (left_ele.style.color == constant_sticking_left_on_color_rgb) {
 
-    } else if (left_ele.style.color == constant_sticking_left_on_color_rgb) {
+  //     if (returnType == "ABC")
+  //       return constant_ABC_STICK_L;
+  //     else if (returnType == "URL")
+  //       return "L";
+  //   } else if (count_ele.style.color == constant_sticking_count_on_color_rgb) {
 
-      if (returnType == "ABC")
-        return constant_ABC_STICK_L;
-      else if (returnType == "URL")
-        return "L";
-    } else if (count_ele.style.color == constant_sticking_count_on_color_rgb) {
+  //     if (returnType == "ABC")
+  //       return constant_ABC_STICK_COUNT;
+  //     else if (returnType == "URL")
+  //       return "c";
+  //   } else {
+  //     // none selected.  Call it off
+  //     if (returnType == "ABC")
+  //       return constant_ABC_STICK_OFF; // off (rest)
+  //     else if (returnType == "URL")
+  //       return "-"; // off (rest)
+  //   }
 
-      if (returnType == "ABC")
-        return constant_ABC_STICK_COUNT;
-      else if (returnType == "URL")
-        return "c";
-    } else {
-      // none selected.  Call it off
-      if (returnType == "ABC")
-        return constant_ABC_STICK_OFF; // off (rest)
-      else if (returnType == "URL")
-        return "-"; // off (rest)
-    }
-
-    return false; // should never get here
-  }
+  //   return false; // should never get here
+  // }
 
 
-  function sticking_rotate_state(id) {
-    var new_state = false;
-    var sticking_state = get_sticking_state(id, "ABC");
-
-    // figure out the next state
-    // we could get fancy here and default down strokes to R and upstrokes to L
-    // for now we will rotate through (Off, R, L, BOTH) in order
-    if (sticking_state == constant_ABC_STICK_OFF) {
-      new_state = "right";
-    } else if (sticking_state == constant_ABC_STICK_R) {
-      new_state = "left";
-    } else if (sticking_state == constant_ABC_STICK_L) {
-      new_state = "both";
-    } else if (sticking_state == constant_ABC_STICK_BOTH) {
-      new_state = "count";
-    } else {
-      new_state = "off";
-    }
-
-    set_sticking_state(id, new_state, true);
+  sticking_rotate_state(id: number): void {
+    const sticking_state = this.getDrumNote(id, DrumType.STICKINGS);
+    const newState = {
+      [AbcNote.STICK_OFF.note]: AbcNote.STICK_R,
+      [AbcNote.STICK_R.note]: AbcNote.STICK_L,
+      [AbcNote.STICK_L.note]: AbcNote.STICK_BOTH,
+      [AbcNote.STICK_BOTH.note]: AbcNote.STICK_COUNT,
+      [AbcNote.STICK_COUNT.note]: AbcNote.STICK_OFF,
+    }[sticking_state.note];
+    this.setDrumNote(id, newState, true);
   }
 
   // highlight the note, this is used to play along with the midi track
   // only one note for each instrument can be highlighted at a time
   // Also unhighlight other instruments if their index is not equal to the passed in index
   // this means that only notes falling on the current beat will be highlighted.
-  var class_cur_hh_highlight_id = false;
-  var class_cur_tom1_highlight_id = false;
-  var class_cur_tom4_highlight_id = false;
-  var class_cur_snare_highlight_id = false;
-  var class_cur_kick_highlight_id = false;
+  // var class_cur_hh_highlight_id = false;
+  // var class_cur_tom1_highlight_id = false;
+  // var class_cur_tom4_highlight_id = false;
+  // var class_cur_snare_highlight_id = false;
+  // var class_cur_kick_highlight_id = false;
+  // var class_cur_all_notes_highlight_id = false;
 
-  function hilight_individual_note(instrument, id) {
+  hilight_individual_note(instrument: string, id: number) {
     var hilight_all_notes = true; // on by default
 
     id = Math.floor(id);
-    if (id < 0 || id >= class_notes_per_measure * class_number_of_measures)
+    if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
       return;
 
     // turn this one on;
     document.getElementById(instrument + id).style.borderColor = "orange";
 
     // turn off all the previously highlighted notes that are not on the same beat
-    if (class_cur_hh_highlight_id !== false && class_cur_hh_highlight_id != id) {
-      if (class_cur_hh_highlight_id < class_notes_per_measure * class_number_of_measures)
-        document.getElementById("hi-hat" + class_cur_hh_highlight_id).style.borderColor = "transparent";
-      class_cur_hh_highlight_id = false;
+    if (this.class_cur_hh_highlight_id !== -1 && this.class_cur_hh_highlight_id != id) {
+      if (this.class_cur_hh_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
+        document.getElementById("hi-hat" + this.class_cur_hh_highlight_id).style.borderColor = "transparent";
+      this.class_cur_hh_highlight_id = -1;
     }
-    if (class_cur_tom1_highlight_id !== false && class_cur_tom1_highlight_id != id) {
-      if (class_cur_tom1_highlight_id < class_notes_per_measure * class_number_of_measures)
-        document.getElementById("tom1-" + class_cur_tom4_highlight_id).style.borderColor = "transparent";
-      class_cur_tom1_highlight_id = false;
+    if (this.class_cur_tom1_highlight_id !== -1 && this.class_cur_tom1_highlight_id != id) {
+      if (this.class_cur_tom1_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
+        document.getElementById("tom1-" + this.class_cur_tom1_highlight_id).style.borderColor = "transparent";
+      this.class_cur_tom1_highlight_id = -1;
     }
-    if (class_cur_tom4_highlight_id !== false && class_cur_tom4_highlight_id != id) {
-      if (class_cur_tom4_highlight_id < class_notes_per_measure * class_number_of_measures)
-        document.getElementById("tom4-" + class_cur_tom4_highlight_id).style.borderColor = "transparent";
-      class_cur_tom4_highlight_id = false;
+    if (this.class_cur_tom4_highlight_id !== -1 && this.class_cur_tom4_highlight_id != id) {
+      if (this.class_cur_tom4_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
+        document.getElementById("tom4-" + this.class_cur_tom4_highlight_id).style.borderColor = "transparent";
+      this.class_cur_tom4_highlight_id = -1;
     }
-    if (class_cur_snare_highlight_id !== false && class_cur_snare_highlight_id != id) {
-      if (class_cur_snare_highlight_id < class_notes_per_measure * class_number_of_measures)
-        document.getElementById("snare" + class_cur_snare_highlight_id).style.borderColor = "transparent";
-      class_cur_snare_highlight_id = false;
+    if (this.class_cur_snare_highlight_id !== -1 && this.class_cur_snare_highlight_id != id) {
+      if (this.class_cur_snare_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
+        document.getElementById("snare" + this.class_cur_snare_highlight_id).style.borderColor = "transparent";
+      this.class_cur_snare_highlight_id = -1;
     }
-    if (class_cur_kick_highlight_id !== false && class_cur_kick_highlight_id != id) {
-      if (class_cur_kick_highlight_id < class_notes_per_measure * class_number_of_measures)
-        document.getElementById("kick" + class_cur_kick_highlight_id).style.borderColor = "transparent";
-      class_cur_kick_highlight_id = false;
+    if (this.class_cur_kick_highlight_id !== -1 && this.class_cur_kick_highlight_id != id) {
+      if (this.class_cur_kick_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
+        document.getElementById("kick" + this.class_cur_kick_highlight_id).style.borderColor = "transparent";
+      this.class_cur_kick_highlight_id = -1;
     }
 
     switch (instrument) {
       case "hi-hat":
-        class_cur_hh_highlight_id = id;
+        this.class_cur_hh_highlight_id = id;
         break;
       case "tom1":
-        class_cur_tom1_highlight_id = id;
+        this.class_cur_tom1_highlight_id = id;
         break;
       case "tom4":
-        class_cur_tom4_highlight_id = id;
+        this.class_cur_tom4_highlight_id = id;
         break;
       case "snare":
-        class_cur_snare_highlight_id = id;
+        this.class_cur_snare_highlight_id = id;
         break;
       case "kick":
-        class_cur_kick_highlight_id = id;
+        this.class_cur_kick_highlight_id = id;
         break;
       default:
         console.log("bad case in hilight_note");
@@ -866,84 +916,87 @@ function GrooveWriter() {
 
   }
 
-  var class_cur_all_notes_highlight_id = false;
-
-  function hilight_all_notes_on_same_beat(instrument, id) {
-
+  hilight_all_notes_on_same_beat(instrument: string, id: number) {
     id = Math.floor(id);
-    if (id < 0 || id >= class_notes_per_measure * class_number_of_measures)
+    if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
       return;
 
-    if (class_cur_all_notes_highlight_id === id)
+    if (this.class_cur_all_notes_highlight_id === id)
       return; // already highligted
 
-    if (class_cur_all_notes_highlight_id !== false) {
+    if (this.class_cur_all_notes_highlight_id !== -1) {
       // turn off old highlighting
-      var bg_ele = document.getElementById("bg-highlight" + class_cur_all_notes_highlight_id)
+      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id)
       if (bg_ele) {
         bg_ele.style.background = "transparent";
       }
     }
 
     // turn this one on;
-    class_cur_all_notes_highlight_id = id;
-    document.getElementById("bg-highlight" + class_cur_all_notes_highlight_id).style.background = "rgba(50, 126, 173, 0.2)";
+    this.class_cur_all_notes_highlight_id = id;
+    var new_bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
+    if (new_bg_ele) {
+      new_bg_ele.style.background = "rgba(50, 126, 173, 0.2)";
+    }
   }
 
-  function hilight_note(instrument, percent_complete) {
-
+  hilight_note(instrument: string, percent_complete: number): void {
     if (percent_complete < 0) {
-      clear_all_highlights("clear");
+      this.clear_all_highlights("clear");
       return;
     }
 
     // if we are in a permutation, hightlight each measure as it goes
-    if (class_permutation_type != "none")
-      percent_complete = (percent_complete * get_numberOfActivePermutationSections()) % 1.0;
+    if (this.class_permutation_type != "none")
+      percent_complete = (percent_complete * this.get_numberOfActivePermutationSections()) % 1.0;
 
-    var note_id_in_32 = Math.floor(percent_complete * root.myGrooveUtils.tabNumberOfNotesPerMeasure((usingTriplets() ? 48 : 32), class_timeSig) * class_number_of_measures);
-    var real_note_id = (note_id_in_32 / root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_timeSig));
+    var note_id_in_32 = Math.floor(percent_complete * this.myGrooveUtils.notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
+    var real_note_id = (note_id_in_32 / this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
 
     //hilight_individual_note(instrument, id);
-    hilight_all_notes_on_same_beat(instrument, real_note_id);
+    this.hilight_all_notes_on_same_beat(instrument, real_note_id);
   }
 
-  function clear_all_highlights(instrument) {
+  clear_all_highlights(instrument: string): void {
+
+    var clearBorder = function(id) {
+      var el = document.getElementById(id);
+      if (el) el.style.borderColor = "transparent";
+    };
 
     // now turn off  notes if necessary;
-    if (class_cur_hh_highlight_id !== false) {
-      document.getElementById("hi-hat" + class_cur_hh_highlight_id).style.borderColor = "transparent";
-      class_cur_hh_highlight_id = false;
+    if (this.class_cur_hh_highlight_id !== -1) {
+      clearBorder("hi-hat" + this.class_cur_hh_highlight_id);
+      this.class_cur_hh_highlight_id = -1;
     }
-    if (class_cur_tom1_highlight_id !== false) {
-      document.getElementById("tom1-" + class_cur_tom1_highlight_id).style.borderColor = "transparent";
-      class_cur_tom1_highlight_id = false;
+    if (this.class_cur_tom1_highlight_id !== -1) {
+      clearBorder("tom1-" + this.class_cur_tom1_highlight_id);
+      this.class_cur_tom1_highlight_id = -1;
     }
-    if (class_cur_tom4_highlight_id !== false) {
-      document.getElementById("tom4-" + class_cur_tom4_highlight_id).style.borderColor = "transparent";
-      class_cur_tom4_highlight_id = false;
+    if (this.class_cur_tom4_highlight_id !== -1) {
+      clearBorder("tom4-" + this.class_cur_tom4_highlight_id);
+      this.class_cur_tom4_highlight_id = -1;
     }
-    if (class_cur_snare_highlight_id !== false) {
-      document.getElementById("snare" + class_cur_snare_highlight_id).style.borderColor = "transparent";
-      class_cur_snare_highlight_id = false;
+    if (this.class_cur_snare_highlight_id !== -1) {
+      clearBorder("snare" + this.class_cur_snare_highlight_id);
+      this.class_cur_snare_highlight_id = -1;
     }
-    if (class_cur_kick_highlight_id !== false) {
-      document.getElementById("kick" + class_cur_kick_highlight_id).style.borderColor = "transparent";
-      class_cur_kick_highlight_id = false;
+    if (this.class_cur_kick_highlight_id !== -1) {
+      clearBorder("kick" + this.class_cur_kick_highlight_id);
+      this.class_cur_kick_highlight_id = -1;
     }
 
-    if (class_cur_all_notes_highlight_id !== false) {
+    if (this.class_cur_all_notes_highlight_id !== -1) {
       // turn off old highlighting
-      var bg_ele = document.getElementById("bg-highlight" + class_cur_all_notes_highlight_id)
+      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id)
       if (bg_ele) {
         bg_ele.style.background = "transparent";
       }
-      class_cur_all_notes_highlight_id = false;
+      this.class_cur_all_notes_highlight_id = -1;
     }
-
   }
 
-  function getTagPosition(tag) {
+  getTagPosition(tag) {
     var xVal = 0,
       yVal = 0;
     while (tag) {
@@ -957,26 +1010,21 @@ function GrooveWriter() {
     };
   }
 
-  // called every time the tempo changes, which can be a lot of times due to the range slider
-  // update the main URL with the tempo, but only do it every third of a second at the most
-  var global_tempoChangeCallbackTimeout = null;
-  root.tempoChangeCallback = function (newTempo) {
+  tempoChangeCallback = (newTempo) => {
 
     // if there is a timeout running clear it
-    if (global_tempoChangeCallbackTimeout != null)
-      window.clearTimeout(global_tempoChangeCallbackTimeout);
+    if (this.global_tempoChangeCallbackTimeout != null)
+      window.clearTimeout(this.global_tempoChangeCallbackTimeout);
 
     // set a new timeout
-    global_tempoChangeCallbackTimeout = window.setTimeout(function () {
-      global_tempoChangeCallbackTimeout = null
+    this.global_tempoChangeCallbackTimeout = window.setTimeout(function () {
+      this.global_tempoChangeCallbackTimeout = null
       // update the Main URL to show the new tempo
-      root.updateCurrentURL();
+      this.updateCurrentURL();
     }, 300);
   }
 
-
-  root.setMetronomeButton = function (metronomeInterval) {
-
+  setMetronomeButton(metronomeInterval: number) {
     var id = "";
     switch (metronomeInterval) {
       case 4:
@@ -992,9 +1040,9 @@ function GrooveWriter() {
       /* falls through */
       default:
         id = "metronomeOff";
-        if (root.myGrooveUtils.getMetronomeSolo()) {
+        if (this.myGrooveUtils.getMetronomeSolo()) {
           // turn off solo if we are turning off the metronome
-          root.metronomeOptionsMenuPopupClick("Solo");
+          this.metronomeOptionsMenuPopupClick("Solo");
         }
         break;
     }
@@ -1002,32 +1050,28 @@ function GrooveWriter() {
     // clear other buttons
     var myElements = document.querySelectorAll(".metronomeButton");
     for (var i = 0; i < myElements.length; i++) {
-      var thisButton = myElements[i];
+      var thisButton = myElements[i] as HTMLElement;
       // remove active status
-      unselectButton(thisButton);
+      this.unselectButton(thisButton);
     }
-
-    selectButton(document.getElementById(id));
-
-    root.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
+    this.selectButton(document.getElementById(id));
+    this.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
   };
 
-  root.class_metronome_frequency = 0;
-  root.getMetronomeFrequency = function () {
-    return root.class_metronome_frequency;
-  };
+  getMetronomeFrequency() {
+    return this.class_metronome_frequency;
+  }
 
-  root.setMetronomeFrequency = function (newFrequency) {
-    root.class_metronome_frequency = newFrequency;
-    root.setMetronomeButton(newFrequency);
-
+  setMetronomeFrequency(newFrequency) {
+    this.class_metronome_frequency = newFrequency;
+    this.setMetronomeButton(newFrequency);
     // TODO
     // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
-    // root.updateCurrentURL();
+    this.updateUrl();
   };
 
   // the user has clicked on the metronome options button
-  root.metronomeOptionsAnchorClick = function (event) {
+  metronomeOptionsAnchorClick = (event) => {
 
     var contextMenu = document.getElementById("metronomeOptionsContextMenu");
     if (contextMenu) {
@@ -1035,68 +1079,69 @@ function GrooveWriter() {
       var anchorPoint = document.getElementById("metronomeOptionsAnchor");
 
       if (anchorPoint) {
-        var anchorPos = getTagPosition(anchorPoint);
+        var anchorPos = this.getTagPosition(anchorPoint);
         contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
         contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
       }
 
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // the user has clicked on the permutation menu
-  root.permutationAnchorClick = function (event) {
-
-    if (class_timeSig.top != 4 || class_timeSig.bottom.value != 4)
-      return;   // permutations disabled except in 4/4 time
+  permutationAnchorClick = (event) => {
+    // permutations disabled except in 4/4 time
+    if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
+      return;
+    }
 
     var contextMenu = document.getElementById("permutationContextMenu");
     if (contextMenu) {
       var anchorPoint = document.getElementById("permutationAnchor");
 
       if (anchorPoint) {
-        var anchorPos = getTagPosition(anchorPoint);
+        var anchorPos = this.getTagPosition(anchorPoint);
         contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
         contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // the user has clicked on the grooves menu
-  root.groovesAnchorClick = function (event) {
+  groovesAnchorClick = (event) => {
 
     var contextMenu = document.getElementById("grooveListWrapper");
     if (contextMenu) {
       var anchorPoint = document.getElementById("groovesAnchor");
 
       if (anchorPoint) {
-        var anchorPos = getTagPosition(anchorPoint);
+        var anchorPos = this.getTagPosition(anchorPoint);
         contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
         contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 283 + "px";
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // the user has clicked on the help menu
-  root.helpAnchorClick = function (event) {
+  helpAnchorClick = (event) => {
 
     var contextMenu = document.getElementById("helpContextMenu");
     if (contextMenu) {
       var anchorPoint = document.getElementById("helpAnchor");
 
       if (anchorPoint) {
-        var anchorPos = getTagPosition(anchorPoint);
+        var anchorPos = this.getTagPosition(anchorPoint);
         contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
         contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // the user has clicked on the stickings menu (at bottom)
-  root.stickingsAnchorClick = function (event) {
+  stickingsAnchorClick = (event) => {
 
     var contextMenu = document.getElementById("stickingsContextMenu");
     if (contextMenu) {
@@ -1110,12 +1155,12 @@ function GrooveWriter() {
           contextMenu.style.left = event.clientX - 150 + "px";
         }
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // the user has clicked on the download menu (at bottom)
-  root.DownloadAnchorClick = function (event) {
+  DownloadAnchorClick = (event) => {
 
     var contextMenu = document.getElementById("downloadContextMenu");
     if (contextMenu) {
@@ -1129,63 +1174,62 @@ function GrooveWriter() {
           contextMenu.style.left = event.clientX - 150 + "px";
         }
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
   };
 
   // figure out if the metronome options menu should be selected and change the UI
-  root.metronomeOptionsMenuSetSelectedState = function () {
-
-    if (root.myGrooveUtils.getMetronomeSolo() ||
-      class_metronome_auto_speed_up_active ||
-      root.myGrooveUtils.getMetronomeOffsetClickStart() != "1") {
+  metronomeOptionsMenuSetSelectedState() {
+    if (this.myGrooveUtils.getMetronomeSolo() ||
+      this.class_metronome_auto_speed_up_active ||
+      this.myGrooveUtils.getMetronomeOffsetClickStart() != "1") {
       // make menu look active
-      addOrRemoveKeywordFromClassById("metronomeOptionsAnchor", "selected", true)
+      this.addClassById("metronomeOptionsAnchor", "selected", true)
     } else {
       // inactive
-      addOrRemoveKeywordFromClassById("metronomeOptionsAnchor", "selected", false)
+      this.addClassById("metronomeOptionsAnchor", "selected", false)
     }
   };
 
-  root.metronomeOptionsMenuPopupClick = function (option_type) {
+  metronomeOptionsMenuPopupClick(option_type: string) {
 
     switch (option_type) {
       case "Solo":
-        var current = root.myGrooveUtils.getMetronomeSolo();
+        var current = this.myGrooveUtils.getMetronomeSolo();
         if (!current) {
-          root.myGrooveUtils.setMetronomeSolo(true);
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuSolo", "menuChecked", true);
-          if (root.getMetronomeFrequency() === 0)
-            root.setMetronomeFrequency(4);
+          this.myGrooveUtils.setMetronomeSolo(true);
+          this.addClassById("metronomeOptionsContextMenuSolo", "menuChecked", true);
+          if (this.getMetronomeFrequency() === 0)
+            this.setMetronomeFrequency(4);
         } else {
-          root.myGrooveUtils.setMetronomeSolo(false);
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuSolo", "menuChecked", false);
+          this.myGrooveUtils.setMetronomeSolo(false);
+          this.addClassById("metronomeOptionsContextMenuSolo", "menuChecked", false);
         }
-        root.myGrooveUtils.midiNoteHasChanged(); // if playing need to refresh
+        this.myGrooveUtils.midiNoteHasChanged(); // if playing need to refresh
         break;
 
       case "SpeedUp":
-        if (class_metronome_auto_speed_up_active) {
+        if (this.class_metronome_auto_speed_up_active) {
           // just turn it off if it is on, don't show the configurator
-          class_metronome_auto_speed_up_active = false;
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuSpeedUp", "menuChecked", false);
+          this.class_metronome_auto_speed_up_active = false;
+          this.addClassById("metronomeOptionsContextMenuSpeedUp", "menuChecked", false);
         } else {
-          class_metronome_auto_speed_up_active = true;
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuSpeedUp", "menuChecked", true);
-          root.show_MetronomeAutoSpeedupConfiguration();
+          this.class_metronome_auto_speed_up_active = true;
+          this.addClassById("metronomeOptionsContextMenuSpeedUp", "menuChecked", true);
+          this.show_MetronomeAutoSpeedupConfiguration();
         }
         break;
 
       case "CountIn":
-        if (class_metronome_count_in_active) {
+        if (this.class_metronome_count_in_active) {
           // just turn it off if it is on, don't show the configurator
-          class_metronome_count_in_active = false;
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuCountIn", "menuChecked", false);
-          root.myGrooveUtils.setMetronomeCountIn(false);
+          this.class_metronome_count_in_active = false;
+          this.addClassById("metronomeOptionsContextMenuCountIn", "menuChecked", false);
+          this.myGrooveUtils.setMetronomeCountIn(false);
         } else {
-          class_metronome_count_in_active = true;
-          addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuCountIn", "menuChecked", true);
-          root.myGrooveUtils.setMetronomeCountIn(true);
+          this.class_metronome_count_in_active = true;
+          this.addClassById("metronomeOptionsContextMenuCountIn", "menuChecked", true);
+          this.myGrooveUtils.setMetronomeCountIn(true);
         }
         break;
 
@@ -1193,7 +1237,7 @@ function GrooveWriter() {
         // bring up the next menu to be clicked
         var contextMenu;
 
-        if (usingTriplets())
+        if (this.data.subdivision.isTriplet())
           contextMenu = document.getElementById("metronomeOptionsOffsetClickForTripletsContextMenu");
         else
           contextMenu = document.getElementById("metronomeOptionsOffsetClickContextMenu");
@@ -1201,120 +1245,111 @@ function GrooveWriter() {
           var anchorPoint = document.getElementById("metronomeOptionsContextMenuOffTheOne");
 
           if (anchorPoint) {
-            var anchorPos = getTagPosition(anchorPoint);
+            var anchorPos = this.getTagPosition(anchorPoint);
             contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
             contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
           }
-          root.myGrooveUtils.showContextMenu(contextMenu);
+          this.myGrooveUtils.showContextMenu(contextMenu);
         }
         break;
-
       case "Dropper":
-
         break;
-
       default:
         console.log("bad case in metronomeOptionsMenuPopupClick()");
         break;
     }
 
-    root.metronomeOptionsMenuSetSelectedState();
+    this.metronomeOptionsMenuSetSelectedState();
   };
 
-  root.metronomeOptionsMenuOffsetClickPopupClick = function (option_type) {
-
-    root.myGrooveUtils.setMetronomeOffsetClickStart(option_type);
+  metronomeOptionsMenuOffsetClickPopupClick = (option_type) => {
+    this.myGrooveUtils.setMetronomeOffsetClickStart(option_type);
 
     // clear other and select
     var myElements = document.querySelectorAll(".metronomeOptionsOffsetClickContextMenuItem");
     for (var i = 0; i < myElements.length; i++) {
-      var thisItem = myElements[i];
+      var thisItem = myElements[i] as HTMLElement;
       // remove active status
-      addOrRemoveKeywordFromClass(thisItem, "menuChecked", false);
-
+      this.addClass(thisItem, "menuChecked", false);
     }
 
     // turn on the new one selected
-    addOrRemoveKeywordFromClassById("metronomeOptionsOffsetClickContextMenuOnThe" + option_type, "menuChecked", true);
-
+    this.addClassById("metronomeOptionsOffsetClickContextMenuOnThe" + option_type, "menuChecked", true);
 
     if (option_type != "1") { // 1 is the default state
       // add a check to the menu
-      addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", true);
+      this.addClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", true);
     } else {
-
-      addOrRemoveKeywordFromClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", false);
+      this.addClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", false);
     }
 
-    root.myGrooveUtils.midiNoteHasChanged();
-    root.metronomeOptionsMenuSetSelectedState();
+    this.myGrooveUtils.midiNoteHasChanged();
+    this.metronomeOptionsMenuSetSelectedState();
   };
 
-  root.resetMetronomeOptionsMenuOffsetClick = function () {
+  resetMetronomeOptionsMenuOffsetClick() {
     // call with the default option
-    root.metronomeOptionsMenuOffsetClickPopupClick("1");
-  };
+    this.metronomeOptionsMenuOffsetClickPopupClick("1");
+  }
 
-  function setupPermutationMenu() {
+  setupPermutationMenu() {
+    if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
+      this.addClassById("permutationAnchor", "enabled");
+    }
 
-    if (class_timeSig.top == 4 && class_timeSig.bottom.value== 4) {
-
-      addOrRemoveKeywordFromClassById("permutationAnchor", "enabled", true);
-
-    } else {
-      // permutations disabled except in 4/4 time
-      addOrRemoveKeywordFromClassById("permutationAnchor", "enabled", false);
-      root.permutationPopupClick("none");  // make sure permutation is off
+    // permutations disabled except in 4/4 time
+    if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
+      this.addClassById("permutationAnchor", "enabled", false);
+      this.permutationPopupClick("none");  // make sure permutation is off
     }
   }
 
-  root.permutationPopupClick = function (perm_type) {
-
-    if (class_permutation_type == perm_type)
+  permutationPopupClick(perm_type) {
+    if (this.class_permutation_type == perm_type)
       return;
 
-    class_permutation_type = perm_type;
+    this.class_permutation_type = perm_type;
 
     switch (perm_type) {
       case "kick_16ths":
-        showHideCSS_ClassVisibility(".kick-container", true, false); // hide it
-        showHideCSS_ClassVisibility(".snare-container", true, true); // show it
-        while (class_number_of_measures > 1) {
-          root.closeMeasureButtonClick(2);
+        this.showHideCSS_ClassVisibility(".kick-container", true, false); // hide it
+        this.showHideCSS_ClassVisibility(".snare-container", true, true); // show it
+        while (this.data.numberOfMeasures > 1) {
+          this.closeMeasureButtonClick(2);
         }
-        selectButton(document.getElementById("permutationAnchor"));
-        document.getElementById("PermutationOptions").innerHTML = root.HTMLforPermutationOptions();
+        this.selectButton(document.getElementById("permutationAnchor"));
+        document.getElementById("PermutationOptions").innerHTML = this.HTMLforPermutationOptions();
         document.getElementById("PermutationOptions").className += " displayed";
         break;
 
       case "snare_16ths":
-        showHideCSS_ClassVisibility(".kick-container", true, true); // show it
-        showHideCSS_ClassVisibility(".snare-container", true, false); // hide it
-        while (class_number_of_measures > 1) {
-          root.closeMeasureButtonClick(2);
+        this.showHideCSS_ClassVisibility(".kick-container", true, true); // show it
+        this.showHideCSS_ClassVisibility(".snare-container", true, false); // hide it
+        while (this.data.numberOfMeasures > 1) {
+          this.closeMeasureButtonClick(2);
         }
-        selectButton(document.getElementById("permutationAnchor"));
-        document.getElementById("PermutationOptions").innerHTML = root.HTMLforPermutationOptions();
+        this.selectButton(document.getElementById("permutationAnchor"));
+        document.getElementById("PermutationOptions").innerHTML = this.HTMLforPermutationOptions();
         document.getElementById("PermutationOptions").className += " displayed";
         break;
 
       case "none":
       /* falls through */
       default:
-        showHideCSS_ClassVisibility(".kick-container", true, true); // show it
-        showHideCSS_ClassVisibility(".snare-container", true, true); // show it
-        class_permutation_type = "none";
+        this.showHideCSS_ClassVisibility(".kick-container", true, true); // show it
+        this.showHideCSS_ClassVisibility(".snare-container", true, true); // show it
+        this.class_permutation_type = "none";
 
-        unselectButton(document.getElementById("permutationAnchor"));
-        document.getElementById("PermutationOptions").innerHTML = root.HTMLforPermutationOptions();
-        addOrRemoveKeywordFromClassById("PermutationOptions", "displayed", false);
+        this.unselectButton(document.getElementById("permutationAnchor"));
+        document.getElementById("PermutationOptions").innerHTML = this.HTMLforPermutationOptions();
+        this.addClassById("PermutationOptions", "displayed", false);
         break;
     }
 
-    updateSheetMusic();
+    this.updateSheetMusic();
   };
 
-  root.muteInstrument = function (instrument, measure, muteElseUnmute) {
+  muteInstrument(instrument, measure, muteElseUnmute) {
     // find unmuteHHButton1  or unmuteSnareButton2
     var buttonName = "unmute" + instrument + "Button" + measure
     var button = document.getElementById(buttonName);
@@ -1323,10 +1358,10 @@ function GrooveWriter() {
     else
       button.style.display = "none";
 
-    root.myGrooveUtils.midiNoteHasChanged();
+    this.myGrooveUtils.midiNoteHasChanged();
   }
 
-  function isInstrumentMuted(instrument, measure) {
+  isInstrumentMuted(instrument, measure) {
     // find unmuteHHButton1  or unmuteSnareButton2
     var buttonName = "unmute" + instrument + "Button" + measure
     var button = document.getElementById(buttonName);
@@ -1336,7 +1371,7 @@ function GrooveWriter() {
       return false;
   }
 
-  root.helpMenuPopupClick = function (help_type) {
+  helpMenuPopupClick(help_type) {
     var win;
 
     switch (help_type) {
@@ -1351,11 +1386,11 @@ function GrooveWriter() {
         break;
 
       case "undo":
-        root.undoCommand();
+        this.undoCommand();
         break;
 
       case "redo":
-        root.redoCommand();
+        this.redoCommand();
         break;
 
       default:
@@ -1366,24 +1401,24 @@ function GrooveWriter() {
   };
 
   // user has clicked on the advanced edit button
-  this.toggleAdvancedEdit = function () {
-    if (class_advancedEditIsOn) {
+  toggleAdvancedEdit() {
+    if (this.class_advancedEditIsOn) {
       // turn it off
-      class_advancedEditIsOn = false;
-      unselectButton(document.getElementById("advancedEditAnchor"));
+      this.class_advancedEditIsOn = false;
+      this.unselectButton(document.getElementById("advancedEditAnchor"));
     } else {
-      class_advancedEditIsOn = true;
-      selectButton(document.getElementById("advancedEditAnchor"));
+      this.class_advancedEditIsOn = true;
+      this.selectButton(document.getElementById("advancedEditAnchor"));
     }
   };
 
   // context menu for labels
-  root.noteLabelClick = function (event, instrument, measure) {
-    var contextMenu = false;
+  noteLabelClick(event, instrument, measure) {
+    var contextMenu: HTMLElement | null = null;
 
     // store this in a global, there can only ever be one context menu open at a time.
     // Yes, I agree this sucks
-    class_measure_for_note_label_click = measure;
+    this.class_measure_for_note_label_click = measure;
 
     switch (instrument) {
       case "stickings":
@@ -1416,34 +1451,33 @@ function GrooveWriter() {
         contextMenu.style.top = event.clientY - 30 + "px";
         contextMenu.style.left = event.clientX - 35 + "px";
       }
-      root.myGrooveUtils.showContextMenu(contextMenu);
+      this.myGrooveUtils.showContextMenu(contextMenu);
     }
 
     return false;
-  };
+  }
 
-  root.noteLabelPopupClick = function (instrument, action) {
-    var setFunction = false;
-    var contextMenu = false;
+  noteLabelPopupClick(instrument, action) {
+    var setFunction: ((i: number, mode: string, makeSound: boolean) => void) | null = null;
 
     switch (instrument) {
       case "stickings":
-        setFunction = set_sticking_state;
+        setFunction = (i, m, s) => this.set_sticking_state(i, m, s);
         break;
       case "hh":
-        setFunction = set_hh_state;
+        setFunction = (i, m, s) => this.set_hh_state(i, m, s);
         break;
       case "tom1":
-        setFunction = set_tom1_state;
+        setFunction = (i, m, s) => this.set_tom1_state(i, m, s);
         break;
       case "tom4":
-        setFunction = set_tom4_state;
+        setFunction = (i, m, s) => this.set_tom4_state(i, m, s);
         break;
       case "snare":
-        setFunction = set_snare_state;
+        setFunction = (i, m, s) => this.set_snare_state(i, m, s);
         break;
       case "kick":
-        setFunction = set_kick_state;
+        setFunction = (i, m, s) => this.set_kick_state(i, m, s);
         break;
       default:
         console.log("bad case in noteLabelPopupClick");
@@ -1451,67 +1485,67 @@ function GrooveWriter() {
     }
 
     if (action == "mute") {
-      root.muteInstrument(instrument, class_measure_for_note_label_click, true);
+      this.muteInstrument(instrument, this.class_measure_for_note_label_click, true);
       return false;
     }
 
     // start at the first note of the measure we want to effect.   Only fill in the
     // notes for that measure
     // the last boolean in the setFunction should only be true on the first call (plays a sound)
-    var startIndex = class_notes_per_measure * (class_measure_for_note_label_click - 1);
-    for (var i = startIndex; i - startIndex < class_notes_per_measure; i++) {
+    var startIndex = this.data.notesPerMeasure * (this.class_measure_for_note_label_click - 1);
+    for (var i = startIndex; i - startIndex < this.data.notesPerMeasure; i++) {
       if (action == "all_off") {
         setFunction(i, "off", i == startIndex);
 
       } else if (instrument == "stickings") {
         switch (action) {
           case "all_right":
-            set_sticking_state(i, "right", i == startIndex);
+            this.set_sticking_state(i, "right", i == startIndex);
             break;
           case "all_left":
-            set_sticking_state(i, "left", i == startIndex);
+            this.set_sticking_state(i, "left", i == startIndex);
             break;
           case "alternate":
-            set_sticking_state(i, (i % 2 === 0 ? "right" : "left"), i == startIndex);
+            this.set_sticking_state(i, (i % 2 === 0 ? "right" : "left"), i == startIndex);
             break;
           case "all_count":
-            set_sticking_state(i, "count", i == startIndex);
+            this.set_sticking_state(i, "count", i == startIndex);
             break;
           default:
             console.log("Bad sticking case in noteLabelPopupClick");
             break;
         }
       } else if (instrument == "hh" && action == "downbeats") {
-        set_hh_state(i, (i % 2 === 0 ? "normal" : "off"), i == startIndex);
+        this.set_hh_state(i, (i % 2 === 0 ? "normal" : "off"), i == startIndex);
 
       } else if (instrument == "hh" && action == "upbeats") {
-        set_hh_state(i, (i % 2 === 0 ? "off" : "normal"), i == (startIndex + 1));
+        this.set_hh_state(i, (i % 2 === 0 ? "off" : "normal"), i == (startIndex + 1));
 
       } else if (instrument == "snare" && action == "all_on") {
-        set_snare_state(i, "accent", i == startIndex);
+        this.set_snare_state(i, "accent", i == startIndex);
 
       } else if (instrument == "snare" && action == "all_on_normal") {
-        set_snare_state(i, "normal", i == startIndex);
+        this.set_snare_state(i, "normal", i == startIndex);
 
       } else if (instrument == "snare" && action == "all_on_ghost") {
-        set_snare_state(i, "ghost", i == startIndex);
+        this.set_snare_state(i, "ghost", i == startIndex);
 
       } else if (instrument == "kick" && action == "hh_foot_nums_on") {
-        var num_notes_per_count = class_subDivision / class_timeSig.bottom.value;
-        var cur_state = get_kick_state(i, "ABC");
+        const num_notes_per_count = this.data.notesPerBeat;
+        var cur_state = this.get_kick_state(i, "ABC");
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
           kick_is_on = true;
-        set_kick_state(i, (i % num_notes_per_count === 0 ? (kick_is_on ? "kick_and_splash" : "splash") : (kick_is_on ? "normal" : "off")), i == (startIndex));
+        this.set_kick_state(i, (i % num_notes_per_count === 0 ? (kick_is_on ? "kick_and_splash" : "splash") : (kick_is_on ? "normal" : "off")), i == (startIndex));
 
       } else if (instrument == "kick" && action == "hh_foot_ands_on") {
-        var num_notes_per_count = class_subDivision / class_timeSig.bottom.value;
-        var cur_state = get_kick_state(i, "ABC");
+        const num_notes_per_count = this.data.notesPerBeat;
+        var cur_state = this.get_kick_state(i, "ABC");
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
           kick_is_on = true;
 
-        set_kick_state(i, (i % num_notes_per_count === (num_notes_per_count / 2) ? (kick_is_on ? "kick_and_splash" : "splash") : (kick_is_on ? "normal" : "off")), i == (startIndex + num_notes_per_count / 2));
+        this.set_kick_state(i, (i % num_notes_per_count === (num_notes_per_count / 2) ? (kick_is_on ? "kick_and_splash" : "splash") : (kick_is_on ? "normal" : "off")), i == (startIndex + num_notes_per_count / 2));
 
       } else if (action == "all_on") {
         setFunction(i, "normal", i == startIndex);
@@ -1525,164 +1559,156 @@ function GrooveWriter() {
       }
     }
 
-    class_measure_for_note_label_click = 0; // reset
-
-    updateSheetMusic();
-
+    this.class_measure_for_note_label_click = 0; // reset
+    this.updateSheetMusic();
     return false;
   };
 
   // returns true on error!
   // returns false if working.  (this is because of the onContextMenu handler
-  root.noteRightClick = function (event, type, id) {
-    class_which_index_last_clicked = id;
+  noteRightClick(event, type: string, id) {
+    this.class_which_index_last_clicked = id;
 
     switch (type) {
       case "sticking":
-        insertNoteContextMenu = document.getElementById("stickingContextMenu");
+        this.insertNoteContextMenu = document.getElementById("stickingContextMenu");
         break;
       case "hh":
-        insertNoteContextMenu = document.getElementById("hhContextMenu");
+        this.insertNoteContextMenu = document.getElementById("hhContextMenu");
         break;
       case "tom1":
-        insertNoteContextMenu = document.getElementById("tom1ContextMenu");
+        this.insertNoteContextMenu = document.getElementById("tom1ContextMenu");
         break;
       case "tom4":
-        insertNoteContextMenu = document.getElementById("tom4ContextMenu");
+        this.insertNoteContextMenu = document.getElementById("tom4ContextMenu");
         break;
       case "snare":
-        insertNoteContextMenu = document.getElementById("snareContextMenu");
+        this.insertNoteContextMenu = document.getElementById("snareContextMenu");
         break;
       case "kick":
-        insertNoteContextMenu = document.getElementById("kickContextMenu");
+        this.insertNoteContextMenu = document.getElementById("kickContextMenu");
         break;
       default:
         console.log("Bad case in handleNotePopup");
         break;
     }
 
-    if (insertNoteContextMenu) {
+    if (this.insertNoteContextMenu) {
       if (!event)
         event = window.event;
       if (event.clientX || event.clientY) {
-        insertNoteContextMenu.style.top = event.clientY - 30 + "px";
-        insertNoteContextMenu.style.left = event.clientX - 75 + "px";
+        this.insertNoteContextMenu.style.top = event.clientY - 30 + "px";
+        this.insertNoteContextMenu.style.left = event.clientX - 75 + "px";
       }
-      root.myGrooveUtils.showContextMenu(insertNoteContextMenu);
-      root.removeAllPopUpKeyEventListeners();
-      root.registerPopUpKeyEventListeners();
+      this.myGrooveUtils.showContextMenu(this.insertNoteContextMenu);
+      this.removeAllPopUpKeyEventListeners();
+      this.registerPopUpKeyEventListeners();
     } else {
       return true; //error
     }
-
     return false;
-  };
+  }
 
-  root.removeAllPopUpKeyEventListeners = function () {
-    document.removeEventListener("keydown", root.handlePopUpKeyEventListeners);
-  };
+  removeAllPopUpKeyEventListeners() {
+    document.removeEventListener("keydown", this.handlePopUpKeyEventListeners);
+  }
 
   // Register or unregister the key event listeners for the given context menu.
   // contextMenu: DOM element
   // register: boolean indicating whether to register or unregister the listeners
-  root.registerPopUpKeyEventListeners = function () {
-    console.log("Adding listeners for " + insertNoteContextMenu.id);
-    if (insertNoteContextMenu) {
-      document.addEventListener("keydown", root.handlePopUpKeyEventListeners);
+  registerPopUpKeyEventListeners() {
+    console.log("Adding listeners for " + this.insertNoteContextMenu.id);
+    if (this.insertNoteContextMenu) {
+      document.addEventListener("keydown", this.handlePopUpKeyEventListeners);
     }
-  };
+  }
 
-  root.handlePopUpKeyEventListeners = function (event) {
-    if (!insertNoteContextMenu) {
+  handlePopUpKeyEventListeners = (event) => {
+    if (!this.insertNoteContextMenu) {
       console.log("No insertNoteContextMenu set");
       return;
     }
     console.log("Handling key event for insert note context menu: " + event.key);
-    const mapForType = popup_key_shortcut_mapping[insertNoteContextMenu.id];
-    const new_setting = mapForType.note_mapping[event.key];
+    const mapForType = POPUP_KEY_SHORTCUT_MAPPING.get(this.insertNoteContextMenu.id);
+    const new_setting = mapForType?.note_mapping.get(event.key);
     if (new_setting) {
       console.log("Setting " + mapForType.type + " to " + new_setting);
-      root.notePopupClick(mapForType.type, new_setting);
+      this.notePopupClick(mapForType.type, new_setting);
       event.preventDefault();
-      root.myGrooveUtils.hideContextMenu(insertNoteContextMenu);
-      root.removeAllPopUpKeyEventListeners();
+      this.myGrooveUtils.hideContextMenu(this.insertNoteContextMenu);
+      this.removeAllPopUpKeyEventListeners();
     }
   };
 
-  root.noteLeftClick = function (event, type, id) {
+  noteLeftClick = (event, type, id) => {
 
     // use a popup if advanced edit is on
-    if (class_advancedEditIsOn === true) {
-      root.noteRightClick(event, type, id);
+    if (this.class_advancedEditIsOn === true) {
+      this.noteRightClick(event, type, id);
 
     } else {
 
       // this is a non advanced edit left click
       switch (type) {
         case "hh":
-          set_hh_state(id, is_hh_on(id) ? "off" : "normal", true);
+          this.set_hh_state(id, this.is_hh_on(id) ? "off" : "normal", true);
           break;
         case "snare":
-          set_snare_state(id, is_snare_on(id) ? "off" : "accent", true);
+          this.set_snare_state(id, this.is_snare_on(id) ? "off" : "accent", true);
           break;
         case "tom1":
-          set_tom_state(id, 1, is_tom_on(id, 1) ? "off" : "normal", true);
+          this.set_tom_state(id, 1, this.is_tom_on(id, 1) ? "off" : "normal", true);
           break;
         case "tom4":
-          set_tom_state(id, 4, is_tom_on(id, 4) ? "off" : "normal", true);
+          this.set_tom_state(id, 4, this.is_tom_on(id, 4) ? "off" : "normal", true);
           break;
         case "kick":
-          set_kick_state(id, is_kick_on(id) ? "off" : "normal", true);
+          this.set_kick_state(id, this.is_kick_on(id) ? "off" : "normal", true);
           break;
         case "sticking":
-          sticking_rotate_state(id);
+          this.sticking_rotate_state(id);
           break;
         default:
           console.log("Bad case in noteLeftClick: " + type);
           break;
       }
-
-      updateSheetMusic();
+      this.updateSheetMusic();
     }
-
   };
 
-  root.notePopupClick = function (type, new_setting) {
-    var id = class_which_index_last_clicked;
+  notePopupClick(type: string, new_setting: string) {
+    var id = this.class_which_index_last_clicked;
 
     switch (type) {
       case "sticking":
-        set_sticking_state(id, new_setting, true);
+        this.set_sticking_state(id, new_setting, true);
         break;
       case "hh":
-        set_hh_state(id, new_setting, true);
+        this.set_hh_state(id, new_setting, true);
         break;
       case "tom1":
-        set_tom1_state(id, new_setting, true);
+        this.set_tom1_state(id, new_setting, true);
         break;
       case "tom4":
-        set_tom4_state(id, new_setting, true);
+        this.set_tom4_state(id, new_setting, true);
         break;
       case "snare":
-        set_snare_state(id, new_setting, true);
+        this.set_snare_state(id, new_setting, true);
         break;
       case "kick":
-        set_kick_state(id, new_setting, true);
+        this.set_kick_state(id, new_setting, true);
         break;
       default:
         console.log("Bad case in contextMenuClick");
         break;
     }
-
-    updateSheetMusic();
+    this.updateSheetMusic();
   };
 
   // called when we initially mouseOver a note.
   // We can use it to sense left or right mouse or ctrl events
-  root.noteOnMouseEnter = function (event, instrument, id) {
-
-    var action = false;
-
+  noteOnMouseEnter(event, instrument: string, id: number) {
+    var action = "";
     if (event.ctrlKey)
       action = "on";
     if (event.altKey)
@@ -1691,25 +1717,24 @@ function GrooveWriter() {
     if (action) {
       switch (instrument) {
         case "hh":
-          set_hh_state(id, action == "off" ? "off" : "normal", true);
+          this.set_hh_state(id, action == "off" ? "off" : "normal", true);
           break;
         case "snare":
-          set_snare_state(id, action == "off" ? "off" : "accent", true);
+          this.set_snare_state(id, action == "off" ? "off" : "accent", true);
           break;
         case "kick":
-          set_kick_state(id, action == "off" ? "off" : "normal", true);
+          this.set_kick_state(id, action == "off" ? "off" : "normal", true);
           break;
         default:
           console.log("Bad case in noteOnMouseEnter");
           break;
       }
-      updateSheetMusic(); // update music
+      this.updateSheetMusic(); // update music
     }
-
     return false;
-  };
+  }
 
-  function get_permutation_pre_ABC(section) {
+  get_permutation_pre_ABC(section: number): string {
     var abc = "";
 
     switch (section) {
@@ -1765,11 +1790,10 @@ function GrooveWriter() {
         abc += "\nT: Error: No index passed\n";
         break;
     }
-
     return abc;
   }
 
-  function get_permutation_post_ABC(section) {
+  get_permutation_post_ABC(section: number): string {
     var abc = "";
 
     switch (section) {
@@ -1783,7 +1807,7 @@ function GrooveWriter() {
         abc += "\n";
         break;
       case 3:
-        if (usingTriplets())
+        if (this.usingTriplets())
           abc += "|\n";
         else
           abc += "\\\n";
@@ -1798,7 +1822,7 @@ function GrooveWriter() {
         abc += "\n";
         break;
       case 7:
-        if (usingTriplets())
+        if (this.usingTriplets())
           abc += "|\n";
         else
           abc += "\\\n";
@@ -1813,7 +1837,7 @@ function GrooveWriter() {
         abc += "|\n";
         break;
       case 11:
-        if (usingTriplets())
+        if (this.usingTriplets())
           abc += "|\n";
         else
           abc += "\\\n";
@@ -1834,14 +1858,13 @@ function GrooveWriter() {
         abc += "\nT: Error: No index passed\n";
         break;
     }
-
     return abc;
   }
 
   // 16th note permutation array expressed in 32nd notes
   // some kicks are excluded at the beginning of the measure to make the groupings
   // easier to play through continuously
-  function get_kick16th_minus_some_strait_permutation_array(section) {
+  get_kick16th_minus_some_strait_permutation_array(section: number): Array<boolean | string> {
     var kick_array;
 
     switch (section) {
@@ -1950,7 +1973,7 @@ function GrooveWriter() {
 
   // 16th note permutation array expressed in 32nd notes
   // all kicks are included, including the ones that start the measure
-  function get_kick16th_strait_permutation_array(section) {
+  get_kick16th_strait_permutation_array(section: number): Array<boolean | string> {
     var kick_array = [];
     for (var index = 0; index < 32; index++) {
       switch (section) {
@@ -2057,7 +2080,7 @@ function GrooveWriter() {
   }
 
   // 48th note triplet kick permutation
-  function get_kick16th_triplets_permutation_array(section) {
+  get_kick16th_triplets_permutation_array(section: number): Array<boolean | string> {
     var kick_array = [];
     for (var index = 0; index < 48; index++) {
 
@@ -2134,18 +2157,176 @@ function GrooveWriter() {
     return kick_array;
   }
 
-  function fill_array_with_value_false(array_of_notes, number_of_notes) {
-    for (var i = 0; i < number_of_notes; i++) {
-      array_of_notes[i] = false;
+  // Returns full ABC notation string (modifier + note) for a note; matches constant_ABC_* values.
+  _abcFor(note: AbcNote | null): string | false {
+    if (!note) return false;
+    return (note.modifier || '') + note.note;
+  }
+
+  _isNoteOn(id: string): boolean {
+    const el = document.getElementById(id);
+    return !!el && el.classList.contains('note-on');
+  }
+
+  get_hh_state(id: number | string): { abc: string | false, url: string } {
+    for (const note of AbcNote.HH_ALL) {
+      const prefix = note.getFirstHtmlIdPrefix();
+      if (prefix && this._isNoteOn(prefix + id)) {
+        return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
+      }
+    }
+    return { abc: false, url: '-' };
+  }
+
+  get_snare_state(id: number | string): { abc: string | false, url: string } {
+    for (const note of AbcNote.SN_ALL) {
+      const prefix = note.getFirstHtmlIdPrefix();
+      if (prefix && this._isNoteOn(prefix + id)) {
+        return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
+      }
+    }
+    return { abc: false, url: '-' };
+  }
+
+  get_kick_state(id: number | string, returnType?: string): any {
+    const splashPrefix = AbcNote.KI_SPLASH.getFirstHtmlIdPrefix();
+    const kickPrefix = AbcNote.KI_NORMAL.getFirstHtmlIdPrefix();
+    const splashOn = splashPrefix ? this._isNoteOn(splashPrefix + id) : false;
+    const kickOn = kickPrefix ? this._isNoteOn(kickPrefix + id) : false;
+    let note: AbcNote | null = null;
+    if (splashOn && kickOn) note = AbcNote.KI_SANDK;
+    else if (splashOn) note = AbcNote.KI_SPLASH;
+    else if (kickOn) note = AbcNote.KI_NORMAL;
+    const result = {
+      abc: note ? this._abcFor(note) as string : false,
+      url: note ? note.getFirstTabChar() : '-'
+    };
+    if (returnType === 'ABC') return result.abc;
+    if (returnType === 'URL') return result.url;
+    return result;
+  }
+
+  get_tom_state(id: number | string, tom_num: number): { abc: string | false, url: string } {
+    const note = tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL;
+    const prefix = note.getFirstHtmlIdPrefix();
+    if (prefix && this._isNoteOn(prefix + id)) {
+      return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
+    }
+    return { abc: false, url: '-' };
+  }
+
+  get_sticking_state(id: number | string, returnType?: string): any {
+    for (const note of AbcNote.STICKINGS_ALL) {
+      const prefix = note.getFirstHtmlIdPrefix();
+      if (prefix && this._isNoteOn(prefix + id)) {
+        const result = { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
+        if (returnType === 'ABC') return result.abc;
+        if (returnType === 'URL') return result.url;
+        return result;
+      }
+    }
+    const result = { abc: false, url: '-' };
+    if (returnType === 'ABC') return result.abc;
+    if (returnType === 'URL') return result.url;
+    return result;
+  }
+
+  // Helpers: check if a drum is currently on (based on rendered UI state).
+  is_hh_on(id: number | string): boolean {
+    return this.get_hh_state(id).abc !== false;
+  }
+  is_snare_on(id: number | string): boolean {
+    return this.get_snare_state(id).abc !== false;
+  }
+  is_kick_on(id: number | string): boolean {
+    const state = this.get_kick_state(id);
+    return state.abc !== false;
+  }
+  is_tom_on(id: number | string, tom_num: number): boolean {
+    return this.get_tom_state(id, tom_num).abc !== false;
+  }
+
+  // Setters: mode-string based wrappers around setDrumNote.
+  // Preserved for compatibility with pre-refactor code paths.
+  private _hhModeToNote(mode: string): AbcNote {
+    switch (mode) {
+      case 'normal': return AbcNote.HH_NORMAL;
+      case 'accent': return AbcNote.HH_ACCENT;
+      case 'open': return AbcNote.HH_OPEN;
+      case 'close': return AbcNote.HH_CLOSE;
+      case 'ride': return AbcNote.HH_RIDE;
+      case 'ride_bell': return AbcNote.HH_RIDE_BELl;
+      case 'cow_bell': return AbcNote.HH_COW_BELL;
+      case 'crash': return AbcNote.HH_CRASH;
+      case 'stacker': return AbcNote.HH_STACKER;
+      case 'metronome_normal': return AbcNote.HH_METRONOME_NORMAL;
+      case 'metronome_accent': return AbcNote.HH_METRONOME_ACCENT;
+      case 'off': default: return AbcNote.OFF;
+    }
+  }
+  private _snareModeToNote(mode: string): AbcNote {
+    switch (mode) {
+      case 'normal': return AbcNote.SN_NORMAL;
+      case 'accent': return AbcNote.SN_ACCENT;
+      case 'ghost': return AbcNote.SN_GHOST;
+      case 'xstick': return AbcNote.SN_XSTICK;
+      case 'buzz': return AbcNote.SN_BUZZ;
+      case 'flam': return AbcNote.SN_FLAM;
+      case 'drag': return AbcNote.SN_DRAG;
+      case 'off': default: return AbcNote.OFF;
+    }
+  }
+  private _kickModeToNote(mode: string): AbcNote {
+    switch (mode) {
+      case 'normal': return AbcNote.KI_NORMAL;
+      case 'splash': return AbcNote.KI_SPLASH;
+      case 'kick_and_splash': return AbcNote.KI_SANDK;
+      case 'off': default: return AbcNote.OFF;
+    }
+  }
+  private _stickingModeToNote(mode: string): AbcNote {
+    switch (mode) {
+      case 'right': return AbcNote.STICK_R;
+      case 'left': return AbcNote.STICK_L;
+      case 'both': return AbcNote.STICK_BOTH;
+      case 'count': return AbcNote.STICK_COUNT;
+      case 'off': default: return AbcNote.STICK_OFF;
     }
   }
 
-  // create a new instance of an array with all the values prefilled with false
-  function get_empty_note_array(number_of_notes) {
-
-    var newArray = [number_of_notes];
-    fill_array_with_value_false(newArray, number_of_notes);
-    return newArray;
+  set_hh_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    const note = this._hhModeToNote(mode);
+    this.setDrumNote(Number(id), note, makeSound, DrumType.HIHAT);
+  }
+  set_snare_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    const note = this._snareModeToNote(mode);
+    this.setDrumNote(Number(id), note, makeSound, DrumType.SNARE);
+  }
+  set_kick_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    const note = this._kickModeToNote(mode);
+    this.setDrumNote(Number(id), note, makeSound, DrumType.KICK);
+  }
+  set_tom_state(id: number | string, tom_num: number, mode: string, makeSound: boolean = false): void {
+    const drumType = tom_num === 1 ? DrumType.TOM1 : DrumType.TOM4;
+    let note: AbcNote;
+    if (mode === 'normal') {
+      note = tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL;
+    } else {
+      note = AbcNote.OFF;
+    }
+    this.setDrumNote(Number(id), note, makeSound, drumType);
+  }
+  set_tom1_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    this.set_tom_state(id, 1, mode, makeSound);
+  }
+  set_tom4_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    this.set_tom_state(id, 4, mode, makeSound);
+  }
+  set_sticking_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    const note = this._stickingModeToNote(mode);
+    // Passing STICK_OFF makes the "off" mode preserve drumType via the enum, while other modes carry their own drumType.
+    const noteToSet = note === AbcNote.STICK_OFF ? AbcNote.OFF : note;
+    this.setDrumNote(Number(id), noteToSet, makeSound, DrumType.STICKINGS);
   }
 
   // create a new instance of an array with all the values prefilled with false
@@ -2154,82 +2335,72 @@ function GrooveWriter() {
   // 5/4 would be 40 notes
   // 2/4 would be 16 notes
   // 4/2 would be 32 notes
-  function get_empty_note_array_in_32nds() {
-    var notes_per_4_beats = 32;
-    if (usingTriplets())
-      notes_per_4_beats = 48;
-    var num_notes = (class_timeSig.top * notes_per_4_beats) / class_timeSig.bottom.value;
-
-    return get_empty_note_array(num_notes);
+  get_empty_note_array_in_32nds(): Array<string | null> {
+    const notesPer4Beats = this.usingTriplets() ? 48 : 32;
+    const num_notes = (this.data.timeSig.top * notesPer4Beats) / this.data.timeSig.bottom.value;
+    return new Array(num_notes).fill(null);
   }
 
 
-  function get_kick16th_permutation_array(section) {
-    console.log("get_kick16th_permutation_array");
-    console.log("class_notes_per_measure: " + class_notes_per_measure);
-    if (usingTriplets()) {
-      return get_kick16th_triplets_permutation_array(section);
+  get_kick16th_permutation_array(section: number) {
+    if (this.usingTriplets()) {
+      return this.get_kick16th_triplets_permutation_array(section);
     }
 
-    return get_kick16th_strait_permutation_array(section);
+    return this.get_kick16th_strait_permutation_array(section);
   }
 
-  function get_kick16th_permutation_array_minus_some(section) {
-    console.log("get_kick16th_permutation_array_minus_some");
-    if (usingTriplets()) {
+  get_kick16th_permutation_array_minus_some(section) {
+    if (this.usingTriplets()) {
       // triplets never skip any: delegate
-      return get_kick16th_permutation_array(section);
+      return this.get_kick16th_permutation_array(section);
     }
 
-    return get_kick16th_minus_some_strait_permutation_array(section);
+    return this.get_kick16th_minus_some_strait_permutation_array(section);
   }
 
   // snare permutation
-  function get_snare_permutation_array(section) {
-
+  get_snare_permutation_array(section) {
     // its the same as the 16th kick permutation, but with different notes
-    var snare_array = get_kick16th_permutation_array(section);
-
+    var snare_array = this.get_kick16th_permutation_array(section);
     // turn the kicks into snares
     for (var i = 0; i < snare_array.length; i++) {
       if (snare_array[i] !== false)
-        snare_array[i] = constant_ABC_SN_Normal;
+        snare_array[i] = AbcNote.SN_NORMAL.getFirstTabChar();
     }
-
     return snare_array;
   }
 
   // Snare permutation, with Accented permutation.   Snare hits every 16th note, accent moves
-  function get_snare_accent_permutation_array(section) {
+  get_snare_accent_permutation_array(section) {
 
     // its the same as the 16th kick permutation, but with different notes
-    var snare_array = get_kick16th_permutation_array(section);
+    var snare_array = this.get_kick16th_permutation_array(section);
 
     if (section > 0) { // Don't convert notes for the first measure since it is the ostinado
       for (var i = 0; i < snare_array.length; i++) {
         if (snare_array[i] !== false)
-          snare_array[i] = constant_ABC_SN_Accent;
+          snare_array[i] = AbcNote.SN_ACCENT.getFirstTabChar();
         else if ((i % 2) === 0) // all other even notes are ghosted snares
-          snare_array[i] = constant_ABC_SN_Ghost;
+          snare_array[i] = AbcNote.SN_GHOST.getFirstTabChar();
       }
     }
-
     return snare_array;
   }
 
   // Snare permutation, with Accented and diddled permutation.   Accented notes are singles, non accents are diddled
-  function get_snare_accent_with_diddle_permutation_array(section) {
+  get_snare_accent_with_diddle_permutation_array(section) {
 
     // its the same as the 16th kick permutation, but with different notes
-    var snare_array = get_kick16th_permutation_array(section);
+    var snare_array = this.get_kick16th_permutation_array(section);
 
     if (section > 0) { // Don't convert notes for the first measure since it is the ostinado
       for (var i = 0; i < snare_array.length; i++) {
         if (snare_array[i] !== false) {
-          snare_array[i] = constant_ABC_SN_Buzz;
+          snare_array[i] = AbcNote.SN_BUZZ.getFirstTabChar();
           i++; // the next one is not diddled  (leave it false)
         } else { // all other even notes are diddled, which means 32nd notes
-          snare_array[i] = constant_ABC_SN_Ghost;
+          snare_array[i] = AbcNote.SN_GHOST.getFirstTabChar();
         }
       }
     }
@@ -2237,7 +2408,7 @@ function GrooveWriter() {
     return snare_array;
   }
 
-  function get_numSectionsFor_permutation_array() {
+  get_numSectionsFor_permutation_array() {
     var numSections = 16;
 
     /*)
@@ -2252,99 +2423,99 @@ function GrooveWriter() {
   }
 
   // use the Permutation options to figure out if we should display a particular section
-  function shouldDisplayPermutationForSection(sectionNum) {
+  shouldDisplayPermutationForSection(sectionNum) {
     var ret_val = false;
 
     switch (sectionNum) {
       case 0:
-        if (document.getElementById("PermuationOptionsOstinato").checked &&
+        if (((document.getElementById("PermuationOptionsOstinato") as HTMLInputElement) as HTMLInputElement).checked &&
           (!document.getElementById("PermuationOptionsOstinato_sub1") ||
-            document.getElementById("PermuationOptionsOstinato_sub1").checked))
+            ((document.getElementById("PermuationOptionsOstinato_sub1") as HTMLInputElement) as HTMLInputElement).checked))
           ret_val = true;
         break;
       case 1:
-        if (document.getElementById("PermuationOptionsSingles").checked &&
-          document.getElementById("PermuationOptionsSingles_sub1").checked)
+        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsSingles_sub1") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 2:
-        if (document.getElementById("PermuationOptionsSingles").checked &&
-          document.getElementById("PermuationOptionsSingles_sub2").checked)
+        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsSingles_sub2") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 3:
-        if (document.getElementById("PermuationOptionsSingles").checked &&
-          document.getElementById("PermuationOptionsSingles_sub3").checked)
+        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsSingles_sub3") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 4:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsSingles").checked &&
-          document.getElementById("PermuationOptionsSingles_sub4").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsSingles_sub4") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 5:
-        if (document.getElementById("PermuationOptionsDoubles").checked &&
-          document.getElementById("PermuationOptionsDoubles_sub1").checked)
+        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsDoubles_sub1") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 6:
-        if (document.getElementById("PermuationOptionsDoubles").checked &&
-          document.getElementById("PermuationOptionsDoubles_sub2").checked)
+        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsDoubles_sub2") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 7:
-        if (document.getElementById("PermuationOptionsDoubles").checked &&
-          document.getElementById("PermuationOptionsDoubles_sub3").checked)
+        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsDoubles_sub3") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 8:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsDoubles").checked &&
-          document.getElementById("PermuationOptionsDoubles_sub4").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsDoubles_sub4") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 9:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsUpsDowns").checked &&
-          document.getElementById("PermuationOptionsUpsDowns_sub1").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsUpsDowns") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsUpsDowns_sub1") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 10:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsUpsDowns").checked &&
-          document.getElementById("PermuationOptionsUpsDowns_sub2").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsUpsDowns") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsUpsDowns_sub2") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 11:
-        if (document.getElementById("PermuationOptionsTriples").checked &&
+        if (((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
           (!document.getElementById("PermuationSubOptionsTriples1") ||
-            document.getElementById("PermuationOptionsTriples_sub1").checked))
+            ((document.getElementById("PermuationOptionsTriples_sub1") as HTMLInputElement) as HTMLInputElement).checked))
           ret_val = true;
         break;
       case 12:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsTriples").checked &&
-          document.getElementById("PermuationOptionsTriples_sub2").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsTriples_sub2") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 13:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsTriples").checked &&
-          document.getElementById("PermuationOptionsTriples_sub3").checked)
+        if (!this.usingTriplets() &&
+          ((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
+          ((document.getElementById("PermuationOptionsTriples_sub3") as HTMLInputElement) as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 14:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsTriples").checked &&
-          document.getElementById("PermuationOptionsTriples_sub4").checked)
+        if (!this.usingTriplets() &&
+          (document.getElementById("PermuationOptionsTriples") as HTMLInputElement).checked &&
+          (document.getElementById("PermuationOptionsTriples_sub4") as HTMLInputElement).checked)
           ret_val = true;
         break;
       case 15:
-        if (!usingTriplets() &&
-          document.getElementById("PermuationOptionsQuads").checked &&
+        if (!this.usingTriplets() &&
+          (document.getElementById("PermuationOptionsQuads") as HTMLInputElement).checked &&
           (!document.getElementById("PermuationOptionsQuads_sub1") ||
-            document.getElementById("PermuationOptionsQuads_sub1").checked))
+            (document.getElementById("PermuationOptionsQuads_sub1") as HTMLInputElement).checked))
           ret_val = true;
         break;
       default:
@@ -2357,12 +2528,12 @@ function GrooveWriter() {
   }
 
   // use the permutation options to count the number of active permutation sections
-  function get_numberOfActivePermutationSections() {
-    var max_num = get_numSectionsFor_permutation_array();
+  get_numberOfActivePermutationSections() {
+    var max_num = this.get_numSectionsFor_permutation_array();
     var total_on = 0;
 
     for (var i = 0; i < max_num; i++) {
-      if (shouldDisplayPermutationForSection(i))
+      if (this.shouldDisplayPermutationForSection(i))
         total_on++;
     }
 
@@ -2375,28 +2546,28 @@ function GrooveWriter() {
   //
   // (note: Only one measure, not all the notes on the page if multiple measures are present)
   // Return value is the number of notes.
-  function get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI) {
+  get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI) {
 
-    var scaler = root.myGrooveUtils.getNoteScaler(class_notes_per_measure, class_timeSig.top, class_timeSig.bottom.value); // fill proportionally
+    var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig); // fill proportionally
 
     // fill in the arrays from the clickable UI
-    for (var i = 0; i < class_notes_per_measure; i++) {
+    for (var i = 0; i < this.data.notesPerMeasure; i++) {
       var array_index = (i) * scaler;
 
       // only grab the stickings if they are visible
-      if (isStickingsVisible())
-        Sticking_Array[array_index] = get_sticking_state(i + startIndexForClickableUI, "ABC");
+      if (this.isStickingsVisible())
+        Sticking_Array[array_index] = this.get_sticking_state(i + startIndexForClickableUI).abc;
 
-      HH_Array[array_index] = get_hh_state(i + startIndexForClickableUI, "ABC");
+      HH_Array[array_index] = this.get_hh_state(i + startIndexForClickableUI).abc;
 
-      if (isTomsVisible()) {
-        Toms_Array[0][array_index] = get_tom_state(i + startIndexForClickableUI, 1, "ABC");
-        Toms_Array[3][array_index] = get_tom_state(i + startIndexForClickableUI, 4, "ABC");
+      if (this.isTomsVisible()) {
+        Toms_Array[0][array_index] = this.get_tom_state(i + startIndexForClickableUI, 1).abc;
+        Toms_Array[3][array_index] = this.get_tom_state(i + startIndexForClickableUI, 4).abc;
       }
 
-      Snare_Array[array_index] = get_snare_state(i + startIndexForClickableUI, "ABC");
+      Snare_Array[array_index] = this.get_snare_state(i + startIndexForClickableUI).abc;
 
-      Kick_Array[array_index] = get_kick_state(i + startIndexForClickableUI, "ABC");
+      Kick_Array[array_index] = this.get_kick_state(i + startIndexForClickableUI).abc;
     }
 
     var num_notes = Snare_Array.length;
@@ -2405,21 +2576,20 @@ function GrooveWriter() {
 
   // each of the instruments can be muted.   Check the UI and zero out the array if the instrument is marked as muted
   // for a particular measure
-  function muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, measureIndex) {
-    if (isInstrumentMuted("hh", measureIndex + 1))
-      fill_array_with_value_false(HH_Array, HH_Array.length);
-    if (isInstrumentMuted("snare", measureIndex + 1))
-      fill_array_with_value_false(Snare_Array, Snare_Array.length);
-    if (isInstrumentMuted("kick", measureIndex + 1))
-      fill_array_with_value_false(Kick_Array, Kick_Array.length);
-
+  muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, measureIndex) {
+    if (this.isInstrumentMuted("hh", measureIndex + 1))
+      HH_Array.fill(false);
+    if (this.isInstrumentMuted("snare", measureIndex + 1))
+      Snare_Array.fill(false);
+    if (this.isInstrumentMuted("kick", measureIndex + 1))
+      Kick_Array.fill(false);
     for (var i = 0; i < Toms_Array.length; i++) {
-      if (isInstrumentMuted("tom" + (i + 1), measureIndex + 1))
-        fill_array_with_value_false(Toms_Array[i], Toms_Array[i].length);
+      if (this.isInstrumentMuted("tom" + (i + 1), measureIndex + 1))
+        Toms_Array[i].fill(false);
     }
   }
 
-  function filter_kick_array_for_permutation(old_kick_array) {
+  filter_kick_array_for_permutation(old_kick_array) {
     var new_kick_array = [];
 
     for (var i in old_kick_array) {
@@ -2439,7 +2609,7 @@ function GrooveWriter() {
   //  constant_ABC_KI_Normal
   //  constant_ABC_KI_SandK
   //  constant_ABC_KI_Splash
-  function merge_kick_arrays(primary_kick_array, secondary_kick_array) {
+  merge_kick_arrays(primary_kick_array, secondary_kick_array) {
     var new_kick_array = [];
 
     for (var i in primary_kick_array) {
@@ -2479,73 +2649,73 @@ function GrooveWriter() {
     return new_kick_array;
   }
 
-  function createMidiUrlFromClickableUI(MIDI_type) {
-    var Sticking_Array = get_empty_note_array_in_32nds();
-    var HH_Array = get_empty_note_array_in_32nds();
-    var Snare_Array = get_empty_note_array_in_32nds();
-    var Kick_Array = get_empty_note_array_in_32nds();
-    var Toms_Array = [get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds()];
+  createMidiUrlFromClickableUI(MIDI_type) {
+    var Sticking_Array = this.get_empty_note_array_in_32nds();
+    var HH_Array = this.get_empty_note_array_in_32nds();
+    var Snare_Array = this.get_empty_note_array_in_32nds();
+    var Kick_Array = this.get_empty_note_array_in_32nds();
+    var Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
 
     var i,
       new_snare_array,
       num_notes_for_swing = 16;
 
-    var metronomeFrequency = root.getMetronomeFrequency();
+    var metronomeFrequency = this.getMetronomeFrequency();
 
     // just the first measure
-    var num_notes = get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
-    muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
+    var num_notes = this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
+    this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
 
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
     midiFile.addTrack(midiTrack);
 
-    midiTrack.setTempo(root.myGrooveUtils.getTempo());
+    midiTrack.setTempo(this.myGrooveUtils.getTempo());
     midiTrack.setInstrument(0, 0x13);
 
-    var swing_percentage = root.myGrooveUtils.getSwing() / 100;
+    var swing_percentage = this.myGrooveUtils.getSwing() / 100;
 
     // all of the permutations use just the first measure
-    switch (class_permutation_type) {
+    switch (this.class_permutation_type) {
       case "kick_16ths":
-        var numSections = get_numSectionsFor_permutation_array();
+        var numSections = this.get_numSectionsFor_permutation_array();
 
         // compute sections with different kick patterns
         for (i = 0; i < numSections; i++) {
 
-          if (shouldDisplayPermutationForSection(i)) {
+          if (this.shouldDisplayPermutationForSection(i)) {
             var new_kick_array;
 
-            if (document.getElementById("PermuationOptionsSkipSomeFirstNotes") && document.getElementById("PermuationOptionsSkipSomeFirstNotes").checked)
-              new_kick_array = get_kick16th_permutation_array_minus_some(i);
+            if ((document.getElementById("PermuationOptionsSkipSomeFirstNotes") && document.getElementById("PermuationOptionsSkipSomeFirstNotes") as HTMLInputElement).checked)
+              new_kick_array = this.get_kick16th_permutation_array_minus_some(i);
             else
-              new_kick_array = get_kick16th_permutation_array(i);
+              new_kick_array = this.get_kick16th_permutation_array(i);
 
             // grab hi-hat foots from existing kick array and merge it in.
-            Kick_Array = filter_kick_array_for_permutation(Kick_Array);
-            new_kick_array = merge_kick_arrays(new_kick_array, Kick_Array);
+            Kick_Array = this.filter_kick_array_for_permutation(Kick_Array);
+            new_kick_array = this.merge_kick_arrays(new_kick_array, Kick_Array);
 
-            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
+            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
           }
         }
         break;
 
       case "snare_16ths": // use the hh & snare from the user
-        numSections = get_numSectionsFor_permutation_array();
+        numSections = this.get_numSectionsFor_permutation_array();
 
         //compute sections with different snare patterns
         for (i = 0; i < numSections; i++) {
-          if (shouldDisplayPermutationForSection(i)) {
+          if (this.shouldDisplayPermutationForSection(i)) {
 
-            if (document.getElementById("PermuationOptionsAccentGridDiddled") && document.getElementById("PermuationOptionsAccentGridDiddled").checked)
-              new_snare_array = get_snare_accent_with_diddle_permutation_array(i);
-            else if (document.getElementById("PermuationOptionsAccentGrid") && document.getElementById("PermuationOptionsAccentGrid").checked)
-              new_snare_array = get_snare_accent_permutation_array(i);
+            if ((document.getElementById("PermuationOptionsAccentGridDiddled") && document.getElementById("PermuationOptionsAccentGridDiddled") as HTMLInputElement).checked)
+              new_snare_array = this.get_snare_accent_with_diddle_permutation_array(i);
+            else if ((document.getElementById("PermuationOptionsAccentGrid") && document.getElementById("PermuationOptionsAccentGrid") as HTMLInputElement).checked)
+              new_snare_array = this.get_snare_accent_permutation_array(i);
             else
-              new_snare_array = get_snare_permutation_array(i);
+              new_snare_array = this.get_snare_permutation_array(i);
 
 
-            root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
+            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
           }
         }
         break;
@@ -2553,27 +2723,27 @@ function GrooveWriter() {
       case "none":
       /* falls through */
       default:
-        if (class_subDivision < 16)
-          num_notes_for_swing = 8 * class_timeSig.top / class_timeSig.bottom.value;
+        if (this.data.subdivision.value < 16)
+          num_notes_for_swing = 8 * this.data.timeSig.top / this.data.timeSig.bottom.value;
         else
-          num_notes_for_swing = 16 * class_timeSig.top / class_timeSig.bottom.value;
+          num_notes_for_swing = 16 * this.data.timeSig.top / this.data.timeSig.bottom.value;
 
-        root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
+        this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
 
-        for (i = 1; i < class_number_of_measures; i++) {
+        for (i = 1; i < this.data.numberOfMeasures; i++) {
           // reset arrays
-          Sticking_Array = get_empty_note_array_in_32nds();
-          HH_Array = get_empty_note_array_in_32nds();
-          Snare_Array = get_empty_note_array_in_32nds();
-          Kick_Array = get_empty_note_array_in_32nds();
-          Toms_Array = [get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds()];
+          Sticking_Array = this.get_empty_note_array_in_32nds();
+          HH_Array = this.get_empty_note_array_in_32nds();
+          Snare_Array = this.get_empty_note_array_in_32nds();
+          Kick_Array = this.get_empty_note_array_in_32nds();
+          Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
 
 
           // get another measure
-          get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, class_notes_per_measure * i);
-          muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
+          this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, this.data.notesPerMeasure * i);
+          this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
 
-          root.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, class_timeSig);
+          this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
         }
         break;
     }
@@ -2583,33 +2753,33 @@ function GrooveWriter() {
     return midi_url;
   }
 
-  root.MIDISaveAs = function () {
-    var midi_url = createMidiUrlFromClickableUI("general_MIDI");
-
+  MIDISaveAs() {
+    var midi_url = this.createMidiUrlFromClickableUI("general_MIDI");
     // save as
     document.location = midi_url;
   };
 
   // creates a grooveData class from the clickable UI elements of the page
   //
-  root.grooveDataFromClickableUI = function () {
-    // var myGrooveData = new root.myGrooveUtils.grooveDataNew();
+  grooveDataFromClickableUI() {
+    // var myGrooveData = new this.myGrooveUtils.grooveDataNew();
+    this.data.fromUrl(window.location.search);
 
-    root.myGrooveData.notesPerMeasure = class_notes_per_measure;
-    root.myGrooveData.timeDivision = class_subDivision;
-    root.myGrooveData.timeSig = class_timeSig;
-    root.myGrooveData.showStickings = isStickingsVisible();
-    root.myGrooveData.showToms = isTomsVisible();
-    root.myGrooveData.title = document.getElementById("tuneTitle").value;
-    root.myGrooveData.author = document.getElementById("tuneAuthor").value;
-    root.myGrooveData.comments = document.getElementById("tuneComments").value;
-    root.myGrooveData.swingPercent = root.myGrooveUtils.getSwing();
-    root.myGrooveData.tempo = root.myGrooveUtils.getTempo();
-    root.myGrooveData.metronomeFrequency = root.getMetronomeFrequency();
-    root.myGrooveData.kickStemsUp = true;
+    // this.data.notesPerMeasure = this.data.notesPerMeasure;
+    // this.data.timeDivision = class_subDivision;
+    // this.data.timeSig = this.data.timeSig;
+    // this.data.showStickings = isStickingsVisible();
+    // this.data.showToms = isTomsVisible();
+    // this.data.title = document.getElementById("tuneTitle").value;
+    // this.data.author = document.getElementById("tuneAuthor").value;
+    // this.data.comments = document.getElementById("tuneComments").value;
+    // this.data.swingPercent = this.myGrooveUtils.getSwing();
+    // this.data.tempo = this.myGrooveUtils.getTempo();
+    // this.data.metronomeFrequency = this.getMetronomeFrequency();
+    // this.data.kickStemsUp = true;
 
-    // for (var i = 0; i < class_number_of_measures; i++) {
-    //   var total_notes = class_notes_per_measure * class_number_of_measures;
+    // for (var i = 0; i < this.data.numberOfMeasures; i++) {
+    //   var total_notes = this.data.notesPerMeasure * this.data.numberOfMeasures;
     //   myGrooveData.sticking_array = [];
     //   myGrooveData.hh_array = [];
     //   myGrooveData.snare_array = [];
@@ -2641,9 +2811,9 @@ function GrooveWriter() {
   };
 
   // called by the HTML when changes happen to forms that require the ABC to update
-  root.refresh_ABC = function () {
-    updateSheetMusic();
-  };
+  refresh_ABC() {
+    this.updateSheetMusic();
+  }
 
   // Want to create something like this:
   //
@@ -2664,130 +2834,63 @@ function GrooveWriter() {
   // |HasEditData=?GDB_Author=1&TimeSig=4/4&Div=32&Tempo=80&Measures=2&H=|--x-----x---x-------------------|--x-----x---x-------------------|&S=|----g-----g-------------ooo-o-o-|----g-----g-----------------gggg|&K=|o-----x-------o-o---------------|o-----x-------o-o---------------|&T1=|--------------------------------|------------------------x-------|&T4=|----------------x---------------|------------------------x-------|
   // }}
   //
-  root.updateGrooveDBSource = function () {
-    if (!document.getElementById("GrooveDB_source") || document.getElementById("GrooveDB_source").style.display == 'none')
-      return; // nothing to update
 
-    // var myGrooveData = root.grooveDataFromClickableUI();
-    root.grooveDataFromClickableUI();
-
-    var notesPerMeasureInTab = root.myGrooveUtils.tabNumberOfNotesPerMeasure((usingTriplets() ? 48 : 32), class_timeSig);
-    var maxNotesInTab = this.data.numberOfMeasures * notesPerMeasureInTab;
-
-    // scale up all the arrays to 48 or 32 notes so that they look normalized
-
-    // myGrooveData.hh_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
-    // myGrooveData.snare_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
-    // myGrooveData.kick_array = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
-    // myGrooveData.toms_array[0] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[0], myGrooveData);
-    // myGrooveData.toms_array[3] = root.myGrooveUtils.scaleNoteArrayToFullSize(myGrooveData.toms_array[3], myGrooveData);
-
-    var DBString = "{{GrooveTab";
-
-    DBString += "\n|HasTempo=" + myGrooveData.tempo;
-    DBString += "\n|HasSwingPercent=" + myGrooveData.swingPercent;
-    DBString += "\n|HasDivision=" + myGrooveData.notesPerMeasure;
-    DBString += "\n|HasMeasures=" + myGrooveData.numberOfMeasures;
-    DBString += "\n|HasNotesPerMeasure=" + notesPerMeasureInTab;
-    DBString += "\n|HasTimeSignature=" + myGrooveData.timeSig.top + "/" + myGrooveData.timeSig.bottom.value;
-    DBString += "\n|HasHiHatTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("H", myGrooveData.hh_array, true, maxNotesInTab, 0);
-    DBString += "\n|HasSnareAccentTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, true, maxNotesInTab, 0);
-    DBString += "\n|HasSnareOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("S", myGrooveData.snare_array, false, maxNotesInTab, 0);
-    DBString += "\n|HasKickTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, true, maxNotesInTab, 0);
-    DBString += "\n|HasFootOtherTab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("K", myGrooveData.kick_array, false, maxNotesInTab, 0);
-    DBString += "\n|HasTom1Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T1", myGrooveData.toms_array[0], false, maxNotesInTab, 0);
-    DBString += "\n|HasTom4Tab=" + root.myGrooveUtils.tabLineFromAbcNoteArray("T4", myGrooveData.toms_array[3], false, maxNotesInTab, 0);
-    DBString += "\n|HasEditData=" + class_undo_stack[class_undo_stack.length - 1]
-
-    DBString += "\n}}";
-
-    document.getElementById("GrooveDB_source").value = DBString;
-  };
-
-  root.undoCommand = function () {
-    if (class_undo_stack.length > 1) {
-      var undoURL = class_undo_stack.pop();
-      root.AddItemToUndoOrRedoStack(undoURL, class_redo_stack); // add to redo stack
+  undoCommand() {
+    if (this.class_undo_stack.length > 1) {
+      var undoURL = this.class_undo_stack.pop();
+      this.AddItemToUndoOrRedoStack(undoURL, this.class_redo_stack); // add to redo stack
       // the one we want to load is behind the head, since all changes go on the undo stack immediately
       // no need to pop, since it would just get added right back on anyways
-      undoURL = class_undo_stack[class_undo_stack.length - 1];
-      set_Default_notes(undoURL);
+      undoURL = this.class_undo_stack[this.class_undo_stack.length - 1];
+      this.set_Default_notes(undoURL);
     }
   };
 
-  root.redoCommand = function () {
-    if (class_redo_stack.length > 0) {
-      var redoURL = class_redo_stack.pop();
-      root.AddItemToUndoOrRedoStack(redoURL, class_undo_stack); // add to undo stack
-      set_Default_notes(redoURL);
+  redoCommand() {
+    if (this.class_redo_stack.length > 0) {
+      var redoURL = this.class_redo_stack.pop();
+      this.AddItemToUndoOrRedoStack(redoURL, this.class_undo_stack); // add to undo stack
+      this.set_Default_notes(redoURL);
     }
   };
-
-  // debug print the stack
-  function debugPrintUndoRedoStack() {
-    var i;
-    var newHTML = "<h3>Undo Stack</h3><ol>";
-    for (i in class_undo_stack) {
-      newHTML += "<li>" + class_undo_stack[i];
-    }
-    newHTML += "</ol><br>";
-    document.getElementById("undoStack").innerHTML = newHTML;
-
-    newHTML = "<h3>Redo Stack</h3><ol>";
-    for (i in class_redo_stack) {
-      newHTML += "<li>" + class_redo_stack[i];
-    }
-    newHTML += "</ol><br>";
-    document.getElementById("redoStack").innerHTML = newHTML;
-  }
 
   // push the new URL on the undo or redo stack
   // keep the stacks at a managable size
-  root.AddItemToUndoOrRedoStack = function (newURL, ourStack, noClear) {
-
+  AddItemToUndoOrRedoStack(newURL: string, ourStack: Array<string>, noClear: boolean = false): boolean {
     if (!ourStack)
       return false;
-
-    if (newURL == class_undo_stack[class_undo_stack.length - 1]) {
-      //debugPrintUndoRedoStack();
+    if (newURL === this.class_undo_stack[this.class_undo_stack.length - 1]) {
       return false; // no change, so don't push
     }
-
     ourStack.push(newURL);
-    while (ourStack.length > constant_undo_stack_max_size)
+    while (ourStack.length > UNDO_STACK_MAX_SIZE)
       ourStack.shift();
-
-    //debugPrintUndoRedoStack();
-
     return true;
   };
 
-  root.AddFullURLToUndoStack = function (fullURL) {
+  AddFullURLToUndoStack(fullURL: string) {
     var urlFragment;
-
     var searchData = fullURL.indexOf("?");
-
     urlFragment = fullURL.slice(searchData);
-
     // clear redo array whenever we add a new valid element to the stack
     // when we undo, we end up with a null push that returns false here
-    if (root.AddItemToUndoOrRedoStack(urlFragment, class_undo_stack)) {
-      class_redo_stack = [];
+    if (this.AddItemToUndoOrRedoStack(urlFragment, this.class_undo_stack)) {
+      this.class_redo_stack = [];
     }
   };
 
   // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
-  root.updateCurrentURL = function () {
-    var newURL = get_FullURLForPage();
-    var newTitle = false;
+  updateCurrentURL() {
+    var newURL = this.get_FullURLForPage();
+    var newTitle = "";
 
-    root.AddFullURLToUndoStack(newURL);
+    this.AddFullURLToUndoStack(newURL);
 
-    var title = document.getElementById("tuneTitle").value.trim();
+    var title = (document.getElementById("tuneTitle") as HTMLInputElement).value.trim();
     if (title !== "")
       newTitle = title;
 
-    var author = document.getElementById("tuneAuthor").value.trim();
+    var author = (document.getElementById("tuneAuthor") as HTMLInputElement).value.trim();
     if (author !== "") {
       if (title)
         newTitle += " by " + author;
@@ -2796,7 +2899,7 @@ function GrooveWriter() {
     }
 
     if (!newTitle)
-      newTitle = class_app_title;
+      newTitle = this.class_app_title;
 
     document.title = newTitle;
     try {
@@ -2805,7 +2908,7 @@ function GrooveWriter() {
       /* empty */
     }
 
-    if (root.myGrooveUtils.debugMode) {
+    if (this.data.debugMode) {
       // put the search data on the bottom of the page to make it easy to cut & paste
       var searchDataEle = document.getElementById("URLSearchData");
       if (searchDataEle) {
@@ -2816,65 +2919,15 @@ function GrooveWriter() {
     }
   };
 
-  function generate_ABC(renderWidth) {
-    // var Sticking_Array = get_empty_note_array_in_32nds();
-    // var HH_Array = get_empty_note_array_in_32nds();
-    // var Snare_Array = get_empty_note_array_in_32nds();
-    // var Kick_Array = get_empty_note_array_in_32nds();
-    // var Toms_Array = [get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds(), get_empty_note_array_in_32nds()];
-    // var numSections = get_numSectionsFor_permutation_array();
-    // var i,
-    //   new_snare_array,
-    //   post_abc,
-    //   num_sections;
-    // var num_notes = get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
-
-    var fullABC = root.data.getAbcHeader(class_permutation_type != 'none', renderWidth);
-        // root.myGrooveUtils.note_mapping_array = [];
-
-        // var numberOfMeasuresPerLine = 2;
-        // var addon_abc;
-
-        // if (class_notes_per_measure >= 32) {
-        //   // Only put one measure per line for 32nd notes and above because of width issues
-        //   numberOfMeasuresPerLine = 1;
-        // }
-
-        // for (i = 0; i < class_number_of_measures; i++) {
-
-        //   // we already go the array states above, don't get it again.
-        //   if (i > 0) {
-        //     // reset arrays
-        //     Sticking_Array = get_empty_note_array_in_32nds();
-        //     HH_Array = get_empty_note_array_in_32nds();
-        //     Snare_Array = get_empty_note_array_in_32nds();
-        //     Kick_Array = get_empty_note_array_in_32nds();
-
-        //     get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, class_notes_per_measure * i);
-        //   }
-
-        //   if ((i + 1) == class_number_of_measures) {
-        //     // last measure
-        //     addon_abc = "|\n";
-        //   } else if (((i + 1) % numberOfMeasuresPerLine) === 0) {
-        //     // new line measure
-        //     addon_abc = "\n";
-        //   } else {
-        //     // continuation measure
-        //     addon_abc = "\\\n";
-        //   }
-          // fullABC += root.myGrooveUtils.create_ABC_from_snare_HH_kick_arrays(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, addon_abc, num_notes, class_subDivision, true, class_timeSig);
-          fullABC += root.data.getAbcNotation();
-          // root.myGrooveUtils.note_mapping_array = root.myGrooveUtils.note_mapping_array.concat(root.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes));
-        // }
-
-    return fullABC;
+  generate_ABC(renderWidth: number) {
+    return this.data.getAbcHeader(this.class_permutation_type != 'none', renderWidth)
+      + this.data.getAbcNotation();
   }
 
   // this is called by a bunch of places anytime we modify the musical notes on the page
   // this will recreate the ABC code and will then use the ABC to rerender the sheet music
   // on the page.
-  function updateSheetMusic() {
+  updateSheetMusic() {
     var renderWidth = 600;
     var svgTarget = document.getElementById("svgTarget");
     if (svgTarget) {
@@ -2882,37 +2935,36 @@ function GrooveWriter() {
       renderWidth = Math.floor(renderWidth * 0.8);  // reduce width by 20% (This actually makes the notes bigger, because we scale up everything to max width)
     }
 
-    var fullABC = generate_ABC(renderWidth);
-    document.getElementById("ABCsource").value = fullABC;
-    // root.updateGrooveDBSource();
+    var fullABC = this.generate_ABC(renderWidth);
+    (document.getElementById("ABCsource") as HTMLInputElement).value = fullABC;
+    // this.updateGrooveDBSource();
 
     // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
-    root.updateCurrentURL();
-    root.displayNewSVG();
+    this.updateCurrentURL();
+    this.displayNewSVG();
 
-    root.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
+    this.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
   }
 
   // called by generate_ABC to remake the sheet music on the page
-  root.displayNewSVG = function () {
+  displayNewSVG() {
     var svgTarget = document.getElementById("svgTarget"),
       diverr = document.getElementById("diverr");
 
-    var abc_source = document.getElementById("ABCsource").value;
-    var svg_return = root.myGrooveUtils.renderABCtoSVG(abc_source);
+    var abc_source = (document.getElementById("ABCsource") as HTMLInputElement).value;
+    var svg_return = this.myGrooveUtils.renderABCtoSVG(abc_source);
 
     diverr.innerHTML = svg_return.error_html;
     svgTarget.innerHTML = svg_return.svg;
-
-  };
+  }
 
   // Render an SVG that is good for download.
   // Constant size at 2000x200
-  function downloadImages(imageType) {
-    var abc_source = generate_ABC(800);
-    var svg_obj = root.myGrooveUtils.renderABCtoSVG(abc_source);
+  downloadImages(imageType) {
+    var abc_source = this.generate_ABC(800);
+    var svg_obj = this.myGrooveUtils.renderABCtoSVG(abc_source);
     var filename;
-    var tune_title = document.getElementById("tuneTitle").value;
+    var tune_title = (document.getElementById("tuneTitle") as HTMLInputElement).value;
 
     if (tune_title.length == 0) {
       filename = "notation.";
@@ -2946,21 +2998,21 @@ function GrooveWriter() {
     }
   }
 
-  root.PNGSaveAs = function () {
+  PNGSaveAs() {
     Pablo.support.image.png(function (acceptable) {
       if (acceptable) {
-        downloadImages('png');
+        this.downloadImages('png');
       } else {
         alert("Sorry, this browser can't export PNG images");
       }
     });
   }
 
-  root.SVGSaveAs = function () {
-    downloadImages('svg');
-  };
+  SVGSaveAs() {
+    this.downloadImages('svg');
+  }
 
-  root.ShowHideABCResults = function () {
+  ShowHideABCResults() {
     var ABCResults = document.getElementById("ABC_Results");
 
     if (ABCResults.style.display == "block")
@@ -2969,102 +3021,104 @@ function GrooveWriter() {
       ABCResults.style.display = "block";
 
     return false; // don't follow the link
-  };
+  }
+
+  updateUrl() {
+    this.updateCurrentURL();
+  }
 
   // remove a measure from the page
   // measureNum is indexed starting at 1, not 0
-  root.closeMeasureButtonClick = function (measureNum) {
-    var uiStickings = "";
-    var uiHH = "";
-    var uiTom1 = "";
-    var uiTom4 = "";
-    var uiSnare = "";
-    var uiKick = "";
+  closeMeasureButtonClick(measureNum: number) {
+    // var uiStickings = "";
+    // var uiHH = "";
+    // var uiTom1 = "";
+    // var uiTom4 = "";
+    // var uiSnare = "";
+    // var uiKick = "";
 
-    // get the encoded notes out of the UI.
-    // run through all the measure, but don't include the one that we are deleting
-    var topIndex = class_notes_per_measure * class_number_of_measures;
-    for (var i = 0; i < topIndex; i++) {
+    // // get the encoded notes out of the UI.
+    // // run through all the measure, but don't include the one that we are deleting
+    // var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    // for (var i = 0; i < topIndex; i++) {
+    //   // skip the range we are deleting
+    //   if (i < (measureNum - 1) * this.data.notesPerMeasure || i >= measureNum * this.data.notesPerMeasure) {
+    //     uiStickings += get_sticking_state(i.toString()).url;
+    //     uiHH += get_hh_state(i.toString())?.getFirstTabChar() || '-';
+    //     uiTom1 += get_tom_state(i.toString(), 1).url;
+    //     uiTom4 += get_tom_state(i.toString(), 4).url;
+    //     uiSnare += get_snare_state(i.toString()).url;
+    //     uiKick += get_kick_state(i.toString()).url;
+    //   }
+    // }
 
-      // skip the range we are deleting
-      if (i < (measureNum - 1) * class_notes_per_measure || i >= measureNum * class_notes_per_measure) {
-        uiStickings += get_sticking_state(i, "URL");
-        uiHH += get_hh_state(i, "URL");
-        uiTom1 += get_tom_state(i, 1, "URL");
-        uiTom4 += get_tom_state(i, 4, "URL");
-        uiSnare += get_snare_state(i, "URL");
-        uiKick += get_kick_state(i, "URL");
-      }
-    }
-
-    class_number_of_measures--;
-
-    root.expandAuthoringViewWhenNecessary(class_notes_per_measure, class_number_of_measures);
-
-    changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
-
-    updateSheetMusic();
+    // this.data.numberOfMeasures--;
+    this.data.measures.splice(measureNum, 1);
+    this.updateUrl();
+    this.updateSheetMusic();
+    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
+    // changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
   };
 
   // add a measure to the page
   // currently always at the end of the measures
   // copy the notes from the last measure to the new measure
-  root.addMeasureButtonClick = function (event) {
-    var uiStickings = "";
-    var uiHH = "";
-    var uiTom1 = "";
-    var uiTom4 = "";
-    var uiSnare = "";
-    var uiKick = "";
-    var i;
+  addMeasureButtonClick = (event) => {
+    // var uiStickings = "";
+    // var uiHH = "";
+    // var uiTom1 = "";
+    // var uiTom4 = "";
+    // var uiSnare = "";
+    // var uiKick = "";
+    // var i;
 
-    // get the encoded notes out of the UI.
-    var topIndex = class_notes_per_measure * class_number_of_measures;
-    for (i = 0; i < topIndex; i++) {
+    // // get the encoded notes out of the UI.
+    // var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    // for (i = 0; i < topIndex; i++) {
 
-      uiStickings += get_sticking_state(i, "URL");
-      uiHH += get_hh_state(i, "URL");
-      uiTom1 += get_tom_state(i, 1, "URL");
-      uiTom4 += get_tom_state(i, 4, "URL");
-      uiSnare += get_snare_state(i, "URL");
-      uiKick += get_kick_state(i, "URL");
-    }
+    //   uiStickings += get_sticking_state(i, "URL");
+    //   uiHH += get_hh_state(i, "URL");
+    //   uiTom1 += get_tom_state(i, 1, "URL");
+    //   uiTom4 += get_tom_state(i, 4, "URL");
+    //   uiSnare += get_snare_state(i, "URL");
+    //   uiKick += get_kick_state(i, "URL");
+    // }
 
-    // run the the last measure twice to default in some notes
-    for (i = topIndex - class_notes_per_measure; i < topIndex; i++) {
-      uiStickings += get_sticking_state(i, "URL");
-      uiHH += get_hh_state(i, "URL");
-      uiTom1 += get_tom_state(i, 1, "URL");
-      uiTom4 += get_tom_state(i, 4, "URL");
-      uiSnare += get_snare_state(i, "URL");
-      uiKick += get_kick_state(i, "URL");
-    }
+    // // run the the last measure twice to default in some notes
+    // for (i = topIndex - this.data.notesPerMeasure; i < topIndex; i++) {
+    //   uiStickings += get_sticking_state(i, "URL");
+    //   uiHH += get_hh_state(i, "URL");
+    //   uiTom1 += get_tom_state(i, 1, "URL");
+    //   uiTom4 += get_tom_state(i, 4, "URL");
+    //   uiSnare += get_snare_state(i, "URL");
+    //   uiKick += get_kick_state(i, "URL");
+    // }
 
-    class_number_of_measures++;
+    // this.data.numberOfMeasures++;
 
-    root.expandAuthoringViewWhenNecessary(class_notes_per_measure, class_number_of_measures);
+    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
 
-    changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    // changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
 
     // reference the button and scroll it into view
     var add_measure_button = document.getElementById("addMeasureButton");
     if (add_measure_button)
       add_measure_button.scrollIntoView({ block: "start", behavior: "smooth" });
 
-    updateSheetMusic();
+    this.updateSheetMusic();
 
-    if (class_number_of_measures === 5)
+    if (this.data.numberOfMeasures >= 5)
       window.alert("Please be aware that the Groove Scribe is not designed to write an entire musical score.\n" +
         "You can create as many measures as you want, but your browser may slow down as more measures are added.\n" +
         "There are also many notation features that would be useful for score writing that are not part of Groove Scribe");
   };
 
-  function showHideCSS_ClassDisplay(className, force, showElseHide, showState) {
+  showHideCSS_ClassDisplay(className, force, showElseHide, showState): boolean {
     var myElements = document.querySelectorAll(className);
     var newStateIsOn = true;
 
     for (var i = 0; i < myElements.length; i++) {
-      var element = myElements[i];
+      var element = myElements[i] as HTMLElement;
 
       if (force) {
         newStateIsOn = showElseHide;
@@ -3085,116 +3139,118 @@ function GrooveWriter() {
     return newStateIsOn;
   }
 
-  function showHideCSS_ClassVisibility(className, force, showElseHide) {
+  showHideCSS_ClassVisibility(className, force, showElseHide): boolean {
     var myElements = document.querySelectorAll(className);
+    var newStateIsOn = false;
     for (var i = 0; i < myElements.length; i++) {
-      var stickings = myElements[i];
+      var stickings = myElements[i] as HTMLElement;
 
       if (force) {
-        if (showElseHide)
+        if (showElseHide) {
           stickings.style.visibility = "visible";
-        else
+          newStateIsOn = true;
+        } else {
           stickings.style.visibility = "hidden";
+          newStateIsOn = false;
+        }
       } else {
         // no-force means to swap on each call
-        if (stickings.style.visibility == "visible")
+        if (stickings.style.visibility == "visible") {
           stickings.style.visibility = "hidden";
-        else
+          newStateIsOn = false;
+        } else {
           stickings.style.visibility = "visible";
-
+          newStateIsOn = true;
+        }
       }
     }
+    return newStateIsOn;
   }
 
   // clear all the notes on all measures
-  root.clearAllNotes = function () {
-    for (var i = 0; i < class_number_of_measures * class_notes_per_measure; i++) {
-      set_sticking_state(i, 'off');
-      set_hh_state(i, 'off');
-      set_tom1_state(i, 'off');
-      set_tom4_state(i, 'off');
-      set_snare_state(i, 'off');
-      set_kick_state(i, 'off');
+  clearAllNotes() {
+    for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
+      this.set_sticking_state(i, 'off');
+      this.set_hh_state(i, 'off');
+      this.set_tom1_state(i, 'off');
+      this.set_tom4_state(i, 'off');
+      this.set_snare_state(i, 'off');
+      this.set_kick_state(i, 'off');
     }
-    updateSheetMusic();
+    this.updateSheetMusic();
   }
 
-  function isTomsVisible() {
+  isTomsVisible() {
     var myElements = document.querySelectorAll(".toms-container");
     for (var i = 0; i < myElements.length; i++) {
-      if (myElements[i].style.visibility == "visible")
+      if ((myElements[i] as HTMLElement).style.visibility == "visible")
         return true;
     }
 
     return false;
   }
 
-  root.showHideToms = function (force, showElseHide, dontRefreshScreen) {
-    var OnElseOff = showHideCSS_ClassVisibility(".toms-container", force, showElseHide);
-    showHideCSS_ClassVisibility(".tom-label", force, showElseHide);
+  showHideToms(force, showElseHide, dontRefreshScreen) {
+    const OnElseOff = this.showHideCSS_ClassVisibility(".toms-container", force, showElseHide);
+    this.showHideCSS_ClassVisibility(".tom-label", force, showElseHide);
     if (OnElseOff)
-      addOrRemoveKeywordFromClassById("showHideTomsButton", "ClickToHide", true);
+      this.addClassById("showHideTomsButton", "ClickToHide", true);
     else
-      addOrRemoveKeywordFromClassById("showHideTomsButton", "ClickToHide", false);
+      this.addClassById("showHideTomsButton", "ClickToHide", false);
 
     if (!dontRefreshScreen)
-      updateSheetMusic();
+      this.updateSheetMusic();
 
     return false; // don't follow the link
   };
 
-  function isStickingsVisible() {
+  isStickingsVisible() {
     var myElements = document.querySelectorAll(".stickings-container");
     for (var i = 0; i < myElements.length; i++) {
-      if (myElements[i].style.display == "block")
+      if ((myElements[i] as HTMLElement).style.display == "block")
         return true;
     }
-
     return false;
   }
 
-  root.stickingsShowHide = function (force, showElseHide, dontRefreshScreen) {
-
-    var OnElseOff = showHideCSS_ClassDisplay(".stickings-container", force, showElseHide, "block");
-    showHideCSS_ClassDisplay(".stickings-label", force, showElseHide, "block");
+  stickingsShowHide(force, showElseHide, dontRefreshScreen) {
+    var OnElseOff = this.showHideCSS_ClassDisplay(".stickings-container", force, showElseHide, "block");
+    this.showHideCSS_ClassDisplay(".stickings-label", force, showElseHide, "block");
     if (OnElseOff) {
-      addOrRemoveKeywordFromClassById("stickingsButton", "ClickToHide", true);
+      this.addClassById("stickingsButton", "ClickToHide", true);
     } else {
-      addOrRemoveKeywordFromClassById("stickingsButton", "ClickToHide", false);
+      this.addClassById("stickingsButton", "ClickToHide", false);
     }
 
     if (!dontRefreshScreen) {
-      updateSheetMusic();
+      this.updateSheetMusic();
     }
 
     return false; // don't follow the link
   };
 
   // if stickings are shown, hide them and vice versa
-  root.stickingsShowHideToggle = function () {
-
-    var stickingsAreCurrentlyShown = isStickingsVisible();
-    root.stickingsShowHide(true, !stickingsAreCurrentlyShown, false);
+  stickingsShowHideToggle() {
+    var stickingsAreCurrentlyShown = this.isStickingsVisible();
+    this.stickingsShowHide(true, !stickingsAreCurrentlyShown, false);
   }
 
   // Swap Right and Left stickings if any are shown
-  root.stickingsReverseRL = function () {
-    for (var i = 0; i < class_number_of_measures * class_notes_per_measure; i++) {
-      var cur_state = get_sticking_state(i, "URL");
+  stickingsReverseRL() {
+    for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
+      var cur_state = this.get_sticking_state(i, "URL");
       if (cur_state === "R") {
-        set_sticking_state(i, "left", false);
+        this.set_sticking_state(i, "left", false);
       } else if (cur_state === "L") {
-        set_sticking_state(i, "right", false);
+        this.set_sticking_state(i, "right", false);
       }
     }
-    updateSheetMusic();
+    this.updateSheetMusic();
   }
 
-  root.printMusic = function () {
-
+  printMusic() {
     var oldMethod = true;
-
-    if ((root.browserInfo.browser == "Chrome" && root.browserInfo.platform == "windows")) {
+    if ((this.browserInfo.browser == "Chrome" && this.browserInfo.platform == "windows")) {
       oldMethod = false;
     }
 
@@ -3206,8 +3262,8 @@ function GrooveWriter() {
 
     } else {
       // open a new window just for printing   (new method)
-      var win = window.open("", class_app_title + " Print");
-      win.document.body.innerHTML = "<title>" + class_app_title + "</title>\n<center>\n";
+      var win = window.open("", this.class_app_title + " Print");
+      win.document.body.innerHTML = "<title>" + this.class_app_title + "</title>\n<center>\n";
       win.document.body.innerHTML += document.getElementById("svgTarget").innerHTML;
       win.document.body.innerHTML += "\n</center>";
       win.print();
@@ -3215,17 +3271,16 @@ function GrooveWriter() {
 
   };
 
-  root.setupWriterHotKeys = function () {
-
-    document.addEventListener("keydown", function (e) {
-
+  setupWriterHotKeys() {
+    document.addEventListener("keydown", (e) => {
+      const target = e.target as HTMLInputElement;
       // only accept the event if it not going to an INPUT field   (allow for range types)
-      if (e.target.type == "range" || (e.target.tagName.toUpperCase() != "INPUT" && e.target.tagName.toUpperCase() != "TEXTAREA")) {
+      if (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA")) {
         switch (e.which) {
           case 90: // ctrl-z
             if (e.ctrlKey) {
               // ctrl-z
-              root.undoCommand();
+              this.undoCommand();
               return false;
             }
             break;
@@ -3233,20 +3288,20 @@ function GrooveWriter() {
           case 89: // ctrl-y
             if (e.ctrlKey) {
               // ctrl-y
-              root.redoCommand();
+              this.redoCommand();
               return false;
             }
             break;
 
           case 37: // left arrow
             // left arrow
-            root.myGrooveUtils.downTempo();
+            this.myGrooveUtils.downTempo();
             return false;
           //break;
 
           case 39: // right arrow
             // right arrow
-            root.myGrooveUtils.upTempo();
+            this.myGrooveUtils.upTempo();
             return false;
           //break;
 
@@ -3261,550 +3316,360 @@ function GrooveWriter() {
       }
       return true; // let the default handler deal with the keypress
     });
-  };
+  }
 
-  root.swapViewEditMode = function (dontUpdateURL) {
+  swapViewEditMode(dontUpdateURL) {
     var view_edit_button = document.getElementById("view-edit-switch");
-    if (root.data.viewMode) {
-      showHideCSS_ClassDisplay(".edit-block", true, true, "block"); // show
+    if (this.data.viewMode) {
+      this.showHideCSS_ClassDisplay(".edit-block", true, true, "block"); // show
       if (view_edit_button)
         view_edit_button.innerHTML = "Switch to VIEW mode";
-      root.data.viewMode = false;
+      this.data.viewMode = false;
       if (!dontUpdateURL)
-        root.updateCurrentURL();
+        this.updateCurrentURL();
     } else {
-      showHideCSS_ClassDisplay(".edit-block", true, false, "block"); // hide
+      this.showHideCSS_ClassDisplay(".edit-block", true, false, "block"); // hide
       if (view_edit_button)
         view_edit_button.innerHTML = "Switch to EDIT mode";
-      root.data.viewMode = true;
+      this.data.viewMode = true;
       if (!dontUpdateURL)
-        root.updateCurrentURL();
+        this.updateCurrentURL();
     }
   };
 
   // public function.
   // This function initializes the data for the groove Scribe web page
-  root.runsOnPageLoad = function () {
-
-    root.setupWriterHotKeys(); // there are other hot keys in GrooveUtils for the midi player
-
-    setupPermutationMenu();
-    root.setTimeSigLabel();
+  runsOnPageLoad() {
+    this.setupWriterHotKeys(); // there are other hot keys in GrooveUtils for the midi player
+    this.setupPermutationMenu();
+    this.setTimeSigLabel();
 
     // set the background and text color of the current subdivision
-    selectButton(document.getElementById("subdivision_" + class_notes_per_measure + "ths"));
+    this.selectButton(document.getElementById("subdivision_" + this.data.notesPerMeasure + "ths"));
 
     // add html for the midi player
-    root.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", class_subDivision);
+    this.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", this.data.subdivision.value, undefined);
 
     // load the groove from the URL data if it was passed in.
-    set_Default_notes(window.location.search);
+    this.set_Default_notes(window.location.search);
 
     // if Mode != "view" put into edit mode  (we default to view mode to prevent screen flicker)
-    if (!root.data.viewMode) {
-      root.swapViewEditMode(true);
+    if (!this.data.viewMode) {
+      this.swapViewEditMode(true);
     }
 
-    root.myGrooveUtils.midiEventCallbacks.loadMidiDataEvent = function (myroot, playStarting) {
+    this.myGrooveUtils.midiEventCallbacks.loadMidiDataEvent = (playStarting) => {
       var midiURL;
 
-      if (playStarting && class_metronome_count_in_active) {
+      if (playStarting && this.class_metronome_count_in_active) {
 
-        midiURL = root.myGrooveUtils.MIDI_build_midi_url_count_in_track(class_timeSig);
-        root.myGrooveUtils.midiNoteHasChanged(); // this track is temporary
-        class_metronome_count_in_is_playing = true;
+        midiURL = this.myGrooveUtils.MIDI_build_midi_url_count_in_track(this.data.timeSig);
+        this.myGrooveUtils.midiNoteHasChanged(); // this track is temporary
+        this.class_metronome_count_in_is_playing = true;
       } else {
-        if (class_metronome_count_in_is_playing) {
+        if (this.class_metronome_count_in_is_playing) {
           // we saved the state above so that we could reset the Offset click start, otherwise it starts on the 'e'
-          class_metronome_count_in_is_playing = false;
-          root.myGrooveUtils.resetMetronomeOptionsOffsetClickStartRotation();
+          this.class_metronome_count_in_is_playing = false;
+          this.myGrooveUtils.resetMetronomeOptionsOffsetClickStartRotation();
         }
-        midiURL = createMidiUrlFromClickableUI("our_MIDI");
-        root.myGrooveUtils.midiResetNoteHasChanged();
+        midiURL = this.createMidiUrlFromClickableUI("our_MIDI");
+        this.myGrooveUtils.midiResetNoteHasChanged();
       }
-      root.myGrooveUtils.loadMIDIFromURL(midiURL);
-      // root.updateGrooveDBSource();
+      this.myGrooveUtils.loadMIDIFromURL(midiURL);
+      // this.updateGrooveDBSource();
     };
 
-    root.myGrooveUtils.midiEventCallbacks.notePlaying = function (myroot, note_type, percent_complete) {
-      if (note_type == "complete" && class_metronome_auto_speed_up_active) {
+    this.myGrooveUtils.midiEventCallbacks.notePlaying = (note_type, percent_complete) => {
+      if (note_type == "complete" && this.class_metronome_auto_speed_up_active) {
         // reload with new tempo
-        root.myGrooveUtils.midiNoteHasChanged();
-        root.metronomeAutoSpeedUpTempoUpdate();
+        this.myGrooveUtils.midiNoteHasChanged();
+        this.metronomeAutoSpeedUpTempoUpdate();
       }
 
-      hilight_note(note_type, percent_complete);
+      this.hilight_note(note_type, percent_complete);
     };
 
-    root.myGrooveUtils.oneTimeInitializeMidi();
+    this.myGrooveUtils.oneTimeInitializeMidi();
 
     // enable or disable swing
-    root.myGrooveUtils.swingEnabled(root.myGrooveUtils.doesDivisionSupportSwing(class_notes_per_measure));
+    this.myGrooveUtils.swingEnabled(this.myGrooveUtils.doesDivisionSupportSwing(this.data.notesPerMeasure));
 
-    window.onresize = root.refresh_ABC;
+    window.onresize = this.refresh_ABC;
 
-    root.browserInfo = root.myGrooveUtils.getBrowserInfo();
-    if (root.browserInfo.browser == "MSIE" && root.browserInfo.version < 10) {
-      window.alert("This browser has been detected as: " + root.browserInfo.browser + " ver: " + root.browserInfo.version + ".\n" + 'This version of IE is unsupported.   Please use Chrome or Firefox instead');
-    } else if (root.browserInfo.browser == "Safari" && root.browserInfo.platform == "windows" && root.browserInfo.version < 535) {
-      window.alert("This browser has been detected as: " + root.browserInfo.browser + " ver: " + root.browserInfo.version + ".\n" + 'This version of Safari is unsupported.   Please use Chrome instead');
+    this.browserInfo = this.myGrooveUtils.getBrowserInfo();
+    if (this.browserInfo.browser == "MSIE" && this.browserInfo.version < 10) {
+      window.alert("This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".\n" + 'This version of IE is unsupported.   Please use Chrome or Firefox instead');
+    } else if (this.browserInfo.browser == "Safari" && this.browserInfo.platform == "windows" && this.browserInfo.version < 535) {
+      window.alert("This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".\n" + 'This version of Safari is unsupported.   Please use Chrome instead');
     }
-    if (root.myGrooveUtils.debugMode) {
+    if (this.data.debugMode) {
       var debugOutput = document.getElementById("debugOutput");
       if (debugOutput) {
-        debugOutput.innerHTML += "<div>This browser has been detected as: " + root.browserInfo.browser + " ver: " + root.browserInfo.version + ".<br>" + root.browserInfo.uastring + "<br>Running on: " + root.browserInfo.platform + "</div>";
+        debugOutput.innerHTML += "<div>This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".<br>" + this.browserInfo.uastring + "<br>Running on: " + this.browserInfo.platform + "</div>";
       }
     }
 
-    if (root.myGrooveUtils.is_touch_device()) {
+    if (this.myGrooveUtils.is_touch_device()) {
       setTimeout(function () {
         window.scrollTo(0, 1);
       }, 1000);
     }
 
     // get updates when the tempo changes
-    root.myGrooveUtils.tempoChangeCallback = root.tempoChangeCallback
+    this.myGrooveUtils.tempoChangeCallback = this.tempoChangeCallback
   };
 
   // called right before the midi reloads for the next replay
   // set the new tempo based on the delta required for the time interval
-  var class_our_midi_start_time = null;
-  var class_our_midi_start_tempo = 0;
-  var class_our_last_midi_tempo_increase_time = null;
-  var class_our_last_midi_tempo_increase_remainder = 0;
-  root.metronomeAutoSpeedUpTempoUpdate = function () {
+  metronomeAutoSpeedUpTempoUpdate() {
 
     var totalTempoIncreaseAmount = 1;
     if (document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount"))
-      totalTempoIncreaseAmount = parseInt(document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount").value, 10);
+      totalTempoIncreaseAmount = parseInt((document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount") as HTMLInputElement).value, 10);
     var tempoIncreaseInterval = 60;
     if (document.getElementById("metronomeAutoSpeedupTempoIncreaseInterval")) {
-      tempoIncreaseInterval = parseInt(document.getElementById("metronomeAutoSpeedupTempoIncreaseInterval").value, 10);
+      tempoIncreaseInterval = parseInt((document.getElementById("metronomeAutoSpeedupTempoIncreaseInterval") as HTMLInputElement).value, 10);
       tempoIncreaseInterval = tempoIncreaseInterval * 60; // turn mins to secs
     }
 
     var keepIncreasingForever = false;
     if (document.getElementById("metronomeAutoSpeedUpKeepGoingForever"))
-      keepIncreasingForever = document.getElementById("metronomeAutoSpeedUpKeepGoingForever").checked;
+      keepIncreasingForever = (document.getElementById("metronomeAutoSpeedUpKeepGoingForever") as HTMLInputElement).checked;
 
-    var curTempo = root.myGrooveUtils.getTempo();
+    var curTempo = this.myGrooveUtils.getTempo();
 
-    var midiStartTime = root.myGrooveUtils.getMidiStartTime();
-    if (class_our_midi_start_time != midiStartTime) {
-      class_our_midi_start_time = midiStartTime;
-      class_our_last_midi_tempo_increase_remainder = 0;
-      class_our_last_midi_tempo_increase_time = new Date(0);
-      class_our_midi_start_tempo = curTempo;
+    var midiStartTime = this.myGrooveUtils.getMidiStartTime();
+    if (this.class_our_midi_start_time != midiStartTime) {
+      this.class_our_midi_start_time = midiStartTime;
+      this.class_our_last_midi_tempo_increase_remainder = 0;
+      this.class_our_last_midi_tempo_increase_time = new Date(0);
+      this.class_our_midi_start_tempo = curTempo;
 
     } else if (!keepIncreasingForever) {
-      if (curTempo >= class_our_midi_start_tempo + totalTempoIncreaseAmount) {
+      if (curTempo >= this.class_our_midi_start_tempo + totalTempoIncreaseAmount) {
         return; // don't increase any more after we have gone up the total amount
       }
     }
-    var totalMidiPlayTime = root.myGrooveUtils.getMidiPlayTime();
-    var timeDiffMilliseconds = totalMidiPlayTime.getTime() - class_our_last_midi_tempo_increase_time.getTime();
+    var totalMidiPlayTime = this.myGrooveUtils.getMidiPlayTime();
+    var timeDiffMilliseconds = totalMidiPlayTime.getTime() - this.class_our_last_midi_tempo_increase_time.getTime();
     var tempoDiffFloat = (totalTempoIncreaseAmount) * (timeDiffMilliseconds / (tempoIncreaseInterval * 1000));
 
     // round the number down, but keep track of the remainder so we carry it forward.   Otherwise
     // rounding errors cause us to be way off.
-    tempoDiffFloat += class_our_last_midi_tempo_increase_remainder;
+    tempoDiffFloat += this.class_our_last_midi_tempo_increase_remainder;
     var tempoDiffInt = Math.floor(tempoDiffFloat);
-    class_our_last_midi_tempo_increase_remainder = tempoDiffFloat - tempoDiffInt;
+    this.class_our_last_midi_tempo_increase_remainder = tempoDiffFloat - tempoDiffInt;
 
-    class_our_last_midi_tempo_increase_time = totalMidiPlayTime;
+    this.class_our_last_midi_tempo_increase_time = totalMidiPlayTime;
 
     if (!keepIncreasingForever) {
-      if (curTempo + tempoDiffInt > class_our_midi_start_tempo + totalTempoIncreaseAmount) {
+      if (curTempo + tempoDiffInt > this.class_our_midi_start_tempo + totalTempoIncreaseAmount) {
         // increase to the total max amount, then we are done
-        tempoDiffInt = (class_our_midi_start_tempo + totalTempoIncreaseAmount) - curTempo;
+        tempoDiffInt = (this.class_our_midi_start_tempo + totalTempoIncreaseAmount) - curTempo;
       }
     }
 
     if (tempoDiffInt > 0)
-      root.myGrooveUtils.setTempo(root.myGrooveUtils.getTempo() + tempoDiffInt);
+      this.myGrooveUtils.setTempo(this.myGrooveUtils.getTempo() + tempoDiffInt);
   };
 
-  // takes a string of notes encoded in a serialized string and sets the notes on or off
-  // uses drum tab format adapted from wikipedia: http://en.wikipedia.org/wiki/Drum_tablature
-  //
-  //
-  //  HiHat support:
-  //      x: normal
-  //      X: accent
-  //      o: open
-  //		+: close
-  //      c: crash
-  //      r: ride
-  //      b: ride bell
-  //      m: cow bell (more)
-  //      s: stacker
-  //      -: off
-  //
-  //   Snare support:
-  //      o: normal
-  //      O: accent
-  //      f: flam
-  //      d: drag
-  //      g: ghost
-  //      x: cross stick
-  //      -: off
-  //
-  //   Kick support:
-  //      o: normal
-  //      x: hi hat splash with foot
-  //      X: kick & hi hat splash with foot simultaneously
-  //
-  //  Note that "|" and " " will be skipped so that standard drum tabs can be applied
-  //  Example:
-  //     H=|x---x---x---x---|x---x---x---x---|x---x---x---x---|
-  // or  H=x-x-x-x-x-x-x-x-x-x-x-x-
-  //     S=|----o-------o---|----o-------o---|----o-------o---|
-  // or  S=--o---o---o---o---o---o-
-  //     B=|o-------o-------|o-------o-o-----|o-----o-o-------|
-  // or  B=o---o---o----oo-o--oo---|
-  //
-  function setNotesFromURLData(drumType, noteString, numberOfMeasures) {
-    var setFunction;
+  setNotesFromABCArray(drumType, abcArray, numberOfMeasures) {
+    // Set from this.data.measures to UI elements.
 
-    if (drumType == "Stickings") {
-      setFunction = set_sticking_state;
-    } else if (drumType == "H") {
-      setFunction = set_hh_state;
-    } else if (drumType == "T1") {
-      setFunction = set_tom1_state;
-    } else if (drumType == "T4") {
-      setFunction = set_tom4_state;
-    } else if (drumType == "S") {
-      setFunction = set_snare_state;
-    } else if (drumType == "K") {
-      setFunction = set_kick_state;
-    }
+    // var setFunction;
 
-    // decode the %7C url encoding types
-    noteString = decodeURIComponent(noteString);
+    // // multiple measures of "how_many_notes"
+    // var notesOnScreen = this.data.notesPerMeasure * numberOfMeasures;
 
-    // ignore ":" and "|" by removing them
-    var notes = noteString.replace(/:|\|/g, '');
+    // var noteStringScaler = 1;
+    // var displayScaler = 1;
+    // if (abcArray.length > notesOnScreen && abcArray.length / notesOnScreen >= 2) {
+    //   // if we encounter a 16th note groove for an 8th note board, let's scale it	down
+    //   noteStringScaler = Math.ceil(abcArray.length / notesOnScreen);
+    // } else if (abcArray.length < notesOnScreen && notesOnScreen / abcArray.length >= 2) {
+    //   // if we encounter a 8th note groove for an 16th note board, let's scale it up
+    //   displayScaler = Math.ceil(notesOnScreen / abcArray.length);
+    // }
 
-    // multiple measures of "how_many_notes"
-    var notesOnScreen = class_notes_per_measure * numberOfMeasures;
+    // if (drumType == "Stickings") {
+    //   setFunction = set_sticking_state;
+    // } else if (drumType == "H") {
+    //   setFunction = set_hh_state;
+    // } else if (drumType == "T1") {
+    //   setFunction = set_tom1_state;
+    // } else if (drumType == "T4") {
+    //   setFunction = set_tom4_state;
+    // } else if (drumType == "S") {
+    //   setFunction = set_snare_state;
+    // } else if (drumType == "K") {
+    //   setFunction = set_kick_state;
+    // }
 
-    var noteStringScaler = 1;
-    var displayScaler = 1;
-    if (notes.length > notesOnScreen && notes.length / notesOnScreen >= 2) {
-      // if we encounter a 16th note groove for an 8th note board, let's scale it	down
-      noteStringScaler = Math.ceil(notes.length / notesOnScreen);
-    } else if (notes.length < notesOnScreen && notesOnScreen / notes.length >= 2) {
-      // if we encounter a 8th note groove for an 16th note board, let's scale it up
-      displayScaler = Math.ceil(notesOnScreen / notes.length);
-    }
+    // //  DisplayIndex is the index into the notes on the HTML page  starts at 1/32\n%%flatbeams
+    // var displayIndex = 0;
+    // var topDisplay = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    // for (var i = 0; i < abcArray.length && displayIndex < topDisplay; i += noteStringScaler, displayIndex += displayScaler) {
 
-    //  DisplayIndex is the index into the notes on the HTML page  starts at 1/32\n%%flatbeams
-    var displayIndex = 0;
-    var topDisplay = class_notes_per_measure * class_number_of_measures;
-    for (var i = 0; i < notes.length && displayIndex < topDisplay; i += noteStringScaler, displayIndex += displayScaler) {
-
-      switch (notes[i]) {
-        case "$":
-          setFunction(displayIndex, "and", false);
-          break;
-        case "1":
-          setFunction(displayIndex, "1", false);
-          break;
-        case "a":
-          setFunction(displayIndex, "a", false);
-          break;
-        case "B":
-          if (drumType == "Stickings")
-            setFunction(displayIndex, "both", false);
-          break;
-        case "b":
-          if (drumType == "H")
-            setFunction(displayIndex, "ride_bell", false);
-          else if (drumType == "S")
-            setFunction(displayIndex, "buzz", false);
-          break;
-        case "c":
-          if (drumType == "Stickings")
-            setFunction(displayIndex, "count", false);
-          else
-            setFunction(displayIndex, "crash", false);
-          break;
-        case "e":
-          setFunction(displayIndex, "e", false);
-          break;
-        case "g":
-          setFunction(displayIndex, "ghost", false);
-          break;
-        case "f":
-          setFunction(displayIndex, "flam", false);
-          break;
-        case "d":
-          setFunction(displayIndex, "drag", false);
-          break;
-        case "l":
-        case "L":
-          if (drumType == "Stickings")
-            setFunction(displayIndex, "left", false);
-          break;
-        case "m":
-          if (drumType == "H")
-            setFunction(displayIndex, "cow_bell", false);
-          break;
-        case "n":
-          if (drumType == "H")
-            setFunction(displayIndex, "metronome_normal", false);
-          break;
-        case "N":
-          if (drumType == "H")
-            setFunction(displayIndex, "metronome_accent", false);
-          break;
-        case "O":
-          setFunction(displayIndex, "accent", false);
-          break;
-        case "o":
-          if (drumType == "H")
-            setFunction(displayIndex, "open", false);
-          else
-            setFunction(displayIndex, "normal", false);
-          break;
-        case "r":
-        case "R":
-          if (drumType == "H")
-            setFunction(displayIndex, "ride", false);
-          else if (drumType == "Stickings")
-            setFunction(displayIndex, "right", false);
-          break;
-        case "s":
-          setFunction(displayIndex, "stacker", false);
-          break;
-        case "x":
-          if (drumType == "S")
-            setFunction(displayIndex, "xstick", false);
-          else if (drumType == "K")
-            setFunction(displayIndex, "splash", false);
-          else
-            setFunction(displayIndex, "normal", false);
-          break;
-        case "X":
-          if (drumType == "K")
-            setFunction(displayIndex, "kick_and_splash", false);
-          else
-            setFunction(displayIndex, "accent", false);
-          break;
-        case "+":
-          setFunction(displayIndex, "close", false);
-          break;
-        case "-":
-          setFunction(displayIndex, "off", false);
-          break;
-        default:
-          console.log("Bad note in setNotesFromURLData: " + notes[i]);
-          break;
-      }
-    }
-  }
-
-  function setNotesFromABCArray(drumType, abcArray, numberOfMeasures) {
-    var setFunction;
-
-    // multiple measures of "how_many_notes"
-    var notesOnScreen = class_notes_per_measure * numberOfMeasures;
-
-    var noteStringScaler = 1;
-    var displayScaler = 1;
-    if (abcArray.length > notesOnScreen && abcArray.length / notesOnScreen >= 2) {
-      // if we encounter a 16th note groove for an 8th note board, let's scale it	down
-      noteStringScaler = Math.ceil(abcArray.length / notesOnScreen);
-    } else if (abcArray.length < notesOnScreen && notesOnScreen / abcArray.length >= 2) {
-      // if we encounter a 8th note groove for an 16th note board, let's scale it up
-      displayScaler = Math.ceil(notesOnScreen / abcArray.length);
-    }
-
-    if (drumType == "Stickings") {
-      setFunction = set_sticking_state;
-    } else if (drumType == "H") {
-      setFunction = set_hh_state;
-    } else if (drumType == "T1") {
-      setFunction = set_tom1_state;
-    } else if (drumType == "T4") {
-      setFunction = set_tom4_state;
-    } else if (drumType == "S") {
-      setFunction = set_snare_state;
-    } else if (drumType == "K") {
-      setFunction = set_kick_state;
-    }
-
-    //  DisplayIndex is the index into the notes on the HTML page  starts at 1/32\n%%flatbeams
-    var displayIndex = 0;
-    var topDisplay = class_notes_per_measure * class_number_of_measures;
-    for (var i = 0; i < abcArray.length && displayIndex < topDisplay; i += noteStringScaler, displayIndex += displayScaler) {
-
-      switch (abcArray[i]) {
-        case constant_ABC_STICK_R:
-          setFunction(displayIndex, "right", false);
-          break;
-        case constant_ABC_STICK_L:
-          setFunction(displayIndex, "left", false);
-          break;
-        case constant_ABC_STICK_BOTH:
-          setFunction(displayIndex, "both", false);
-          break;
-        case constant_ABC_STICK_COUNT:
-          setFunction(displayIndex, "count", false);
-          break;
-        case constant_ABC_STICK_OFF:
-          setFunction(displayIndex, "off", false);
-          break;
-        case constant_ABC_HH_Ride:
-          setFunction(displayIndex, "ride", false);
-          break;
-        case constant_ABC_HH_Ride_Bell:
-          setFunction(displayIndex, "ride_bell", false);
-          break;
-        case constant_ABC_HH_Cow_Bell:
-          setFunction(displayIndex, "cow_bell", false);
-          break;
-        case constant_ABC_HH_Crash:
-          setFunction(displayIndex, "crash", false);
-          break;
-        case constant_ABC_HH_Stacker:
-          setFunction(displayIndex, "stacker", false);
-          break;
-        case constant_ABC_HH_Metronome_Normal:
-          setFunction(displayIndex, "metronome_normal", false);
-          break;
-        case constant_ABC_HH_Metronome_Accent:
-          setFunction(displayIndex, "metronome_accent", false);
-          break;
-        case constant_ABC_HH_Open:
-          setFunction(displayIndex, "open", false);
-          break;
-        case constant_ABC_HH_Close:
-          setFunction(displayIndex, "close", false);
-          break;
-        case constant_ABC_HH_Accent:
-          setFunction(displayIndex, "accent", false);
-          break;
-        case constant_ABC_HH_Normal:
-          setFunction(displayIndex, "normal", false);
-          break;
-        case constant_ABC_T1_Normal:
-          setFunction(displayIndex, "normal", false);
-          break;
-        case constant_ABC_T4_Normal:
-          setFunction(displayIndex, "normal", false);
-          break;
-        case constant_ABC_SN_Ghost:
-          setFunction(displayIndex, "ghost", false);
-          break;
-        case constant_ABC_SN_Accent:
-          setFunction(displayIndex, "accent", false);
-          break;
-        case constant_ABC_SN_Normal:
-          setFunction(displayIndex, "normal", false);
-          break;
-        case constant_ABC_SN_Flam:
-          setFunction(displayIndex, "flam", false);
-          break;
-        case constant_ABC_SN_Drag:
-          setFunction(displayIndex, "drag", false);
-          break;
-        case constant_ABC_SN_XStick:
-          setFunction(displayIndex, "xstick", false);
-          break;
-        case constant_ABC_SN_Buzz:
-          setFunction(displayIndex, "buzz", false);
-          break;
-        case constant_ABC_KI_SandK:
-          setFunction(displayIndex, "kick_and_splash", false);
-          break;
-        case constant_ABC_KI_Splash:
-          setFunction(displayIndex, "splash", false);
-          break;
-        case constant_ABC_KI_Normal:
-          setFunction(displayIndex, "normal", false);
-          break;
-        case false:
-          setFunction(displayIndex, "off", false);
-          break;
-        default:
-          console.log("Bad note in setNotesFromABCArray: " + abcArray[i]);
-          break;
-      }
-    }
+    //   switch (abcArray[i]) {
+    //     case constant_ABC_STICK_R:
+    //       setFunction(displayIndex, "right", false);
+    //       break;
+    //     case constant_ABC_STICK_L:
+    //       setFunction(displayIndex, "left", false);
+    //       break;
+    //     case constant_ABC_STICK_BOTH:
+    //       setFunction(displayIndex, "both", false);
+    //       break;
+    //     case constant_ABC_STICK_COUNT:
+    //       setFunction(displayIndex, "count", false);
+    //       break;
+    //     case constant_ABC_STICK_OFF:
+    //       setFunction(displayIndex, "off", false);
+    //       break;
+    //     case constant_ABC_HH_Ride:
+    //       setFunction(displayIndex, "ride", false);
+    //       break;
+    //     case constant_ABC_HH_Ride_Bell:
+    //       setFunction(displayIndex, "ride_bell", false);
+    //       break;
+    //     case constant_ABC_HH_Cow_Bell:
+    //       setFunction(displayIndex, "cow_bell", false);
+    //       break;
+    //     case constant_ABC_HH_Crash:
+    //       setFunction(displayIndex, "crash", false);
+    //       break;
+    //     case constant_ABC_HH_Stacker:
+    //       setFunction(displayIndex, "stacker", false);
+    //       break;
+    //     case constant_ABC_HH_Metronome_Normal:
+    //       setFunction(displayIndex, "metronome_normal", false);
+    //       break;
+    //     case constant_ABC_HH_Metronome_Accent:
+    //       setFunction(displayIndex, "metronome_accent", false);
+    //       break;
+    //     case constant_ABC_HH_Open:
+    //       setFunction(displayIndex, "open", false);
+    //       break;
+    //     case constant_ABC_HH_Close:
+    //       setFunction(displayIndex, "close", false);
+    //       break;
+    //     case constant_ABC_HH_Accent:
+    //       setFunction(displayIndex, "accent", false);
+    //       break;
+    //     case constant_ABC_HH_Normal:
+    //       setFunction(displayIndex, "normal", false);
+    //       break;
+    //     case constant_ABC_T1_Normal:
+    //       setFunction(displayIndex, "normal", false);
+    //       break;
+    //     case constant_ABC_T4_Normal:
+    //       setFunction(displayIndex, "normal", false);
+    //       break;
+    //     case constant_ABC_SN_Ghost:
+    //       setFunction(displayIndex, "ghost", false);
+    //       break;
+    //     case constant_ABC_SN_Accent:
+    //       setFunction(displayIndex, "accent", false);
+    //       break;
+    //     case constant_ABC_SN_Normal:
+    //       setFunction(displayIndex, "normal", false);
+    //       break;
+    //     case constant_ABC_SN_Flam:
+    //       setFunction(displayIndex, "flam", false);
+    //       break;
+    //     case constant_ABC_SN_Drag:
+    //       setFunction(displayIndex, "drag", false);
+    //       break;
+    //     case constant_ABC_SN_XStick:
+    //       setFunction(displayIndex, "xstick", false);
+    //       break;
+    //     case constant_ABC_SN_Buzz:
+    //       setFunction(displayIndex, "buzz", false);
+    //       break;
+    //     case constant_ABC_KI_SandK:
+    //       setFunction(displayIndex, "kick_and_splash", false);
+    //       break;
+    //     case constant_ABC_KI_Splash:
+    //       setFunction(displayIndex, "splash", false);
+    //       break;
+    //     case constant_ABC_KI_Normal:
+    //       setFunction(displayIndex, "normal", false);
+    //       break;
+    //     case false:
+    //       setFunction(displayIndex, "off", false);
+    //       break;
+    //     default:
+    //       console.log("Bad note in setNotesFromABCArray: " + abcArray[i]);
+    //       break;
+    //   }
+    // }
   }
 
   // get a really long URL that encodes all of the notes and the rest of the state of the page.
   // this will allow us to bookmark or reference a groove and handle undo/redo.
   //
-  function get_FullURLForPage(url_destination) {
-    var myGrooveData = root.grooveDataFromClickableUI()
-    // return root.myGrooveUtils.getUrlStringFromGrooveData(myGrooveData, url_destination)
-    return root.myGrooveData.toUrl();
+  get_FullURLForPage(url_destination?) {
+    var myGrooveData = this.grooveDataFromClickableUI()
+    // return this.myGrooveUtils.getUrlStringFromGrooveData(myGrooveData, url_destination)
+    return this.data.toUrl();
   }
 
-  root.show_MetronomeAutoSpeedupConfiguration = function () {
+  show_MetronomeAutoSpeedupConfiguration() {
     var popup = document.getElementById("metronomeAutoSpeedupConfiguration");
 
     if (popup) {
       popup.style.display = "block";
     }
 
-    document.getElementById('metronomeAutoSpeedupTempoIncreaseAmountOutput').innerHTML = document.getElementById('metronomeAutoSpeedupTempoIncreaseAmount').value;
-    document.getElementById('metronomeAutoSpeedupTempoIncreaseIntervalOutput').innerHTML = document.getElementById('metronomeAutoSpeedupTempoIncreaseInterval').value;
-  };
+    document.getElementById('metronomeAutoSpeedupTempoIncreaseAmountOutput').innerHTML = (document.getElementById('metronomeAutoSpeedupTempoIncreaseAmount') as HTMLInputElement).value;
+    document.getElementById('metronomeAutoSpeedupTempoIncreaseIntervalOutput').innerHTML = (document.getElementById('metronomeAutoSpeedupTempoIncreaseInterval') as HTMLInputElement).value;
+  }
 
-  root.close_MetronomeAutoSpeedupConfiguration = function (type) {
+  close_MetronomeAutoSpeedupConfiguration(type) {
     var popup = document.getElementById("metronomeAutoSpeedupConfiguration");
 
     if (popup)
       popup.style.display = "none";
-  };
+  }
 
-  root.timeSigPopupOpen = function (type) {
+  timeSigPopupOpen(type) {
     var popup = document.getElementById("timeSigPopup");
-
     if (popup)
       popup.style.display = "block";
-
-  };
+  }
 
   // turns on or off triplet 1/4 and 1/8 note selection based on the current time sig setting
-  root.setTimeDivisionSelectionOnOrOff = function () {
+  setTimeDivisionSelectionOnOrOff() {
 
     // check for incompatible odd time signature division  9/16 and 1/8 notes for instance
-    if ((8 * class_timeSig.top / class_timeSig.bottom.value) % 1 != 0) {
-      addOrRemoveKeywordFromClassById("subdivision_8ths", "disabled", true);
+    if ((8 * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 != 0) {
+      this.addClassById("subdivision_8ths", "disabled", true);
     } else {
-      addOrRemoveKeywordFromClassById("subdivision_8ths", "disabled", false);
+      this.addClassById("subdivision_8ths", "disabled", false);
     }
 
-    if (class_timeSig.bottom .value!= 4) {
+    if (this.data.timeSig.bottom.value !== 4) {
       // triplets are too complicated right now outside of x/4 time.
       // disable them
-
-      addOrRemoveKeywordFromClassById("subdivision_12ths", "disabled", true);
-      addOrRemoveKeywordFromClassById("subdivision_24ths", "disabled", true);
-      addOrRemoveKeywordFromClassById("subdivision_48ths", "disabled", true);
+      this.addClassById("subdivision_12ths", "disabled", true);
+      this.addClassById("subdivision_24ths", "disabled", true);
+      this.addClassById("subdivision_48ths", "disabled", true);
 
     } else {
-      addOrRemoveKeywordFromClassById("subdivision_12ths", "disabled", false);
-      addOrRemoveKeywordFromClassById("subdivision_24ths", "disabled", false);
-      addOrRemoveKeywordFromClassById("subdivision_48ths", "disabled", false);
-
+      this.addClassById("subdivision_12ths", "disabled", false);
+      this.addClassById("subdivision_24ths", "disabled", false);
+      this.addClassById("subdivision_48ths", "disabled", false);
     }
   };
 
 
-  root.setTimeSigLabel = function () {
+  setTimeSigLabel() {
     // turn on/off special features that are only available in 4/4 time
-
     // set the label
-    document.getElementById("timeSigLabel").innerHTML = '<sup>' + class_timeSig.top + "</sup>/<sub>" + class_timeSig.bottom.value+ "</sub>";
-  };
+    document.getElementById("timeSigLabel").innerHTML = '<sup>' + this.data.timeSig.top + "</sup>/<sub>" + this.data.timeSig.bottom.value + "</sub>";
+  }
 
-  root.timeSigPopupClose = function (type, callback) {
+  timeSigPopupClose(type, callback) {
     var popup = document.getElementById("timeSigPopup");
 
     if (popup)
@@ -3812,28 +3677,28 @@ function GrooveWriter() {
 
     // ignore type "cancel"
     if (type == "ok") {
-      var newTimeSigTop = parseInt(document.getElementById("timeSigPopupTimeSigTop").value);
-      var newTimeSigBottom = parseInt(document.getElementById("timeSigPopupTimeSigBottom").value);
+      var newTimeSigTop = parseInt((document.getElementById("timeSigPopupTimeSigTop") as HTMLInputElement).value);
+      var newTimeSigBottom = parseInt((document.getElementById("timeSigPopupTimeSigBottom") as HTMLInputElement).value);
 
-      if (usingTriplets() && newTimeSigBottom != 4) {
-        root.changeDivision(16);  // switch to a non triplet division since they are not supported in this time signature
+      if (this.usingTriplets() && newTimeSigBottom != 4) {
+        this.changeDivision(Subdivision.SIXTEENTH);  // switch to a non triplet division since they are not supported in this time signature
       }
 
-      class_timeSig = new TimeSignature(newTimeSigTop, Subdivision.of(newTimeSigBottom));
-      var new_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(Subdivision.of(class_subDivision), class_timeSig);
+      this.data.timeSig = new TimeSignature(newTimeSigTop, Subdivision.of(newTimeSigBottom));
+      var new_notes_per_measure = this.data.notesPerMeasure;
       // If new_notes_per_measure is greater it will cause the changeDivision code to error
       // as it tries to read the notes from the UI.   Setting it lower will allow the code to truncate
       // the groove properly to something smaller rather than interpolating the groove into something weird
-      if (new_notes_per_measure < class_notes_per_measure)
-        class_notes_per_measure = new_notes_per_measure;
-      root.changeDivision(class_subDivision);   // use this function because it will relayout everything
+      // if (new_notes_per_measure < this.data.notesPerMeasure)
+      //   this.data.notesPerMeasure = new_notes_per_measure;
+      this.changeDivision(this.data.subdivision);   // use this function because it will relayout everything
     }
     if (callback) {
       callback();
     }
   };
 
-  root.updateRangeLabel = function (event, idToUpdate) {
+  updateRangeLabel(event, idToUpdate) {
     var element = document.getElementById(idToUpdate);
 
     if (element) {
@@ -3841,14 +3706,14 @@ function GrooveWriter() {
     }
   };
 
-  root.fillInFullURLInFullURLPopup = function () {
-    document.getElementById("embedCodeCheckbox").checked = false;  // uncheck embedCodeCheckbox
-    document.getElementById("shortenerCheckbox").checked = false;  // uncheck shortenerCheckbox
+  fillInFullURLInFullURLPopup() {
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;  // uncheck embedCodeCheckbox
+    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // uncheck shortenerCheckbox
 
     var popup = document.getElementById("fullURLPopup");
     if (popup) {
-      var fullURL = get_FullURLForPage();
-      var textField = document.getElementById("fullURLPopupTextField");
+      var fullURL = this.get_FullURLForPage();
+      var textField = document.getElementById("fullURLPopupTextField") as HTMLInputElement;
       textField.value = fullURL;
 
       popup.style.display = "block";
@@ -3857,9 +3722,9 @@ function GrooveWriter() {
       textField.focus();
       textField.select();
     }
-  };
+  }
 
-  root.show_FullURLPopup = function () {
+  show_FullURLPopup = function () {
     var popup = document.getElementById("fullURLPopup");
 
     var ShareBut = new ShareButton({
@@ -3872,7 +3737,7 @@ function GrooveWriter() {
       networks: {
         facebook: {
           before: function () {
-            this.url = document.getElementById("fullURLPopupTextField").value;
+            this.url = (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
             this.description = "Check out this groove.";
           },
           //app_id : "839699029418014"    // staging id
@@ -3885,20 +3750,20 @@ function GrooveWriter() {
         },
         twitter: {
           before: function () {
-            this.url = encodeURIComponent(document.getElementById("fullURLPopupTextField").value);
-            this.description = "Check out this groove:  " + document.getElementById("fullURLPopupTextField").value;
+            this.url = encodeURIComponent((document.getElementById("fullURLPopupTextField") as HTMLInputElement).value);
+            this.description = "Check out this groove:  " + (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
           }
         },
         reddit: {
           before: function () {
-            this.url = document.getElementById("fullURLPopupTextField").value;
-            this.title = "Check out this groove: " + document.getElementById("fullURLPopupTextField").value;
+            this.url = (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
+            this.title = "Check out this groove: " + (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
           }
         },
         email: {
           before: function () {
-            this.url = document.getElementById("fullURLPopupTextField").value;
-            this.description = "Check out this groove. %0A%0A " + encodeURIComponent(document.getElementById("fullURLPopupTextField").value);
+            this.url = (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
+            this.description = "Check out this groove. %0A%0A " + encodeURIComponent((document.getElementById("fullURLPopupTextField") as HTMLInputElement).value);
           }
         },
         pinterest: {
@@ -3914,13 +3779,13 @@ function GrooveWriter() {
     });
 
     // open the popup with full url and try to load short in the background
-    root.fillInFullURLInFullURLPopup();
+    this.fillInFullURLInFullURLPopup();
     // default is to use shortened url
-    fillInShortenedURLInFullURLPopup(get_FullURLForPage(), 'fullURLPopupTextField');
+    this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
   };
 
-  root.copyShareURLToClipboard = function () {
-    var copyText = document.getElementById("fullURLPopupTextField");
+  copyShareURLToClipboard() {
+    var copyText = document.getElementById("fullURLPopupTextField") as HTMLInputElement;
 
     copyText.select();
     // hack fix for mobile
@@ -3929,15 +3794,15 @@ function GrooveWriter() {
     document.execCommand("copy");
   }
 
-  root.close_FullURLPopup = function () {
+  close_FullURLPopup() {
     var popup = document.getElementById("fullURLPopup");
 
     if (popup)
       popup.style.display = "none";
   };
 
-  function fillInShortenedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
-    document.getElementById("embedCodeCheckbox").checked = false;  // uncheck embedCodeCheckbox, because it is not compatible
+  fillInShortenedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;  // uncheck embedCodeCheckbox, because it is not compatible
 
     var params = {
       "dynamicLinkInfo": {
@@ -3953,14 +3818,14 @@ function GrooveWriter() {
       if (xhr.status === 200) {
         // success
         var response = JSON.parse(xhr.responseText);
-        var textField = document.getElementById(cssIdOfTextFieldToFill);
+        var textField = document.getElementById(cssIdOfTextFieldToFill) as HTMLInputElement;
         textField.value = response.shortLink;
         // select the URL for copy/paste
         textField.focus();
         textField.select();
-        document.getElementById("shortenerCheckbox").checked = true;  // this is now true if isn't already
+        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = true;  // this is now true if isn't already
       } else {
-        document.getElementById("shortenerCheckbox").checked = false;  // request failed
+        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // request failed
       }
     };
     xhr.send(JSON.stringify(params));
@@ -3969,13 +3834,13 @@ function GrooveWriter() {
 
   // embed looks something like this:
   // <iframe width="100%" height="240" src="https://hosting.com/path/GrooveDisplay.html?Div=16&Title=Example..." frameborder="0" ></iframe>
-  function fillInEmbedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
-    document.getElementById("shortenerCheckbox").checked = false;  // uncheck shortenerCheckbox, because it is not compatible
-    document.getElementById("embedCodeCheckbox").checked = true;  // this will be true if isn't already
+  fillInEmbedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
+    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // uncheck shortenerCheckbox, because it is not compatible
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = true;  // this will be true if isn't already
 
     var embedText = '<iframe width="100%" height="240" src="' + fullURL + '" frameborder="0" ></iframe>	';
 
-    var textField = document.getElementById(cssIdOfTextFieldToFill);
+    var textField = document.getElementById(cssIdOfTextFieldToFill) as HTMLInputElement;
     textField.value = embedText;
 
     // select the URL for copy/paste
@@ -3983,23 +3848,23 @@ function GrooveWriter() {
     textField.select();
   }
 
-  root.shortenerCheckboxChanged = function () {
-    if (document.getElementById("shortenerCheckbox").checked) {
-      fillInShortenedURLInFullURLPopup(get_FullURLForPage(), 'fullURLPopupTextField');
+  shortenerCheckboxChanged() {
+    if ((document.getElementById("shortenerCheckbox") as HTMLInputElement).checked) {
+      this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
     } else {
-      root.fillInFullURLInFullURLPopup();
+      this.fillInFullURLInFullURLPopup();
     }
   };
 
-  root.embedCodeCheckboxChanged = function () {
-    if (document.getElementById("embedCodeCheckbox").checked) {
-      fillInEmbedURLInFullURLPopup(get_FullURLForPage("display"), 'fullURLPopupTextField');
+  embedCodeCheckboxChanged() {
+    if ((document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked) {
+      this.fillInEmbedURLInFullURLPopup(this.get_FullURLForPage("display"), 'fullURLPopupTextField');
     } else {
-      fillInShortenedURLInFullURLPopup(get_FullURLForPage(), 'fullURLPopupTextField');
+      this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
     }
   };
 
-  function set_Default_notes(encodedURLData) {
+  set_Default_notes(encodedURLData) {
     var Division;
     var Stickings;
     var HH;
@@ -4007,44 +3872,44 @@ function GrooveWriter() {
     var Kick;
     var stickings_set_from_URL = false;
 
-    root.data.fromUrl(encodedURLData);
+    this.data.fromUrl(encodedURLData);
 
     // TODO
-    // if (root.myGrooveData.notesPerMeasure != class_notes_per_measure || class_number_of_measures != root.myGrooveData.numberOfMeasures) {
-    //   class_number_of_measures = root.myGrooveData.numberOfMeasures;
-    //   changeDivisionWithNotes(root.myGrooveData.timeDivision);
+    // if (this.myGrooveData.notesPerMeasure != this.data.notesPerMeasure || this.data.numberOfMeasures != this.myGrooveData.numberOfMeasures) {
+    //   this.data.numberOfMeasures = this.myGrooveData.numberOfMeasures;
+    //   changeDivisionWithNotes(this.myGrooveData.timeDivision);
     // }
 
-    // root.expandAuthoringViewWhenNecessary(class_notes_per_measure, class_number_of_measures);
+    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
 
-    // setNotesFromABCArray("Stickings", root.myGrooveData.sticking_array, class_number_of_measures);
-    // setNotesFromABCArray("H", root.myGrooveData.hh_array, class_number_of_measures);
-    // setNotesFromABCArray("T1", root.myGrooveData.toms_array[0], class_number_of_measures);
-    // setNotesFromABCArray("T4", root.myGrooveData.toms_array[3], class_number_of_measures);
-    // setNotesFromABCArray("S", root.myGrooveData.snare_array, class_number_of_measures);
-    // setNotesFromABCArray("K", root.myGrooveData.kick_array, class_number_of_measures);
+    // setNotesFromABCArray("Stickings", this.myGrooveData.sticking_array, this.data.numberOfMeasures);
+    // setNotesFromABCArray("H", this.myGrooveData.hh_array, this.data.numberOfMeasures);
+    // setNotesFromABCArray("T1", this.myGrooveData.toms_array[0], this.data.numberOfMeasures);
+    // setNotesFromABCArray("T4", this.myGrooveData.toms_array[3], this.data.numberOfMeasures);
+    // setNotesFromABCArray("S", this.myGrooveData.snare_array, this.data.numberOfMeasures);
+    // setNotesFromABCArray("K", this.myGrooveData.kick_array, this.data.numberOfMeasures);
 
-    if (root.data.showToms)
-      root.showHideToms(true, true, true);
+    if (this.data.showToms)
+      this.showHideToms(true, true, true);
 
-    if (root.data.showStickings)
-      root.stickingsShowHide(true, true, true);
+    if (this.data.showStickings)
+      this.stickingsShowHide(true, true, true);
 
-    document.getElementById("tuneTitle").value = root.data.title;
-    document.getElementById("tuneAuthor").value = root.data.author;
-    document.getElementById("tuneComments").value = root.data.comments;
-    root.myGrooveUtils.setTempo(root.myGrooveData.tempo);
-    root.myGrooveUtils.setSwing(root.myGrooveData.swingPercent);
-    root.setMetronomeFrequency(root.myGrooveData.metronomeFrequency);
-    updateSheetMusic();
+    (document.getElementById("tuneTitle") as HTMLInputElement).value = this.data.title;
+    (document.getElementById("tuneAuthor") as HTMLInputElement).value = this.data.author;
+    (document.getElementById("tuneComments") as HTMLInputElement).value = this.data.comments;
+    this.myGrooveUtils.setTempo(this.data.tempo);
+    this.myGrooveUtils.setSwing(this.data.swingPercent);
+    this.setMetronomeFrequency(this.data.metronomeFrequency);
+    this.updateSheetMusic();
   }
 
-  root.loadNewGroove = function (encodedURLData) {
-    set_Default_notes(encodedURLData);
+  loadNewGroove(encodedURLData) {
+    this.set_Default_notes(encodedURLData);
   };
 
-  function getABCDataWithLineEndings() {
-    var myABC = document.getElementById("ABCsource").value;
+  getABCDataWithLineEndings() {
+    var myABC = (document.getElementById("ABCsource") as HTMLInputElement).value;
 
     // add proper line endings for windows
     myABC = myABC.replace(/\r?\n/g, "\r\n");
@@ -4052,8 +3917,8 @@ function GrooveWriter() {
     return myABC;
   }
 
-  root.saveABCtoFile = function () {
-    var myABC = getABCDataWithLineEndings();
+  saveABCtoFile() {
+    var myABC = this.getABCDataWithLineEndings();
 
     var myURL = 'data:text/plain;charset=utf-8;base64,' + btoa(myABC);
 
@@ -4068,72 +3933,73 @@ function GrooveWriter() {
   //
   // OMG this needs to be refactored really bad.   There is a GrooveData struct from groove utils that
   //      would make this whole thing much easier.  :(
-  function changeDivisionWithNotes(newDivision, Stickings, HH, Tom1, Tom4, Snare, Kick) {
-    var oldDivision = class_subDivision;
-    var wasStickingsVisable = isStickingsVisible();
-    var wasTomsVisable = isTomsVisible();
+  changeDivisionWithNotes(newDivision, Stickings, HH, Tom1, Tom4, Snare, Kick) {
+    var oldDivision = (this as any).class_subDivision;
+    var wasStickingsVisable = this.isStickingsVisible();
+    var wasTomsVisable = this.isTomsVisible();
 
-    class_subDivision = newDivision;
-    class_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure(class_subDivision, class_timeSig);
+    (this as any).class_subDivision = newDivision;
 
-    var newHTML = "";
-    for (var cur_measure = 1; cur_measure <= class_number_of_measures; cur_measure++) {
-      newHTML += root.HTMLforStaffContainer(cur_measure, (cur_measure - 1) * class_notes_per_measure);
-    }
+    this.addMeasureHtml((this as any).measureContainer);
 
-    // rewrite the HTML for the HTML note grid
-    document.getElementById("measureContainer").innerHTML = newHTML;
+    // var newHTML = "";
+    // for (var cur_measure = 1; cur_measure <= this.data.numberOfMeasures; cur_measure++) {
+    //   newHTML += this.HTMLforStaffContainer(cur_measure, (cur_measure - 1) * this.data.notesPerMeasure);
+    // }
+
+    // // rewrite the HTML for the HTML note grid
+    // document.getElementById("measureContainer").innerHTML = newHTML;
 
     // change the Permutation options too
-    newHTML = root.HTMLforPermutationOptions();
+    const newHTML = this.HTMLforPermutationOptions();
     document.getElementById("PermutationOptions").innerHTML = newHTML;
 
     if (wasStickingsVisable)
-      root.stickingsShowHide(true, true, true);
+      this.stickingsShowHide(true, true, true);
 
     if (wasTomsVisable)
-      root.showHideToms(true, true, true);
+      this.showHideToms(true, true, true);
 
     // now set the right notes on and off
     if (Stickings && HH && Tom1 && Tom4 && Snare && Kick) {
-      setNotesFromURLData("Stickings", Stickings, class_number_of_measures);
-      setNotesFromURLData("H", HH, class_number_of_measures);
-      setNotesFromURLData("T1", Tom1, class_number_of_measures);
-      setNotesFromURLData("T4", Tom4, class_number_of_measures);
-      setNotesFromURLData("S", Snare, class_number_of_measures);
-      setNotesFromURLData("K", Kick, class_number_of_measures);
+      (this as any).setNotesFromURLData("Stickings", Stickings, this.data.numberOfMeasures);
+      (this as any).setNotesFromURLData("H", HH, this.data.numberOfMeasures);
+      (this as any).setNotesFromURLData("T1", Tom1, this.data.numberOfMeasures);
+      (this as any).setNotesFromURLData("T4", Tom4, this.data.numberOfMeasures);
+      (this as any).setNotesFromURLData("S", Snare, this.data.numberOfMeasures);
+      (this as any).setNotesFromURLData("K", Kick, this.data.numberOfMeasures);
     }
 
     // un-highlight the old div
-    unselectButton(document.getElementById("subdivision_" + oldDivision + "ths"));
+    this.unselectButton(document.getElementById("subdivision_" + oldDivision + "ths"));
 
     // highlight the new div
-    selectButton(document.getElementById("subdivision_" + class_subDivision + "ths"));
+    this.selectButton(document.getElementById("subdivision_" + (this as any).class_subDivision + "ths"));
 
     // This may disable or enable the menu
-    setupPermutationMenu();
+    this.setupPermutationMenu();
 
     // may turn on or off triplets and 1/4 or 1/8th notes based on time signature
-    root.setTimeDivisionSelectionOnOrOff();
+    this.setTimeDivisionSelectionOnOrOff();
 
     // change the time label
-    root.setTimeSigLabel();
+    this.setTimeSigLabel();
 
     // enable or disable swing
     // TODO
-    // root.myGrooveUtils.swingEnabled(root.myGrooveUtils.doesDivisionSupportSwing(newDivision));
+    // this.myGrooveUtils.swingEnabled(this.myGrooveUtils.doesDivisionSupportSwing(newDivision));
   }
 
-  root.expandAuthoringViewWhenNecessary = function (numNotesPerMeasure, numberOfMeasures) {
+  expandAuthoringViewWhenNecessary(numNotesPerMeasure, numberOfMeasures) {
 
     // set the size of the musicalInput authoring element based on the number of notes
     if (numNotesPerMeasure > 16 ||
-      (numNotesPerMeasure > 4 && class_number_of_measures > 1) ||
-      (class_number_of_measures > 2)) {
-      addOrRemoveKeywordFromClassById("musicalInput", "expanded", true);
+      (numNotesPerMeasure > 4 && this.data.numberOfMeasures > 1) ||
+      (this.data.numberOfMeasures > 2)) {
+      this.addClassById("musicalInput", "expanded", true);
 
     } else {
-      addOrRemoveKeywordFromClassById("musicalInput", "expanded", false);
+      this.addClassById("musicalInput", "expanded", false);
 
     }
   };
@@ -4141,8 +4007,7 @@ function GrooveWriter() {
   // change the base division to something else.
   // eg  16th to 8ths or   32nds to 8th note triplets
   // need to re-layout the html notes, change any globals and then reinitialize
-  var have_shown_mixed_division_message = false;
-  root.changeDivision = function (newDivision) {
+  changeDivision(newDivision: Subdivision) {
     var uiStickings = "|";
     var uiHH = "|";
     var uiTom1 = "|";
@@ -4150,67 +4015,298 @@ function GrooveWriter() {
     var uiSnare = "|";
     var uiKick = "|";
 
-    if (newDivision == 48 && !have_shown_mixed_division_message) {
-      have_shown_mixed_division_message = true;
+    if ((newDivision as any) == 48 && !this.have_shown_mixed_division_message) {
+      this.have_shown_mixed_division_message = true;
       alert("The MIXED subdivision allows you to create a combination of triplets and non-triplet notes in one measure.  Set every 3rd note for 16ths and every 6th note for 8th notes")
     }
 
-    var isNewDivisionTriplets = root.myGrooveUtils.isTripletDivision(newDivision);
-    var new_notes_per_measure = root.myGrooveUtils.tabNumberOfNotesPerMeasure((isNewDivisionTriplets ? 48 : 32), class_timeSig);
+    var isNewDivisionTriplets = this.myGrooveUtils.isTripletDivision(newDivision as any);
+    var new_notes_per_measure = this.data.notesPerMeasure;
 
     // check for incompatible odd time signature division   9/8 and 1/4notes for instance or 9/16 and 1/8notes
-    if ((newDivision * class_timeSig.top / class_timeSig.bottom.value) % 1 != 0) {
-      alert("1/" + newDivision + " notes are disabled in " + class_timeSig.top + "/" + class_timeSig.bottom .value+ " time.  This combination would result in a half note.");
+    if (((newDivision as any) * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 != 0) {
+      alert("1/" + newDivision + " notes are disabled in " + this.data.timeSig.top + "/" + this.data.timeSig.bottom.value + " time.  This combination would result in a half note.");
       return;
     }
-    if (isNewDivisionTriplets && class_timeSig.bottom .value!= 4) {
-      alert("Triplets are disabled in " + class_timeSig.top + "/" + class_timeSig.bottom .value+ " time.  Use x/4 time for triplets.");
+    if (isNewDivisionTriplets && this.data.timeSig.bottom.value != 4) {
+      alert("Triplets are disabled in " + this.data.timeSig.top + "/" + this.data.timeSig.bottom.value + " time.  Use x/4 time for triplets.");
       return;
     }
 
-    if (usingTriplets() === isNewDivisionTriplets) {
+    if (this.usingTriplets() === isNewDivisionTriplets) {
       // get the encoded notes out of the UI.
       // run through both measures.
-      var topIndex = class_notes_per_measure * class_number_of_measures;
+      var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
       for (var i = 0; i < topIndex; i++) {
-        uiStickings += get_sticking_state(i, "URL");
-        uiHH += get_hh_state(i, "URL");
-        uiTom1 += get_tom_state(i, 1, "URL");
-        uiTom4 += get_tom_state(i, 4, "URL");
-        uiSnare += get_snare_state(i, "URL");
-        uiKick += get_kick_state(i, "URL");
+        uiStickings += this.get_sticking_state(i, "URL");
+        uiHH += this.get_hh_state(i).url;
+        uiTom1 += this.get_tom_state(i, 1).url;
+        uiTom4 += this.get_tom_state(i, 4).url;
+        uiSnare += this.get_snare_state(i).url;
+        uiKick += this.get_kick_state(i, "URL");
       }
 
       // override the hi-hat if we are going to a higher division.
       // otherwise the notes get lost in translation (not enough)
-      //if (newDivision > class_notes_per_measure)
-      //	uiHH = root.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, class_number_of_measures);
+      //if (newDivision > this.data.notesPerMeasure)
+      //	uiHH = this.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, this.data.numberOfMeasures);
     } else {
       // changing from or changing to a triplet division
       // triplets don't scale well, so use defaults when we change
-      uiStickings = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
-      uiHH = root.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_number_of_measures);
-      uiTom1 = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
-      uiTom4 = root.myGrooveUtils.buildEmptyTabString(new_notes_per_measure, class_number_of_measures);
-      uiSnare = root.myGrooveUtils.GetDefaultSnareGroove(new_notes_per_measure, class_timeSig, class_number_of_measures);
-      uiKick = root.myGrooveUtils.GetDefaultKickGroove(new_notes_per_measure, class_timeSig, class_number_of_measures);
+      uiStickings = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
+      uiHH = (this.myGrooveUtils as any).GetDefaultHHGroove(new_notes_per_measure, this.data.numberOfMeasures);
+      uiTom1 = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
+      uiTom4 = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
+      uiSnare = (this.myGrooveUtils as any).GetDefaultSnareGroove(new_notes_per_measure, this.data.timeSig, this.data.numberOfMeasures);
+      uiKick = (this.myGrooveUtils as any).GetDefaultKickGroove(new_notes_per_measure, this.data.timeSig, this.data.numberOfMeasures);
 
       // reset the metronome click, since it has different options
-      root.resetMetronomeOptionsMenuOffsetClick();
+      this.resetMetronomeOptionsMenuOffsetClick();
     }
 
-    root.expandAuthoringViewWhenNecessary(newDivision, class_number_of_measures);
+    this.expandAuthoringViewWhenNecessary(newDivision, this.data.numberOfMeasures);
 
-    changeDivisionWithNotes(newDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    this.changeDivisionWithNotes(newDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
 
-    updateSheetMusic();
+    this.updateSheetMusic();
   };
+
+  createLineLabels(measure: number): E {
+    return E.of('div', undefined, 'line-labels', listOf(
+      E.of('div', undefined, 'hh-label').setContent('Hi-hat').addHandlers({
+        onclick: (event) => this.noteLabelClick(event, 'hh', measure),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteLabelClick(event, 'hh', measure);
+        },
+      }),
+      E.of('div', 'tom1-label', 'tom-label').setContent('Tom').addHandlers({
+        onclick: (event) => this.noteLabelClick(event, 'tom1', measure),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteLabelClick(event, 'tom1', measure);
+        },
+      }),
+      E.of('div', undefined, 'snare-label').setContent('Snare').addHandlers({
+        onclick: (event) => this.noteLabelClick(event, 'snare', measure),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteLabelClick(event, 'snare', measure);
+        },
+      }),
+      E.of('div', 'tom4-label', 'tom-label').setContent('Tom').addHandlers({
+        onclick: (event) => this.noteLabelClick(event, 'tom4', measure),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteLabelClick(event, 'tom4', measure);
+        },
+      }),
+      E.of('div', undefined, 'kick-label').setContent('Kick').addHandlers({
+        onclick: (event) => this.noteLabelClick(event, 'kick', measure),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteLabelClick(event, 'kick', measure);
+        },
+      }),
+    ));
+  }
+
+  createNotesContainer(measure: number): E {
+    const noteGroupingSize = this.data.timeSig.bottom.divideBy(this.data.subdivision);
+    const openingSpace = E.of('div', undefined, 'opening_note_space');
+    const endSpace = E.of('div', undefined, 'end_note_space');
+    const spaceBetweenGroups = E.of('div', undefined, 'space_between_note_groups');
+
+    const highlights: E[] = [];
+    const hihats: E[] = [];
+    const snares: E[] = [];
+    const kicks: E[] = [];
+    const toms1: E[] = [];
+    const toms4: E[] = [];
+    const all = [highlights, hihats, toms1, toms4, snares, kicks];
+
+    for (let i = 0; i < this.data.notesPerMeasure; i++) {
+      const index = i + (measure * this.data.notesPerMeasure);
+      if (i === 0) {
+        all.forEach(arr => arr.push(openingSpace));
+      }
+      if (i > 0 && i % noteGroupingSize === 0) {
+        all.forEach(arr => arr.push(spaceBetweenGroups));
+      }
+
+      // Highlights
+      highlights.push(E.of('div', `bg-highlight${index}`, 'bg-highlight'));
+
+      // Hihats
+      const hihat = E.of('div', `hi-hat${index}`, 'hi-hat').addHandlers({
+        onclick: (event) => this.noteLeftClick(event, 'hh', index),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteRightClick(event, 'hh', index);
+        },
+        onmouseenter: (event) => this.noteOnMouseEnter(event, 'hh', index)
+      });
+      AbcNote.HH_ALL.forEach((note) => {
+        const htmlPrefix = note.getFirstHtmlIdPrefix();
+        hihat.addChild(
+          E.of('div', `${htmlPrefix}${index}`, ['note_part', htmlPrefix], listOf(
+            E.of('i', undefined, `fa ${note.htmlAttrs.iconClass || ''}`))));
+      });
+      hihats.push(hihat);
+
+      // Snares
+      const snare = E.of('div', `snare${index}`, 'snare').addHandlers({
+        onclick: (event) => this.noteLeftClick(event, 'snare', index),
+        oncontextmenu: (event) => {
+          event.preventDefault();
+          this.noteRightClick(event, 'snare', index);
+        },
+        onmouseenter: (event) => this.noteOnMouseEnter(event, 'snare', index)
+      });
+      AbcNote.SN_ALL.forEach((note) => {
+        const htmlPrefix = note.getFirstHtmlIdPrefix();
+        if (note.note === AbcNote.SN_GHOST.note) {
+          const snare_ghost = E.of('div', `snare_ghost${index}`, ['note_part', htmlPrefix]);
+          snare_ghost.innerHTML = `(<i class="fa fa-${note.htmlAttrs.iconClass || ''} dot_in_snare_ghost_note"></i>)`;
+          snare.addChild(snare_ghost);
+          return;
+        }
+        if (note.note === AbcNote.SN_FLAM.note) {
+          const snare_flam = E.of('div', `snare_flam${index}`, ['note_part', htmlPrefix]);
+          snare_flam.innerHTML = SNARE_FLAM_SVG;
+          snare.addChild(snare_flam);
+          return;
+        }
+        if (note.note === AbcNote.SN_DRAG.note) {
+          const snare_drag = E.of('div', `snare_drag${index}`, ['note_part', htmlPrefix]);
+          snare_drag.innerHTML = SNARE_DRAG_SVG;
+          snare.addChild(snare_drag);
+          return;
+        }
+        snare.addChild(
+          E.of('div', `${htmlPrefix}${index}`, ['note_part', htmlPrefix], listOf(
+            E.of('i', undefined, `fa ${note.htmlAttrs.iconClass || ''}`))));
+      });
+      snares.push(snare);
+
+      // Kicks
+      const kick = E.of('div', `kick${index}`, 'kick', listOf(
+        E.of('div', `${AbcNote.KI_NORMAL.getFirstHtmlIdPrefix()}${index}`, ['note_part', AbcNote.KI_NORMAL.getFirstHtmlIdPrefix()]),
+        E.of('div', `${AbcNote.KI_SPLASH.getFirstHtmlIdPrefix()}${index}`, ['note_part', AbcNote.KI_SPLASH.getFirstHtmlIdPrefix()], listOf(
+          E.of('i', undefined, `fa ${AbcNote.KI_SPLASH.htmlAttrs.iconClass || ''}`)
+        )).addHandlers({
+          onclick: (event) => this.noteLeftClick(event, 'kick', index),
+          oncontextmenu: (event) => {
+            event.preventDefault();
+            this.noteRightClick(event, 'kick', index);
+          },
+          onmouseenter: (event) => this.noteOnMouseEnter(event, 'kick', index)
+        })));
+
+      // Toms
+
+      if (i === this.data.notesPerMeasure - 1) {
+        all.forEach(arr => arr.push(endSpace));
+      }
+    }
+
+    return E.of('div', undefined, 'music-line-container', listOf(
+      E.of('div', undefined, 'notes-container', listOf(
+        E.of('div', undefined, 'staff-line-1'),
+        E.of('div', undefined, 'staff-line-2'),
+        E.of('div', undefined, 'staff-line-3'),
+        E.of('div', undefined, 'staff-line-4'),
+        E.of('div', undefined, 'staff-line-5'),
+        E.of('div', undefined, 'background-highlight-container'),
+        E.of('div', undefined, 'hi-hat-container'),
+        E.of('div', undefined, 'toms-container'),
+        E.of('div', undefined, 'snare-container'),
+        E.of('div', undefined, 'toms-container'),
+        E.of('div', undefined, 'kick-container'),
+      ))));
+  }
+
+  addMeasureHtml(measureContainer: HTMLElement) {
+    const noteGroupingSize = this.data.timeSig.bottom.divideBy(this.data.subdivision);
+    const measures: Array<E> = [];
+
+    for (let measure = 0; measure < this.data.numberOfMeasures; measure++) {
+      const showRemoveButton = this.data.numberOfMeasures > 1 && measure > 0;
+
+      const stickings = [];
+      for (let i = 0; i < this.data.notesPerMeasure; i++) {
+        i = i + (measure * this.data.notesPerMeasure);
+        const handlers = {
+          onclick: (event) => this.noteLeftClick(event, 'sticking', i),
+          oncontextmenu: (event) => {
+            event.preventDefault();
+            this.noteRightClick(event, 'sticking', i);
+          },
+        }
+        const sticking = E.of('div', `sticking${i}`, 'sticking', listOf(
+          E.of('div', `sticking_right${i}`, listOf('sticking_right', 'note_part')).setContent('R').addHandlers({
+            onclick: handlers.onclick,
+            oncontextmenu: handlers.oncontextmenu,
+            onmouseenter: (event) => this.noteOnMouseEnter(event, 'sticking', i),
+          }),
+          E.of('div', `sticking_left${i}`, listOf('sticking_left', 'note_part')).setContent('L').addHandlers(handlers),
+          E.of('div', `sticking_both${i}`, listOf('sticking_both', 'note_part')).setContent('R/L').addHandlers(handlers),
+          E.of('div', `sticking_count${i}`, listOf('sticking_count', 'note_part')).setContent('C').addHandlers(handlers)
+        ));
+
+        stickings.push(sticking);
+        // Add space between every note grouping, except the last one.
+        if (i % noteGroupingSize == 0 && i < this.data.notesPerMeasure - 1) {
+          stickings.push(E.of('div', undefined, 'space_between_note_groups'));
+        }
+      }
+
+      const staffContainer = E.of('div', 'staff-container' + measure.toString(), 'staff-container', listOf(
+        E.of('div', undefined, 'stickings-row-container', listOf(
+          E.of('div', undefined, 'line-labels', listOf(
+            E.of('div', undefined, 'stickings-label').addHandlers({
+              onclick: (event) => this.noteLabelClick(event, 'stickings', measure),
+              oncontextmenu: (event) => {
+                event.preventDefault();
+                this.noteLabelClick(event, 'stickings', measure);
+              },
+            }),
+          )),
+          E.of('div', undefined, 'music-line-container', listOf(
+            E.of('div', undefined, 'notes-container', listOf(
+              E.of('div', undefined, 'stickings-container', listOf(
+                E.of('div', undefined, 'opening_note_space'),
+                stickings,
+                E.of('div', undefined, 'end_note_space')
+              ))
+            ))
+          )),
+          E.of('span', undefined, 'notes-row-container', listOf(
+            this.createLineLabels(measure),
+            this.createNotesContainer(measure)
+          )),
+          showRemoveButton ? this.htmlRemoveMeasureButton(measure) : null,
+        ))));
+      measures.push(staffContainer);
+    }
+    measures.forEach((measure, index) => {
+      measure.addTo(measureContainer);
+    });
+  }
+
+  htmlRemoveMeasureButton(measure: number): E {
+    return E.of('span', 'closeMeasureButton' + measure, 'closeMeasureButton', listOf(
+      E.of('i', undefined, 'fa fa-times')
+    )).addHandlers({
+      onclick: (event) => this.closeMeasureButtonClick(measure),
+    });
+  }
 
   // public function
   // function to create HTML for the music staff and notes.   We usually want more than one of these
   // baseIndex is the index for the css labels "staff-container1, staff-container2"
   // indexStartForNotes is the index for the note ids.
-  root.HTMLforStaffContainer = function (baseindex, indexStartForNotes) {
+  HTMLforStaffContainer(baseindex: number, indexStartForNotes: number): string {
     var newHTML = ('\
 						<div class="staff-container" id="staff-container' + baseindex + '">\
 							<div class="stickings-row-container">\
@@ -4224,7 +4320,7 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="stickings-container">\
 											<div class="opening_note_space"> </div>');
-    for (var i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (var i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
 
       newHTML += ('\
 														<div id="sticking' + i + '" class="sticking">\n\
@@ -4236,7 +4332,7 @@ function GrooveWriter() {
 													');
 
       // add space between notes, exept on the last note
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div>\n');
       }
     }
@@ -4269,11 +4365,11 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="background-highlight-container">\
 											<div class="opening_note_space"> </div>');
-    for (i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
       newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" >\
 												</div>\n');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4283,7 +4379,7 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="hi-hat-container">\
 											<div class="opening_note_space"> </div>');
-    for (i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
 
       newHTML += ('\
 														<div id="hi-hat' + i + '" class="hi-hat" onClick="myGrooveWriter.noteLeftClick(event, \'hh\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh\', ' + i + ')">\
@@ -4301,7 +4397,7 @@ function GrooveWriter() {
 														</div>\n\
 													');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4312,14 +4408,14 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="toms-container" id="tom1-container">\
 											<div class="opening_note_space"> </div>');
-    for (i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
       newHTML += ('\
 						<div id="tom1-' + i + '" class="tom" onClick="myGrooveWriter.noteLeftClick(event, \'tom1\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'tom1\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'tom1\', ' + i + ')">\
 							<div class="tom_circle note_part"  id="tom_circle1-' + i + '"></div>\
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4330,7 +4426,7 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="snare-container">\
 											<div class="opening_note_space"> </div> ');
-    for (i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
       newHTML += ('' +
         '<div id="snare' + i + '" class="snare" onClick="myGrooveWriter.noteLeftClick(event, \'snare\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'snare\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'snare\', ' + i + ')">' +
         '<div class="snare_ghost note_part"  id="snare_ghost' + i + '">(<i class="fa fa-circle dot_in_snare_ghost_note"></i>)</div>' +
@@ -4385,7 +4481,7 @@ function GrooveWriter() {
 
 
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }
@@ -4396,14 +4492,14 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="toms-container" id="tom4-container">\
 											<div class="opening_note_space"> </div>');
-    for (i = indexStartForNotes; i < class_notes_per_measure + indexStartForNotes; i++) {
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
       newHTML += ('\
 						<div id="tom4-' + i + '" class="tom" onClick="myGrooveWriter.noteLeftClick(event, \'tom4\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'tom4\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'tom4\', ' + i + ')">\
 							<div class="tom_circle note_part"  id="tom_circle4-' + i + '"></div>\
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && i < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -4415,7 +4511,7 @@ function GrooveWriter() {
     newHTML += ('\
 										<div class="kick-container">\
 											<div class="opening_note_space"> </div> ');
-    for (var j = indexStartForNotes; j < class_notes_per_measure + indexStartForNotes; j++) {
+    for (var j = indexStartForNotes; j < this.data.notesPerMeasure + indexStartForNotes; j++) {
       newHTML += ('\
 														<div id="kick' + j + '" class="kick" onClick="myGrooveWriter.noteLeftClick(event, \'kick\', ' + j + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'kick\', ' + j + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'kick\', ' + j + ')">\
 														<div class="kick_splash note_part" id="kick_splash' + j + '"><i class="fa fa-times"></i></div>\
@@ -4423,7 +4519,7 @@ function GrooveWriter() {
 														</div> \n\
 													');
 
-      if ((j - (indexStartForNotes - 1)) % root.myGrooveUtils.noteGroupingSize(class_notes_per_measure, class_timeSig) === 0 && j < class_notes_per_measure + indexStartForNotes - 1) {
+      if ((j - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && j < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }
@@ -4435,65 +4531,65 @@ function GrooveWriter() {
 							</div>\
 						</span>\n');
 
-    if (class_number_of_measures > 1)
+    if (this.data.numberOfMeasures > 1)
       newHTML += '<span title="Remove Measure" id="closeMeasureButton' + baseindex + '" onClick="myGrooveWriter.closeMeasureButtonClick(' + baseindex + ')" class="closeMeasureButton"><i class="fa fa-times-circle"></i></span>';
     else
       newHTML += '<span class="closeMeasureButton"><i class="fa">&nbsp;&nbsp;&nbsp;</i></span>';
 
 
-    if (baseindex == class_number_of_measures) // add new measure button
+    if (baseindex == this.data.numberOfMeasures) // add new measure button
       newHTML += '<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>';
 
     newHTML += ('</div>');
 
     return newHTML;
-  }; // end function HTMLforStaffContainer
+  }
 
   // a click on a permutation option checkbox
-  root.permutationOptionClick = function (event) {
+  permutationOptionClick(event) {
 
     var optionId = event.target.id;
-    var checkbox = document.getElementById(optionId);
+    var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
     for (var i = 1; i < 5; i++) {
       var subOption = optionId + "_sub" + i;
 
-      checkbox = document.getElementById(subOption);
+      checkbox = document.getElementById(subOption) as HTMLInputElement;
       if (checkbox)
         checkbox.checked = OnElseOff;
     }
 
-    root.refresh_ABC();
+    this.refresh_ABC();
   };
 
   // a click on a permutation sub option checkbox
-  root.permutationSubOptionClick = function (event) {
+  permutationSubOptionClick(event) {
 
     var optionId = event.target.id;
-    var checkbox = document.getElementById(optionId);
+    var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
     if (OnElseOff) { // only do this if turning a sub option on
       // remove the "_sub" and the number on the end (the last char)
       var mainOption = optionId.replace("_sub", "").slice(0, -1);
 
-      checkbox = document.getElementById(mainOption);
+      checkbox = document.getElementById(mainOption) as HTMLInputElement;
       if (checkbox)
         checkbox.checked = true;
 
     }
 
-    root.refresh_ABC();
+    this.refresh_ABC();
   };
 
   // public function
   // function to create HTML for the music staff and notes.   We usually want more than one of these
   // baseIndex is the index for the css labels "staff-container1, staff-container2"
   // indexStartForNotes is the index for the note ids.
-  root.HTMLforPermutationOptions = function () {
+  HTMLforPermutationOptions() {
 
-    if (class_permutation_type == "none")
+    if (this.class_permutation_type == "none")
       return "";
 
     var optionTypeArray = [{
@@ -4527,7 +4623,7 @@ function GrooveWriter() {
     // Most of the types have 4 sub options
     // add up beats and down beats
     // add quads
-    if (!usingTriplets()) {
+    if (!this.usingTriplets()) {
       optionTypeArray[1].SubOptions = ["1", "e", "&", "a"]; // singles
       optionTypeArray[2].SubOptions = ["1", "e", "&", "a"]; // doubles
       optionTypeArray[3].SubOptions = ["1", "e", "&", "a"]; // triples
@@ -4547,7 +4643,7 @@ function GrooveWriter() {
       });
     }
 
-    switch (class_permutation_type) {
+    switch (this.class_permutation_type) {
       case "snare_16ths":
         optionTypeArray.splice(0, 0, {
           id: "PermuationOptionsAccentGrid",
@@ -4558,7 +4654,7 @@ function GrooveWriter() {
         });
         break;
       case "kick_16ths":
-        if (!usingTriplets())
+        if (!this.usingTriplets())
           optionTypeArray.splice(0, 0, {
             id: "PermuationOptionsSkipSomeFirstNotes",
             subid: "",
@@ -4604,5 +4700,6 @@ function GrooveWriter() {
     newHTML += '</span>\n';
     return newHTML;
   };
-
 } // end of class
+
+(globalThis as any).GrooveWriter = GrooveWriter;

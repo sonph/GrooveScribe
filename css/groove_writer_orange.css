@@ -292,6 +292,29 @@
 	.notes-row-container {
 		display: inline-block;
 	}
+	.notes-row-container .note-on {
+		color: rgb(0, 0, 0);
+	}
+	.notes-row-container .note-off{
+		color: rgb(255, 255, 255);
+		border-color: #999;
+	}
+	.notes-row-container .note-hidden{
+		color: transparent;
+		background-color: transparent;
+	}
+	.notes-row-container .snare-circle .note-on {
+		color: black;
+		border-color: #999;
+	}
+	.notes-row-container .kick-circle .note-on {
+		color: black;
+		border-color: #999;
+	}
+	.notes-row-container .tom-circle .note-on {
+		color: black;
+		border-color: #999;
+	}
 	.heading1 {
 		font-size: 30px;
 		font-weight: bold;
