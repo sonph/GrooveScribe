@@ -2168,10 +2168,22 @@ class GrooveWriter {
     return !!el && el.classList.contains('note-on');
   }
 
+  // A note is on iff *all* of its html_id_prefixes are on. Variants that share
+  // a prefix (HH_OPEN/CLOSE/ACCENT/NORMAL all use hh_cross) are distinguished
+  // by a secondary prefix, so single-prefix matching would always resolve to
+  // the first variant in iteration order.
+  _isAbcNoteOn(note: AbcNote, id: number | string): boolean {
+    const prefixes = getAsSet(note.htmlAttrs.html_id_prefix);
+    if (prefixes.size === 0) return false;
+    for (const prefix of prefixes) {
+      if (!this._isNoteOn(prefix + id)) return false;
+    }
+    return true;
+  }
+
   get_hh_state(id: number | string): { abc: string | false, url: string } {
     for (const note of AbcNote.HH_ALL) {
-      const prefix = note.getFirstHtmlIdPrefix();
-      if (prefix && this._isNoteOn(prefix + id)) {
+      if (this._isAbcNoteOn(note, id)) {
         return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
       }
     }
@@ -2180,8 +2192,7 @@ class GrooveWriter {
 
   get_snare_state(id: number | string): { abc: string | false, url: string } {
     for (const note of AbcNote.SN_ALL) {
-      const prefix = note.getFirstHtmlIdPrefix();
-      if (prefix && this._isNoteOn(prefix + id)) {
+      if (this._isAbcNoteOn(note, id)) {
         return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
       }
     }
@@ -2189,10 +2200,8 @@ class GrooveWriter {
   }
 
   get_kick_state(id: number | string, returnType?: string): any {
-    const splashPrefix = AbcNote.KI_SPLASH.getFirstHtmlIdPrefix();
-    const kickPrefix = AbcNote.KI_NORMAL.getFirstHtmlIdPrefix();
-    const splashOn = splashPrefix ? this._isNoteOn(splashPrefix + id) : false;
-    const kickOn = kickPrefix ? this._isNoteOn(kickPrefix + id) : false;
+    const splashOn = this._isAbcNoteOn(AbcNote.KI_SPLASH, id);
+    const kickOn = this._isAbcNoteOn(AbcNote.KI_NORMAL, id);
     let note: AbcNote | null = null;
     if (splashOn && kickOn) note = AbcNote.KI_SANDK;
     else if (splashOn) note = AbcNote.KI_SPLASH;
@@ -2208,8 +2217,7 @@ class GrooveWriter {
 
   get_tom_state(id: number | string, tom_num: number): { abc: string | false, url: string } {
     const note = tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL;
-    const prefix = note.getFirstHtmlIdPrefix();
-    if (prefix && this._isNoteOn(prefix + id)) {
+    if (this._isAbcNoteOn(note, id)) {
       return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
     }
     return { abc: false, url: '-' };
@@ -2217,8 +2225,7 @@ class GrooveWriter {
 
   get_sticking_state(id: number | string, returnType?: string): any {
     for (const note of AbcNote.STICKINGS_ALL) {
-      const prefix = note.getFirstHtmlIdPrefix();
-      if (prefix && this._isNoteOn(prefix + id)) {
+      if (this._isAbcNoteOn(note, id)) {
         const result = { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
         if (returnType === 'ABC') return result.abc;
         if (returnType === 'URL') return result.url;
@@ -2930,6 +2937,7 @@ class GrooveWriter {
   // this will recreate the ABC code and will then use the ABC to rerender the sheet music
   // on the page.
   updateSheetMusic() {
+    this.syncUIToMeasures();
     var renderWidth = 600;
     var svgTarget = document.getElementById("svgTarget");
     if (svgTarget) {
@@ -3865,6 +3873,38 @@ class GrooveWriter {
       this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
     }
   };
+
+  // Inverse of applyMeasuresToUI: reads DOM click state and writes tab
+  // strings back into this.data.measures so ABC/SVG generation reflects
+  // interactive edits (single clicks and context-menu selections).
+  syncUIToMeasures() {
+    const npm = this.data.notesPerMeasure;
+    for (let m = 0; m < this.data.numberOfMeasures; m++) {
+      const measure = this.data.measures[m];
+      if (!measure) continue;
+      const start = m * npm;
+      const cols: { drum: DrumType, chars: string[] }[] = [
+        { drum: DrumType.STICKINGS, chars: [] },
+        { drum: DrumType.HIHAT, chars: [] },
+        { drum: DrumType.SNARE, chars: [] },
+        { drum: DrumType.KICK, chars: [] },
+        { drum: DrumType.TOM1, chars: [] },
+        { drum: DrumType.TOM4, chars: [] },
+      ];
+      for (let i = 0; i < npm; i++) {
+        const id = start + i;
+        cols[0].chars.push(this.get_sticking_state(id).url || '-');
+        cols[1].chars.push(this.get_hh_state(id).url || '-');
+        cols[2].chars.push(this.get_snare_state(id).url || '-');
+        cols[3].chars.push(this.get_kick_state(id).url || '-');
+        cols[4].chars.push(this.get_tom_state(id, 1).url || '-');
+        cols[5].chars.push(this.get_tom_state(id, 4).url || '-');
+      }
+      for (const col of cols) {
+        measure.setDataFromString(col.drum, col.chars.join(''));
+      }
+    }
+  }
 
   // Propagate parsed measure data onto the clickable UI. get_*_state reads
   // note-on classes off these DOM elements, so without this call MIDI
