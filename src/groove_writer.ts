@@ -2045,17 +2045,36 @@ class GrooveWriter {
   }
 
   getEmbedTableData(): EmbedTableData | null {
-    const tbody = document.getElementById("embedMeasureTableBody") as HTMLTableSectionElement | null;
-    if (!tbody) return null;
-    const rows = tbody.querySelectorAll("tr");
-    if (rows.length === 0) return null;
-
     const repeatBegins: number[] = [];
     const repeatEnds: number[] = [];
     const repeatEndings: string[] = [];
     const measureTexts: string[] = [];
 
-    rows.forEach((row, idx) => {
+    const measureContainers = document.querySelectorAll(".measure-controls-container, #embedMeasureTableBody tr");
+    if (measureContainers.length === 0) {
+      if (!this.data) return null;
+      const rBegins = this.data.repeatBegins ? Array.from(this.data.repeatBegins).sort((a, b) => a - b).join(";") : "";
+      const rEnds = this.data.repeatEnds ? Array.from(this.data.repeatEnds).sort((a, b) => a - b).join(";") : "";
+      const rEndings = this.data.repeatEndings ? Array.from(this.data.repeatEndings.entries()).filter(([m, v]) => v).sort((a, b) => a[0] - b[0]).map(([m, v]) => `${m}:${v}`).join(";") : "";
+      const mTexts: string[] = [];
+      if (this.data.measureText) {
+        Array.from(this.data.measureText.keys()).sort((a, b) => a - b).forEach(m => {
+          const entry = this.data.measureText.get(m);
+          if (entry) {
+            if (entry.begin && entry.begin.trim().length > 0) mTexts.push(`${m}:b:${entry.begin.trim()}`);
+            if (entry.end && entry.end.trim().length > 0) mTexts.push(`${m}:e:${entry.end.trim()}`);
+          }
+        });
+      }
+      return {
+        repeatBegins: rBegins,
+        repeatEnds: rEnds,
+        repeatEndings: rEndings,
+        measureText: mTexts.join(";")
+      };
+    }
+
+    measureContainers.forEach((row, idx) => {
       const m = parseInt(row.getAttribute("data-measure") || (idx + 1).toString(), 10);
       const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
       const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
@@ -2114,6 +2133,26 @@ class GrooveWriter {
       }
     });
 
+    if (this.data) {
+      this.data.repeatBegins = new Set(rbList.filter(n => !isNaN(n) && n > 0));
+      this.data.repeatEnds = new Set(reList.filter(n => !isNaN(n) && n > 0));
+      const rEndings = new Map<number, string>();
+      Object.entries(altMap).forEach(([m, val]) => {
+        if (val) rEndings.set(parseInt(m, 10), val);
+      });
+      this.data.repeatEndings = rEndings;
+      const mText = new Map<number, MeasureTextEntry>();
+      const allTextMs = new Set([...Object.keys(textBeginMap), ...Object.keys(textEndMap)]);
+      allTextMs.forEach(mStr => {
+        const m = parseInt(mStr, 10);
+        const entry: MeasureTextEntry = {};
+        if (textBeginMap[m]) entry.begin = textBeginMap[m];
+        if (textEndMap[m]) entry.end = textEndMap[m];
+        mText.set(m, entry);
+      });
+      this.data.measureText = mText;
+    }
+
     var maxM = this.data ? this.data.numberOfMeasures : 1;
     const allMeasureNumbers: number[] = [
       ...rbList,
@@ -2126,12 +2165,12 @@ class GrooveWriter {
       maxM = Math.max(maxM, ...allMeasureNumbers);
     }
 
-    this.renderEmbedMeasureTable(maxM);
+    if (document.getElementById("embedMeasureTableBody")) {
+      this.renderEmbedMeasureTable(maxM);
+    }
 
-    const tbody = document.getElementById("embedMeasureTableBody") as HTMLTableSectionElement | null;
-    if (!tbody) return;
-    const rows = tbody.querySelectorAll("tr");
-    rows.forEach(row => {
+    const measureContainers = document.querySelectorAll(".measure-controls-container, #embedMeasureTableBody tr");
+    measureContainers.forEach(row => {
       const m = parseInt(row.getAttribute("data-measure") || "0", 10);
       const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
       const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
@@ -2351,6 +2390,43 @@ class GrooveWriter {
     const wasTomsVisible = this.isTomsVisible();
 
     this.data.measures.splice(measureIndex, 1);
+
+    const deletedM = measureIndex + 1;
+    const newRepeatBegins = new Set<number>();
+    if (this.data.repeatBegins) {
+      this.data.repeatBegins.forEach(m => {
+        if (m < deletedM) newRepeatBegins.add(m);
+        else if (m > deletedM) newRepeatBegins.add(m - 1);
+      });
+    }
+    this.data.repeatBegins = newRepeatBegins;
+
+    const newRepeatEnds = new Set<number>();
+    if (this.data.repeatEnds) {
+      this.data.repeatEnds.forEach(m => {
+        if (m < deletedM) newRepeatEnds.add(m);
+        else if (m > deletedM) newRepeatEnds.add(m - 1);
+      });
+    }
+    this.data.repeatEnds = newRepeatEnds;
+
+    const newRepeatEndings = new Map<number, string>();
+    if (this.data.repeatEndings) {
+      this.data.repeatEndings.forEach((val, m) => {
+        if (m < deletedM) newRepeatEndings.set(m, val);
+        else if (m > deletedM) newRepeatEndings.set(m - 1, val);
+      });
+    }
+    this.data.repeatEndings = newRepeatEndings;
+
+    const newMeasureText = new Map<number, MeasureTextEntry>();
+    if (this.data.measureText) {
+      this.data.measureText.forEach((val, m) => {
+        if (m < deletedM) newMeasureText.set(m, val);
+        else if (m > deletedM) newMeasureText.set(m - 1, val);
+      });
+    }
+    this.data.measureText = newMeasureText;
 
     this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
     return true;
@@ -2890,7 +2966,9 @@ class GrooveWriter {
       const target = e.target as HTMLElement;
       if (!target) return;
       if (typeof target.closest === "function") {
-        if (target.closest("#measureContainer") || target.closest("#musicalInput")) {
+        if (target.closest(".measure-controls-container") || target.tagName === "INPUT" || target.tagName === "SELECT") {
+          this.setMeasureContainerSelected(false);
+        } else if (target.closest("#measureContainer") || target.closest("#musicalInput")) {
           this.handleElementClickSelection(target);
           this.setMeasureContainerSelected(true);
         } else if (!target.closest(".noteContextMenu")) {
@@ -2905,7 +2983,7 @@ class GrooveWriter {
       const target = e.target as HTMLElement;
       if (!target) return;
       const tag = target.tagName ? target.tagName.toUpperCase() : "";
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (typeof target.closest === "function" && (target.closest("#embedTool") || target.closest("#sheetMusicTextFields")))) {
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (typeof target.closest === "function" && (target.closest("#embedTool") || target.closest("#sheetMusicTextFields") || target.closest(".measure-controls-container")))) {
         this.setMeasureContainerSelected(false);
       }
     });
@@ -3840,6 +3918,35 @@ class GrooveWriter {
 
     if (baseindex == this.data.numberOfMeasures)
       newHTML += '<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>';
+
+    const isRepeatStart = this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex);
+    const isRepeatEnd = this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex);
+    const altEnding = (this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "";
+    const textEntry = (this.data && this.data.measureText && this.data.measureText.get(baseindex)) ? this.data.measureText.get(baseindex) : {};
+    const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
+    const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
+
+    newHTML += '<div class="measure-controls-container" data-measure="' + baseindex + '">' +
+      '<div class="measure-control-row measure-repeats-row">' +
+        '<label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-start" data-measure="' + baseindex + '"' + (isRepeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"> Repeat Start</label>' +
+        '<label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-end" data-measure="' + baseindex + '"' + (isRepeatEnd ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"> Repeat End</label>' +
+        '<label class="measure-select-label">Ending: <select class="embed-alt-ending" data-measure="' + baseindex + '" onchange="myGrooveWriter.updateSheetMusic();">' +
+          '<option value=""' + (altEnding === '' ? ' selected' : '') + '>None</option>' +
+          '<option value="1"' + (altEnding === '1' ? ' selected' : '') + '>1</option>' +
+          '<option value="2"' + (altEnding === '2' ? ' selected' : '') + '>2</option>' +
+          '<option value="3"' + (altEnding === '3' ? ' selected' : '') + '>3</option>' +
+          '<option value="4"' + (altEnding === '4' ? ' selected' : '') + '>4</option>' +
+        '</select></label>' +
+      '</div>' +
+      '<div class="measure-control-row measure-text-row">' +
+        '<label class="measure-text-label">Begin Text:</label>' +
+        '<input type="text" class="embed-text-begin measure-text-input" data-measure="' + baseindex + '" value="' + textBegin.replace(/"/g, '&quot;') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
+      '</div>' +
+      '<div class="measure-control-row measure-text-row">' +
+        '<label class="measure-text-label">End Text:</label>' +
+        '<input type="text" class="embed-text-end measure-text-input" data-measure="' + baseindex + '" value="' + textEnd.replace(/"/g, '&quot;') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
+      '</div>' +
+    '</div>';
 
     newHTML += ('</div>');
 

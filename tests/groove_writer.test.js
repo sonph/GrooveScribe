@@ -2031,3 +2031,238 @@ describe('Notion Embedding Options Measure Table', () => {
     }
   });
 });
+
+describe('MeasureContainer Repeat & Text Annotations Rows', () => {
+  let writer;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
+      <div id="embedTool" style="display: none;">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+    `;
+    writer = new GrooveWriter(new GrooveUtils(true));
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+    writer.setupMeasureContainerNavigation();
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
+  });
+
+  test('HTMLforStaffContainer renders 3 rows below measure: repeat options, Begin Text, End Text', () => {
+    const html = writer.HTMLforStaffContainer(1, 0);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    const controlsContainer = tempDiv.querySelector('.measure-controls-container');
+    expect(controlsContainer).not.toBeNull();
+    expect(controlsContainer.getAttribute('data-measure')).toBe('1');
+
+    // Row 1: Repeat Start, Repeat End, Alternate Ending
+    const repeatStartCb = controlsContainer.querySelector('.embed-repeat-start');
+    expect(repeatStartCb).not.toBeNull();
+    expect(repeatStartCb.type).toBe('checkbox');
+    expect(repeatStartCb.getAttribute('data-measure')).toBe('1');
+
+    const repeatEndCb = controlsContainer.querySelector('.embed-repeat-end');
+    expect(repeatEndCb).not.toBeNull();
+    expect(repeatEndCb.type).toBe('checkbox');
+    expect(repeatEndCb.getAttribute('data-measure')).toBe('1');
+
+    const altEndingSelect = controlsContainer.querySelector('.embed-alt-ending');
+    expect(altEndingSelect).not.toBeNull();
+    expect(altEndingSelect.tagName).toBe('SELECT');
+    expect(altEndingSelect.getAttribute('data-measure')).toBe('1');
+    const options = Array.from(altEndingSelect.options).map(o => o.value);
+    expect(options).toEqual(['', '1', '2', '3', '4']);
+
+    // Row 2: Begin Text
+    const beginTextLabel = controlsContainer.querySelectorAll('.measure-text-label')[0];
+    expect(beginTextLabel.textContent).toContain('Begin Text');
+    const beginTextInput = controlsContainer.querySelector('.embed-text-begin');
+    expect(beginTextInput).not.toBeNull();
+    expect(beginTextInput.getAttribute('data-measure')).toBe('1');
+
+    // Row 3: End Text
+    const endTextLabel = controlsContainer.querySelectorAll('.measure-text-label')[1];
+    expect(endTextLabel.textContent).toContain('End Text');
+    const endTextInput = controlsContainer.querySelector('.embed-text-end');
+    expect(endTextInput).not.toBeNull();
+    expect(endTextInput.getAttribute('data-measure')).toBe('1');
+  });
+
+  test('renderMeasureContainer populates 3 rows for all measures from URL state', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|&RepeatBegins=1&RepeatEnds=2&RepeatEndings=2:1&MeasureText=1:b:Intro;2:e:Fill';
+    writer.set_Default_notes(url);
+
+    expect(writer.data.numberOfMeasures).toBe(2);
+
+    // Measure 1
+    const m1Controls = document.querySelector('#staff-container1 .measure-controls-container');
+    expect(m1Controls).not.toBeNull();
+    expect(m1Controls.querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(m1Controls.querySelector('.embed-repeat-end').checked).toBe(false);
+    expect(m1Controls.querySelector('.embed-alt-ending').value).toBe('');
+    expect(m1Controls.querySelector('.embed-text-begin').value).toBe('Intro');
+    expect(m1Controls.querySelector('.embed-text-end').value).toBe('');
+
+    // Measure 2
+    const m2Controls = document.querySelector('#staff-container2 .measure-controls-container');
+    expect(m2Controls).not.toBeNull();
+    expect(m2Controls.querySelector('.embed-repeat-start').checked).toBe(false);
+    expect(m2Controls.querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(m2Controls.querySelector('.embed-alt-ending').value).toBe('1');
+    expect(m2Controls.querySelector('.embed-text-begin').value).toBe('');
+    expect(m2Controls.querySelector('.embed-text-end').value).toBe('Fill');
+  });
+
+  test('editing repeat start, repeat end, ending, begin text, end text updates data, ABC, and URL', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|');
+
+    const m1Controls = document.querySelector('#staff-container1 .measure-controls-container');
+    const m2Controls = document.querySelector('#staff-container2 .measure-controls-container');
+
+    // Modify controls
+    m1Controls.querySelector('.embed-repeat-start').checked = true;
+    m1Controls.querySelector('.embed-text-begin').value = 'Verse 1';
+
+    m2Controls.querySelector('.embed-repeat-end').checked = true;
+    m2Controls.querySelector('.embed-alt-ending').value = '2';
+    m2Controls.querySelector('.embed-text-end').value = 'Crash Fill';
+
+    writer.updateSheetMusic();
+
+    // Verify writer.data
+    expect(writer.data.repeatBegins.has(1)).toBe(true);
+    expect(writer.data.repeatEnds.has(2)).toBe(true);
+    expect(writer.data.repeatEndings.get(2)).toBe('2');
+    expect(writer.data.measureText.get(1)).toEqual({ begin: 'Verse 1' });
+    expect(writer.data.measureText.get(2)).toEqual({ end: 'Crash Fill' });
+
+    // Verify ABC notation
+    const abc = document.getElementById('ABCsource').value;
+    expect(abc).toContain('|:');
+    expect(abc).toContain('[2');
+    expect(abc).toContain('"Verse 1"');
+    expect(abc).toContain('"Crash Fill"');
+
+    // Verify converted URL
+    const convertedUrl = document.getElementById('convertedUrl').value;
+    expect(convertedUrl).toContain('RepeatBegins=1');
+    expect(convertedUrl).toContain('RepeatEnds=2');
+    expect(convertedUrl).toContain('RepeatEndings=2:2');
+    expect(convertedUrl).toContain('MeasureText=1:b:Verse%201;2:e:Crash%20Fill');
+  });
+
+  test('addMeasure adds a new measure with its own 3 rows of default controls', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|&RepeatBegins=1&MeasureText=1:b:Intro');
+
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(1);
+
+    // Add measure
+    writer.addMeasureButtonClick();
+
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(2);
+
+    // Measure 1 preserved
+    const m1Controls = document.querySelector('#staff-container1 .measure-controls-container');
+    expect(m1Controls.querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(m1Controls.querySelector('.embed-text-begin').value).toBe('Intro');
+
+    // Measure 2 has default controls
+    const m2Controls = document.querySelector('#staff-container2 .measure-controls-container');
+    expect(m2Controls.querySelector('.embed-repeat-start').checked).toBe(false);
+    expect(m2Controls.querySelector('.embed-repeat-end').checked).toBe(false);
+    expect(m2Controls.querySelector('.embed-alt-ending').value).toBe('');
+    expect(m2Controls.querySelector('.embed-text-begin').value).toBe('');
+    expect(m2Controls.querySelector('.embed-text-end').value).toBe('');
+  });
+
+  test('removeMeasure removes deleted measure controls and shifts subsequent measure annotations down', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|--o---o-|&K=|o---o---|o---o---|o---o---|&RepeatBegins=2&RepeatEnds=3&RepeatEndings=3:1&MeasureText=1:b:Intro;2:b:Verse;3:e:Outro';
+    writer.set_Default_notes(url);
+
+    expect(writer.data.numberOfMeasures).toBe(3);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(3);
+
+    // Remove measure 2
+    writer.closeMeasureButtonClick(2);
+
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(2);
+
+    // Measure 1 should retain "Intro"
+    const m1Controls = document.querySelector('#staff-container1 .measure-controls-container');
+    expect(m1Controls.querySelector('.embed-text-begin').value).toBe('Intro');
+
+    // New Measure 2 (previously Measure 3) should have Repeat Ends = checked, Ending = "1", and End Text = "Outro"
+    const m2Controls = document.querySelector('#staff-container2 .measure-controls-container');
+    expect(m2Controls.querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(m2Controls.querySelector('.embed-alt-ending').value).toBe('1');
+    expect(m2Controls.querySelector('.embed-text-end').value).toBe('Outro');
+    expect(m2Controls.querySelector('.embed-repeat-start').checked).toBe(false);
+
+    // Measure 3 container should not exist
+    expect(document.getElementById('staff-container3')).toBeNull();
+  });
+
+  test('undoCommand restores deleted measure along with its repeat and text annotations', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|&RepeatBegins=1&RepeatEnds=2&RepeatEndings=2:1&MeasureText=1:b:Intro;2:e:Solo';
+    writer.set_Default_notes(url);
+
+    // Seed undo stack
+    writer.updateCurrentURL();
+
+    // Delete measure 2
+    writer.closeMeasureButtonClick(2);
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(1);
+
+    // Perform Undo
+    writer.undoCommand();
+
+    // Measure 2 and all its annotations should be restored
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(2);
+
+    const m1Controls = document.querySelector('#staff-container1 .measure-controls-container');
+    expect(m1Controls.querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(m1Controls.querySelector('.embed-text-begin').value).toBe('Intro');
+
+    const m2Controls = document.querySelector('#staff-container2 .measure-controls-container');
+    expect(m2Controls.querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(m2Controls.querySelector('.embed-alt-ending').value).toBe('1');
+    expect(m2Controls.querySelector('.embed-text-end').value).toBe('Solo');
+  });
+
+  test('focusing and clicking inside measure controls deselects measure container keyboard note navigation', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    writer.setMeasureContainerSelected(true);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+
+    const beginTextInput = document.querySelector('.embed-text-begin');
+
+    // Mousedown on measure control input
+    beginTextInput.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.isMeasureContainerSelected).toBe(false);
+
+    // Focus into measure control input
+    writer.setMeasureContainerSelected(true);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+    beginTextInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(writer.isMeasureContainerSelected).toBe(false);
+  });
+});

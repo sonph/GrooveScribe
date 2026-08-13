@@ -910,6 +910,106 @@
 	.closeMeasureButton:hover, #addMeasureButton:hover {
 		color: #000;
 	}
+
+	/* Measure Controls (Repeat & Text Annotations) */
+	.measure-controls-container {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin: 8px 6px 12px 6px;
+		padding: 8px 10px;
+		background: #f8f9fa;
+		border: 1px solid #e1e4e8;
+		border-radius: 6px;
+		box-sizing: border-box;
+		text-align: left;
+		white-space: normal;
+		font-family: 'Lato', sans-serif;
+	}
+	.measure-control-row {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	.measure-repeats-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 12px;
+		font-size: 13px;
+		color: #333;
+	}
+	.measure-checkbox-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 600;
+		color: #444;
+		user-select: none;
+	}
+	.measure-checkbox-label input[type="checkbox"] {
+		cursor: pointer;
+		width: 15px;
+		height: 15px;
+		margin: 0;
+		vertical-align: middle;
+	}
+	.measure-select-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 12px;
+		font-weight: 600;
+		color: #444;
+	}
+	.measure-select-label select,
+	.measure-controls-container select {
+		padding: 3px 6px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		background: #fff;
+		font-size: 12px;
+		color: #333;
+		cursor: pointer;
+	}
+	.measure-select-label select:focus,
+	.measure-controls-container select:focus {
+		border-color: #2484C0;
+		outline: none;
+		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
+	}
+	.measure-text-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.measure-text-label {
+		width: 75px;
+		font-size: 12px;
+		font-weight: 600;
+		color: #555;
+		text-align: right;
+		flex-shrink: 0;
+	}
+	.measure-text-input {
+		flex: 1;
+		min-width: 80px;
+		padding: 4px 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		background: #fff;
+		font-size: 12px;
+		color: #333;
+		box-sizing: border-box;
+	}
+	.measure-text-input:focus {
+		border-color: #2484C0;
+		outline: none;
+		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
+	}
 	#permutationAnchor {
 		color: #555;
 	}
