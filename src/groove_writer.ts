@@ -1866,6 +1866,7 @@ class GrooveWriter {
 
     // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
     this.updateCurrentURL();
+    this.updateEmbedLink();
     this.displayNewSVG();
 
     this.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
@@ -2021,17 +2022,17 @@ class GrooveWriter {
       }
       html += '<tr data-measure="' + m + '">' +
         '<td>Measure ' + m + '</td>' +
-        '<td><input type="checkbox" class="embed-repeat-start" data-measure="' + m + '"' + (d.repeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.convert();"></td>' +
-        '<td><input type="checkbox" class="embed-repeat-end" data-measure="' + m + '"' + (d.repeatEnd ? ' checked' : '') + ' onchange="myGrooveWriter.convert();"></td>' +
-        '<td><select class="embed-alt-ending" data-measure="' + m + '" onchange="myGrooveWriter.convert();">' +
+        '<td><input type="checkbox" class="embed-repeat-start" data-measure="' + m + '"' + (d.repeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"></td>' +
+        '<td><input type="checkbox" class="embed-repeat-end" data-measure="' + m + '"' + (d.repeatEnd ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"></td>' +
+        '<td><select class="embed-alt-ending" data-measure="' + m + '" onchange="myGrooveWriter.updateSheetMusic();">' +
           '<option value=""' + (d.altEnding === '' ? ' selected' : '') + '>None</option>' +
           '<option value="1"' + (d.altEnding === '1' ? ' selected' : '') + '>1</option>' +
           '<option value="2"' + (d.altEnding === '2' ? ' selected' : '') + '>2</option>' +
           '<option value="3"' + (d.altEnding === '3' ? ' selected' : '') + '>3</option>' +
           '<option value="4"' + (d.altEnding === '4' ? ' selected' : '') + '>4</option>' +
         '</select></td>' +
-        '<td><input type="text" class="embed-text-begin" data-measure="' + m + '" value="' + (d.textBegin ? d.textBegin.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.convert();" onchange="myGrooveWriter.convert();"></td>' +
-        '<td><input type="text" class="embed-text-end" data-measure="' + m + '" value="' + (d.textEnd ? d.textEnd.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.convert();" onchange="myGrooveWriter.convert();"></td>' +
+        '<td><input type="text" class="embed-text-begin" data-measure="' + m + '" value="' + (d.textBegin ? d.textBegin.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></td>' +
+        '<td><input type="text" class="embed-text-end" data-measure="' + m + '" value="' + (d.textEnd ? d.textEnd.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></td>' +
       '</tr>';
     }
     tbody.innerHTML = html;
@@ -2175,75 +2176,25 @@ class GrooveWriter {
     this.data.measureText = measureText;
   }
 
-  convert(selectUrl: boolean = false, refreshSheetMusic: boolean = true): void {
-    if (!this.isInitializing && document.getElementById("hi-hat0")) {
-      this.syncUIToMeasures();
-    }
-    this.syncTableToGrooveWriter();
+  getEmbedUrl(): string {
+    return "https://sonpham.me/GrooveScribe/render.html" + this.data.toQueryString();
+  }
 
-    const tuneTitle = document.getElementById("tuneTitle") as HTMLInputElement | null;
-    if (tuneTitle && typeof tuneTitle.value === "string") {
-      this.data.title = tuneTitle.value.trim();
-    }
-    const tuneAuthor = document.getElementById("tuneAuthor") as HTMLInputElement | null;
-    if (tuneAuthor && typeof tuneAuthor.value === "string") {
-      this.data.author = tuneAuthor.value.trim();
-    }
-    const tuneComments = document.getElementById("tuneComments") as HTMLInputElement | null;
-    const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
-    const comments = (tuneComments && typeof tuneComments.value === "string" && tuneComments.value.trim().length > 0)
-      ? tuneComments.value.trim()
-      : (subTextElem && typeof subTextElem.value === "string" ? subTextElem.value.trim() : "");
-    if (comments.length > 0) {
-      this.data.comments = comments;
-      this.data.subText = comments;
-    }
-
-    const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
-    const showTempo = showTempoElem ? showTempoElem.checked : (this.data ? this.data.showTempo : false);
-    if (this.data) {
-      this.data.showTempo = showTempo;
-    }
-
-    const tableData = this.getEmbedTableData();
-    const rbElem = document.getElementById("repeatBegins") as HTMLInputElement | null;
-    const reElem = document.getElementById("repeatEnds") as HTMLInputElement | null;
-    const rendElem = document.getElementById("repeatEndings") as HTMLInputElement | null;
-    const mtElem = document.getElementById("measureText") as HTMLInputElement | null;
-
-    if (rbElem && tableData) rbElem.value = tableData.repeatBegins;
-    if (reElem && tableData) reElem.value = tableData.repeatEnds;
-    if (rendElem && tableData) rendElem.value = tableData.repeatEndings;
-    if (mtElem && tableData) mtElem.value = tableData.measureText;
-
-    const convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + this.data.toQueryString();
-
+  updateEmbedLink(): void {
     const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
     if (convertedUrlElement) {
-      convertedUrlElement.value = convertedUrl;
-      if (selectUrl === true && typeof convertedUrlElement.select === "function") {
-        convertedUrlElement.select();
-      }
-    }
-
-    if (selectUrl === true) {
-      setEmbedStatus("Converted!");
-    }
-
-    if (refreshSheetMusic && !this.isConverting) {
-      this.isConverting = true;
-      try {
-        this.refresh_ABC();
-      } finally {
-        this.isConverting = false;
-      }
+      convertedUrlElement.value = this.getEmbedUrl();
     }
   }
 
-  convertAndCopy(): void {
-    this.convert();
+  copyEmbedLink(): void {
+    this.syncUIToMeasures();
+    this.updateEmbedLink();
     const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
-    if (convertedUrlElement && convertedUrlElement.value.length > 0) {
+    if (convertedUrlElement) {
+      if (typeof convertedUrlElement.select === "function") {
+        convertedUrlElement.select();
+      }
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         navigator.clipboard.writeText(convertedUrlElement.value);
       }
@@ -2252,11 +2203,15 @@ class GrooveWriter {
   }
 
   openEmbedLink(): void {
-    const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
-    const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
-    if (convertedUrl.length > 0 && typeof window !== "undefined") {
-      window.open(convertedUrl, '_blank');
+    const url = this.getEmbedUrl();
+    if (url.length > 0 && typeof window !== "undefined") {
+      window.open(url, '_blank');
     }
+  }
+
+  // Alias for backward compatibility
+  convertAndCopy(): void {
+    this.copyEmbedLink();
   }
 
   populateEmbedFromUrl(urlOrQuery?: string): void {
@@ -2323,30 +2278,28 @@ class GrooveWriter {
       measureText: encodeAfterLastColon(mtVal || (mtInput ? mtInput.value : ""), false)
     });
 
-    this.convert();
+    this.updateEmbedLink();
   }
 
   initEmbedToolEventListeners(): void {
     if (typeof document === "undefined") return;
 
     const tempoInput = document.getElementById("showTempo");
-    if (tempoInput) tempoInput.addEventListener("change", () => this.convert());
+    if (tempoInput) tempoInput.addEventListener("change", () => this.updateSheetMusic());
     const embedTempoInput = document.getElementById("embedShowTempo");
-    if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("change", () => this.convert());
+    if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("change", () => this.updateSheetMusic());
     const commentsInput = document.getElementById("tuneComments");
     if (commentsInput) {
-      commentsInput.addEventListener("input", () => this.convert());
-      commentsInput.addEventListener("change", () => this.convert());
+      commentsInput.addEventListener("input", () => this.updateSheetMusic());
+      commentsInput.addEventListener("change", () => this.updateSheetMusic());
     }
     const subTextInput = document.getElementById("subText");
     if (subTextInput) {
-      subTextInput.addEventListener("input", () => this.convert());
-      subTextInput.addEventListener("change", () => this.convert());
+      subTextInput.addEventListener("input", () => this.updateSheetMusic());
+      subTextInput.addEventListener("change", () => this.updateSheetMusic());
     }
-    const convertBtn = document.getElementById("convertBtn");
-    if (convertBtn) convertBtn.addEventListener("click", () => this.convert(true));
     const copyBtn = document.getElementById("copyBtn");
-    if (copyBtn) copyBtn.addEventListener("click", () => this.convertAndCopy());
+    if (copyBtn) copyBtn.addEventListener("click", () => this.copyEmbedLink());
     const openLinkBtn = document.getElementById("openLink");
     if (openLinkBtn) openLinkBtn.addEventListener("click", () => this.openEmbedLink());
   }
@@ -3378,7 +3331,17 @@ class GrooveWriter {
     const authorInput = document.getElementById("tuneAuthor") as HTMLInputElement | null;
     if (authorInput && typeof authorInput.value === "string") this.data.author = authorInput.value;
     const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
-    if (commentsInput && typeof commentsInput.value === "string") this.data.comments = commentsInput.value;
+    const subTextInput = document.getElementById("subText") as HTMLInputElement | null;
+    const commentsVal = (commentsInput && typeof commentsInput.value === "string" && commentsInput.value.length > 0)
+      ? commentsInput.value
+      : (subTextInput && typeof subTextInput.value === "string" && subTextInput.value.length > 0 ? subTextInput.value : "");
+    if (typeof commentsVal === "string" && commentsVal.length > 0) {
+      this.data.comments = commentsVal;
+      this.data.subText = commentsVal;
+    } else if (commentsInput && typeof commentsInput.value === "string") {
+      this.data.comments = commentsInput.value;
+      this.data.subText = commentsInput.value;
+    }
     this.data.showTempo = this.isShowTempoChecked();
     const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
     if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
@@ -4034,8 +3997,11 @@ const renderEmbedMeasureTableGlobal = (num?: number | null) => getGWInstance()?.
 const getEmbedTableDataGlobal = () => getGWInstance()?.getEmbedTableData();
 const setEmbedTableDataGlobal = (data: any) => getGWInstance()?.setEmbedTableData(data);
 const populateFromUrlGlobal = (url?: string) => getGWInstance()?.populateEmbedFromUrl(url);
-const convertGlobal = (selectUrl?: boolean, refresh?: boolean) => getGWInstance()?.convert(selectUrl, refresh);
-const convertAndCopyGlobal = () => getGWInstance()?.convertAndCopy();
+const getEmbedUrlGlobal = () => getGWInstance()?.getEmbedUrl();
+const updateEmbedLinkGlobal = () => getGWInstance()?.updateEmbedLink();
+const copyEmbedLinkGlobal = () => getGWInstance()?.copyEmbedLink();
+const convertGlobal = () => getGWInstance()?.updateEmbedLink();
+const convertAndCopyGlobal = () => getGWInstance()?.copyEmbedLink();
 const openLinkGlobal = () => getGWInstance()?.openEmbedLink();
 const decodeConvertedUrlGlobal = (url?: string) => getGWInstance()?.populateEmbedFromUrl(url);
 
@@ -4044,6 +4010,9 @@ if (typeof window !== "undefined") {
   (window as any).getEmbedTableData = getEmbedTableDataGlobal;
   (window as any).setEmbedTableData = setEmbedTableDataGlobal;
   (window as any).populateFromUrl = populateFromUrlGlobal;
+  (window as any).getEmbedUrl = getEmbedUrlGlobal;
+  (window as any).updateEmbedLink = updateEmbedLinkGlobal;
+  (window as any).copyEmbedLink = copyEmbedLinkGlobal;
   (window as any).convert = convertGlobal;
   (window as any).convertAndCopy = convertAndCopyGlobal;
   (window as any).openLink = openLinkGlobal;
@@ -4057,6 +4026,9 @@ if (typeof (globalThis as any) !== "undefined") {
   (globalThis as any).getEmbedTableData = getEmbedTableDataGlobal;
   (globalThis as any).setEmbedTableData = setEmbedTableDataGlobal;
   (globalThis as any).populateFromUrl = populateFromUrlGlobal;
+  (globalThis as any).getEmbedUrl = getEmbedUrlGlobal;
+  (globalThis as any).updateEmbedLink = updateEmbedLinkGlobal;
+  (globalThis as any).copyEmbedLink = copyEmbedLinkGlobal;
   (globalThis as any).convert = convertGlobal;
   (globalThis as any).convertAndCopy = convertAndCopyGlobal;
   (globalThis as any).openLink = openLinkGlobal;
@@ -4072,6 +4044,9 @@ if (typeof module !== "undefined" && module.exports) {
     getEmbedTableData: getEmbedTableDataGlobal,
     setEmbedTableData: setEmbedTableDataGlobal,
     populateFromUrl: populateFromUrlGlobal,
+    getEmbedUrl: getEmbedUrlGlobal,
+    updateEmbedLink: updateEmbedLinkGlobal,
+    copyEmbedLink: copyEmbedLinkGlobal,
     convert: convertGlobal,
     convertAndCopy: convertAndCopyGlobal,
     decodeConvertedUrl: decodeConvertedUrlGlobal,

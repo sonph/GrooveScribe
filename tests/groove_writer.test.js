@@ -1495,6 +1495,7 @@ describe('LeftHandNav and Embedding Options', () => {
 describe('Notion Embedding Options Measure Table', () => {
   let embed;
   beforeAll(() => {
+    require('../js/groove_utils.js');
     embed = require('../js/groove_writer.js');
   });
 
@@ -1525,7 +1526,7 @@ describe('Notion Embedding Options Measure Table', () => {
         <span id="status"></span>
       </div>
     `;
-    writer = new GrooveWriter(grooveUtils);
+    writer = new GrooveWriter(new GrooveUtils(true));
     writer.displayNewSVG = jest.fn();
     writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
     window.myGrooveWriter = writer;
@@ -1564,7 +1565,7 @@ describe('Notion Embedding Options Measure Table', () => {
     });
   });
 
-  test('convert generates backward-compatible URL parameters from table data', () => {
+  test('embed link generates backward-compatible URL parameters from table data', () => {
     embed.renderEmbedMeasureTable(3);
     const tbody = document.getElementById('embedMeasureTableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -1585,7 +1586,7 @@ describe('Notion Embedding Options Measure Table', () => {
     document.getElementById('subText').value = 'Main Verse';
     document.getElementById('showTempo').checked = true;
 
-    embed.convert();
+    writer.updateSheetMusic();
 
     const convertedUrl = document.getElementById('convertedUrl').value;
     expect(convertedUrl).toContain('https://sonpham.me/GrooveScribe/render.html');
@@ -1616,7 +1617,7 @@ describe('Notion Embedding Options Measure Table', () => {
     rows[0].querySelector('.embed-text-begin').value = 'Verse';
     rows[1].querySelector('.embed-repeat-end').checked = true;
 
-    embed.convert();
+    writer.updateSheetMusic();
 
     // Verify writer.data was updated
     expect(writer.data.repeatBegins.has(1)).toBe(true);
@@ -1630,32 +1631,14 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(abcSource).toContain('"Verse"');
   });
 
-  test('convert does not select or focus convertedUrl on keystrokes/input, but does on explicit convert(true)', () => {
+  test('copyEmbedLink copies URL to clipboard and selects convertedUrl input', () => {
     embed.renderEmbedMeasureTable(2);
     const convertedUrlInput = document.getElementById('convertedUrl');
     convertedUrlInput.select = jest.fn();
 
-    const subTextInput = document.getElementById('subText');
-    subTextInput.focus();
-    expect(document.activeElement).toBe(subTextInput);
-
-    // Auto convert (e.g. from input event or direct convert call)
-    embed.convert();
-    expect(convertedUrlInput.select).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(subTextInput);
-
-    // Typing in embed-text-begin retains focus
-    const txtBegin = document.querySelector('.embed-text-begin');
-    txtBegin.focus();
-    expect(document.activeElement).toBe(txtBegin);
-    txtBegin.value = 'Intro';
-    embed.convert();
-    expect(convertedUrlInput.select).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(txtBegin);
-
-    // Explicit convert with selectUrl = true (e.g. clicking Convert button)
-    embed.convert(true);
+    writer.copyEmbedLink();
     expect(convertedUrlInput.select).toHaveBeenCalledTimes(1);
+    expect(convertedUrlInput.value).toContain('https://sonpham.me/GrooveScribe/render.html');
   });
 
   test('decodeConvertedUrl restores table state from embed URL', () => {
@@ -1970,7 +1953,7 @@ describe('Notion Embedding Options Measure Table', () => {
       expect(reloadedWriter.get_FullURLForPage()).toContain('H2=|r-------|');
     });
 
-    test('convert() encodes H2 into embeddable link', () => {
+    test('updateEmbedLink() encodes H2 into embeddable link', () => {
       document.body.innerHTML = `
         <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
         <div id="musicalInput"></div>
@@ -1979,14 +1962,15 @@ describe('Notion Embedding Options Measure Table', () => {
       `;
       writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
       writer.set_hh2_state(0, 'crash', false);
-      writer.convert(false, false);
+      writer.syncUIToMeasures();
+      writer.updateEmbedLink();
 
       const convertedUrlElem = document.getElementById('convertedUrl');
       expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
       expect(convertedUrlElem.value).toContain('H2=|c-------|');
     });
 
-    test('convert() encodes Toms (T1, T4) into embeddable link when toms are shown and notes exist', () => {
+    test('updateEmbedLink() encodes Toms (T1, T4) into embeddable link when toms are shown and notes exist', () => {
       document.body.innerHTML = `
         <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
         <div id="musicalInput"></div>
@@ -1997,7 +1981,8 @@ describe('Notion Embedding Options Measure Table', () => {
       writer.showHideToms(true, true, true);
       writer.set_tom_state(2, 1, 'normal', false);
       writer.set_tom_state(6, 4, 'normal', false);
-      writer.convert(false, false);
+      writer.syncUIToMeasures();
+      writer.updateEmbedLink();
 
       const convertedUrlElem = document.getElementById('convertedUrl');
       expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
