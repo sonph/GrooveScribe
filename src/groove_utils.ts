@@ -1852,15 +1852,16 @@ class GrooveUtils {
       this.tempoChangeCallback(tempo);
   };
 
-  tempoUpdateFromTextField(event) {
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  tempoUpdateFromTextField = (event) => {
     var newTempo = event.target.value;
 
     (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = newTempo;
     this.tempoUpdate(newTempo);
   };
 
-  // update the tempo string display
-  tempoUpdateFromSlider(event) {
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  tempoUpdateFromSlider = (event) => {
     this.tempoUpdate(event.target.value);
   };
 
@@ -2289,7 +2290,8 @@ class GrooveUtils {
     return MIDI.Player.playing;
   };
 
-  repeatMIDI_playback() {
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  repeatMIDI_playback = () => {
     if (this.shouldMIDIRepeat === false) {
       this.shouldMIDIRepeat = true;
       MIDI.Player.loop(true);
@@ -2298,7 +2300,6 @@ class GrooveUtils {
       MIDI.Player.loop(false);
     }
     this.midiEventCallbacks.repeatChangeEvent(this.shouldMIDIRepeat);
-
   };
 
   oneTimeInitializeMidi() {
@@ -2564,8 +2565,8 @@ class GrooveUtils {
     this.swingUpdateText(swingAmount);  // update the output
   };
 
-  swingUpdateEvent(event) {
-
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  swingUpdateEvent = (event) => {
     if (this.swingIsEnabled === false) {
       this.setSwingSlider(0);
     } else {
@@ -2593,7 +2594,8 @@ class GrooveUtils {
   };
 
   // open a new tab with GrooveScribe with the current groove
-  loadFullScreenGrooveScribe() {
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  loadFullScreenGrooveScribe = () => {
     var fullURL = (this as any).getUrlStringFromGrooveData(this.myGrooveData, 'fullGrooveScribe')
 
     var win = window.open(fullURL, '_blank');
@@ -2602,7 +2604,8 @@ class GrooveUtils {
 
 
   // turn the metronome on and off
-  metronomeMiniMenuClick() {
+  // Arrow function so `this` stays bound when passed to addEventListener.
+  metronomeMiniMenuClick = () => {
     if (this.myGrooveData.metronomeFrequency > 0)
       this.myGrooveData.metronomeFrequency = 0;
     else

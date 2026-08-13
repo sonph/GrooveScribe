@@ -903,9 +903,9 @@ class GrooveWriter {
     if (this.global_tempoChangeCallbackTimeout != null)
       window.clearTimeout(this.global_tempoChangeCallbackTimeout);
 
-    // set a new timeout
-    this.global_tempoChangeCallbackTimeout = window.setTimeout(function () {
-      this.global_tempoChangeCallbackTimeout = null
+    // Arrow function so `this` stays bound inside the timeout callback.
+    this.global_tempoChangeCallbackTimeout = window.setTimeout(() => {
+      this.global_tempoChangeCallbackTimeout = null;
       // update the Main URL to show the new tempo
       this.updateCurrentURL();
     }, 300);
