@@ -488,3 +488,70 @@ describe('Kick permutation patterns', () => {
     });
   });
 });
+
+describe('shouldDisplayPermutation', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+  });
+
+  const allChecked = () => true;
+  const allExist = () => true;
+  const noneChecked = () => false;
+  const checkedSet = (ids) => (id) => ids.has(id);
+
+  test('unknown section is false and logs', () => {
+    expect(shouldDisplayPermutation(99, allChecked, allExist, false)).toBe(false);
+  });
+
+  test('parent unchecked → section off', () => {
+    expect(shouldDisplayPermutation(1, noneChecked, allExist, false)).toBe(false);
+  });
+
+  test('parent checked + sub checked → on', () => {
+    const on = new Set(['PermuationOptionsSingles', 'PermuationOptionsSingles_sub1']);
+    expect(shouldDisplayPermutation(1, checkedSet(on), allExist, false)).toBe(true);
+  });
+
+  test('parent checked but sub unchecked → off', () => {
+    const on = new Set(['PermuationOptionsSingles']);
+    expect(shouldDisplayPermutation(1, checkedSet(on), allExist, false)).toBe(false);
+  });
+
+  test('tripletExcluded sections are off in triplet mode even if all checked', () => {
+    // Section 4 (Singles sub4) is triplet-excluded.
+    expect(shouldDisplayPermutation(4, allChecked, allExist, true)).toBe(false);
+    // Non-excluded triplet-safe section still on.
+    expect(shouldDisplayPermutation(1, allChecked, allExist, true)).toBe(true);
+  });
+
+  test('optional-sub sections stay on if the sub element is missing', () => {
+    // Sections 0 (Ostinato), 11 (Triples sub1), 15 (Quads sub1) have optional subs.
+    const parentsOnly = new Set(['PermuationOptionsOstinato', 'PermuationOptionsTriples', 'PermuationOptionsQuads']);
+    const noSubExists = (id) => !id.includes('sub') && !id.includes('SubOptions');
+    expect(shouldDisplayPermutation(0, checkedSet(parentsOnly), noSubExists, false)).toBe(true);
+    expect(shouldDisplayPermutation(11, checkedSet(parentsOnly), noSubExists, false)).toBe(true);
+    expect(shouldDisplayPermutation(15, checkedSet(parentsOnly), noSubExists, false)).toBe(true);
+  });
+
+  test('section 11 uses PermuationSubOptionsTriples1 as its existence gate', () => {
+    // If the gate id doesn't exist, we skip the sub check even if _sub1 is off.
+    const parentsOnly = new Set(['PermuationOptionsTriples']);
+    const gateMissing = (id) => id !== 'PermuationSubOptionsTriples1';
+    expect(shouldDisplayPermutation(11, checkedSet(parentsOnly), gateMissing, false)).toBe(true);
+
+    // Once the gate exists, we do check _sub1 — which is unchecked, so off.
+    expect(shouldDisplayPermutation(11, checkedSet(parentsOnly), allExist, false)).toBe(false);
+  });
+
+  test('non-optional-sub sections require sub checked regardless of existence', () => {
+    // Section 1 (Singles sub1) — sub required even if some hypothetical existence check failed.
+    const parentsOnly = new Set(['PermuationOptionsSingles']);
+    const noSubExists = () => false;
+    expect(shouldDisplayPermutation(1, checkedSet(parentsOnly), noSubExists, false)).toBe(false);
+  });
+
+  test('all 16 sections have an entry in the section table', () => {
+    for (let i = 0; i < 16; i++) expect(PERMUTATION_SECTIONS[i]).toBeDefined();
+  });
+});

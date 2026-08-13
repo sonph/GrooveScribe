@@ -220,6 +220,64 @@ function kickPermutationMinusSomeStrait(section: number): Array<false | 'F'> {
 }
 
 // Public: build the triplet kick permutation array for `section`.
+// Permutation grid: which drum-pattern section each row represents, and which
+// UI checkbox(es) gate its display. Ordered by section number 0-15.
+type PermutationSection = {
+  parentId: string;
+  subId: string | null;
+  // If set, presence of *this* id gates the subId check (case 11 uses a
+  // different id for existence than for the checkbox lookup — an original
+  // quirk we preserve as-is).
+  subExistsId?: string;
+  tripletExcluded?: boolean;
+};
+
+const PERMUTATION_SECTIONS: ReadonlyArray<PermutationSection> = [
+  /*  0 Ostinato        */ { parentId: 'PermuationOptionsOstinato',  subId: 'PermuationOptionsOstinato_sub1' },
+  /*  1 Singles sub1    */ { parentId: 'PermuationOptionsSingles',   subId: 'PermuationOptionsSingles_sub1' },
+  /*  2 Singles sub2    */ { parentId: 'PermuationOptionsSingles',   subId: 'PermuationOptionsSingles_sub2' },
+  /*  3 Singles sub3    */ { parentId: 'PermuationOptionsSingles',   subId: 'PermuationOptionsSingles_sub3' },
+  /*  4 Singles sub4    */ { parentId: 'PermuationOptionsSingles',   subId: 'PermuationOptionsSingles_sub4', tripletExcluded: true },
+  /*  5 Doubles sub1    */ { parentId: 'PermuationOptionsDoubles',   subId: 'PermuationOptionsDoubles_sub1' },
+  /*  6 Doubles sub2    */ { parentId: 'PermuationOptionsDoubles',   subId: 'PermuationOptionsDoubles_sub2' },
+  /*  7 Doubles sub3    */ { parentId: 'PermuationOptionsDoubles',   subId: 'PermuationOptionsDoubles_sub3' },
+  /*  8 Doubles sub4    */ { parentId: 'PermuationOptionsDoubles',   subId: 'PermuationOptionsDoubles_sub4', tripletExcluded: true },
+  /*  9 UpsDowns sub1   */ { parentId: 'PermuationOptionsUpsDowns',  subId: 'PermuationOptionsUpsDowns_sub1', tripletExcluded: true },
+  /* 10 UpsDowns sub2   */ { parentId: 'PermuationOptionsUpsDowns',  subId: 'PermuationOptionsUpsDowns_sub2', tripletExcluded: true },
+  /* 11 Triples sub1    */ { parentId: 'PermuationOptionsTriples',   subId: 'PermuationOptionsTriples_sub1', subExistsId: 'PermuationSubOptionsTriples1' },
+  /* 12 Triples sub2    */ { parentId: 'PermuationOptionsTriples',   subId: 'PermuationOptionsTriples_sub2', tripletExcluded: true },
+  /* 13 Triples sub3    */ { parentId: 'PermuationOptionsTriples',   subId: 'PermuationOptionsTriples_sub3', tripletExcluded: true },
+  /* 14 Triples sub4    */ { parentId: 'PermuationOptionsTriples',   subId: 'PermuationOptionsTriples_sub4', tripletExcluded: true },
+  /* 15 Quads sub1      */ { parentId: 'PermuationOptionsQuads',     subId: 'PermuationOptionsQuads_sub1', tripletExcluded: true },
+];
+
+// Cases 0, 11, and 15 originally used an "existence-optional" pattern:
+// if the sub-checkbox element wasn't present in the DOM, the section was
+// still enabled purely on the parent's checked state. Preserve that.
+const SECTIONS_WITH_OPTIONAL_SUB: ReadonlySet<number> = new Set([0, 11, 15]);
+
+// Pure predicate: does the given permutation section render, based only
+// on checkbox state and whether we're in triplet mode? Testable without a DOM.
+function shouldDisplayPermutation(
+  section: number,
+  isChecked: (id: string) => boolean,
+  exists: (id: string) => boolean,
+  isTriplets: boolean,
+): boolean {
+  const s = PERMUTATION_SECTIONS[section];
+  if (!s) {
+    console.log(`bad section in shouldDisplayPermutation: ${section}`);
+    return false;
+  }
+  if (s.tripletExcluded && isTriplets) return false;
+  if (!isChecked(s.parentId)) return false;
+  if (s.subId === null) return true;
+
+  const gateId = s.subExistsId ?? s.subId;
+  if (SECTIONS_WITH_OPTIONAL_SUB.has(section) && !exists(gateId)) return true;
+  return isChecked(s.subId);
+}
+
 function kickPermutationTriplets(section: number): Array<false | 'F'> {
   const pattern = KICK_PATTERNS_TRIPLETS.get(section) ?? KICK_PATTERN_TRIPLETS_DEFAULT;
   return expandKickPattern(pattern, KICK_TRIPLETS_LENGTH);
@@ -1677,108 +1735,13 @@ class GrooveWriter {
   }
 
   // use the Permutation options to figure out if we should display a particular section
-  shouldDisplayPermutationForSection(sectionNum) {
-    var ret_val = false;
-
-    switch (sectionNum) {
-      case 0:
-        if (((document.getElementById("PermuationOptionsOstinato") as HTMLInputElement) as HTMLInputElement).checked &&
-          (!document.getElementById("PermuationOptionsOstinato_sub1") ||
-            ((document.getElementById("PermuationOptionsOstinato_sub1") as HTMLInputElement) as HTMLInputElement).checked))
-          ret_val = true;
-        break;
-      case 1:
-        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsSingles_sub1") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 2:
-        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsSingles_sub2") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 3:
-        if (((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsSingles_sub3") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 4:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsSingles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsSingles_sub4") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 5:
-        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsDoubles_sub1") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 6:
-        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsDoubles_sub2") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 7:
-        if (((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsDoubles_sub3") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 8:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsDoubles") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsDoubles_sub4") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 9:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsUpsDowns") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsUpsDowns_sub1") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 10:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsUpsDowns") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsUpsDowns_sub2") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 11:
-        if (((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
-          (!document.getElementById("PermuationSubOptionsTriples1") ||
-            ((document.getElementById("PermuationOptionsTriples_sub1") as HTMLInputElement) as HTMLInputElement).checked))
-          ret_val = true;
-        break;
-      case 12:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsTriples_sub2") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 13:
-        if (!this.usingTriplets() &&
-          ((document.getElementById("PermuationOptionsTriples") as HTMLInputElement) as HTMLInputElement).checked &&
-          ((document.getElementById("PermuationOptionsTriples_sub3") as HTMLInputElement) as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 14:
-        if (!this.usingTriplets() &&
-          (document.getElementById("PermuationOptionsTriples") as HTMLInputElement).checked &&
-          (document.getElementById("PermuationOptionsTriples_sub4") as HTMLInputElement).checked)
-          ret_val = true;
-        break;
-      case 15:
-        if (!this.usingTriplets() &&
-          (document.getElementById("PermuationOptionsQuads") as HTMLInputElement).checked &&
-          (!document.getElementById("PermuationOptionsQuads_sub1") ||
-            (document.getElementById("PermuationOptionsQuads_sub1") as HTMLInputElement).checked))
-          ret_val = true;
-        break;
-      default:
-        console.log("bad case in groove_writer.js:shouldDisplayPermutationForSection()");
-        return false;
-      //break;
-    }
-
-    return ret_val;
+  shouldDisplayPermutationForSection(sectionNum: number): boolean {
+    const isChecked = (id: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      return !!el && el.checked;
+    };
+    const exists = (id: string) => document.getElementById(id) !== null;
+    return shouldDisplayPermutation(sectionNum, isChecked, exists, this.usingTriplets());
   }
 
   // use the permutation options to count the number of active permutation sections
@@ -3545,3 +3508,5 @@ class GrooveWriter {
 (globalThis as any).kickPermutationStrait = kickPermutationStrait;
 (globalThis as any).kickPermutationMinusSomeStrait = kickPermutationMinusSomeStrait;
 (globalThis as any).kickPermutationTriplets = kickPermutationTriplets;
+(globalThis as any).shouldDisplayPermutation = shouldDisplayPermutation;
+(globalThis as any).PERMUTATION_SECTIONS = PERMUTATION_SECTIONS;
