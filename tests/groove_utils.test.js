@@ -71,6 +71,20 @@ describe('Measure', () => {
     measure.arrays[DrumType.KICK.name] = [null, 'o', null, 'o', 'o'];
     expect(measure.getScaledArray(DrumType.KICK, 10)).toEqual([null, null, 'o', null, null, null, 'o', null, 'o', null]);
   });
+
+  test('clone duplicates time signature, subdivision, and all drum arrays', () => {
+    const orig = new Measure(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    orig.setDataFromString(DrumType.SNARE, '----o-------o---');
+    const copy = orig.clone();
+    expect(copy.timeSig).toEqual(orig.timeSig);
+    expect(copy.tabSubdivision).toEqual(orig.tabSubdivision);
+    expect(copy.notesPerMeasure).toEqual(orig.notesPerMeasure);
+    expect(copy.toString(DrumType.SNARE)).toEqual('----o-------o---');
+
+    // Mutating copy shouldn't affect orig
+    copy.setDataFromString(DrumType.SNARE, 'o---------------');
+    expect(orig.toString(DrumType.SNARE)).toEqual('----o-------o---');
+  });
 });
 
 describe('GrooveData', () => {

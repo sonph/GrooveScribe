@@ -594,3 +594,115 @@ describe('MIDI and Note Mapping in GrooveWriter', () => {
     expect(grooveUtils.note_mapping_array[0]).toBe(true);
   });
 });
+
+describe('Add and Remove Measure actions', () => {
+  let grooveUtils, writer;
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    writer = new GrooveWriter(grooveUtils);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    document.body.innerHTML = `
+      <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+      <div id="musicalInput"></div>
+      <div id="tuneTitle"></div>
+      <div id="tuneAuthor"></div>
+      <div id="tuneComments"></div>
+    `;
+    writer.applyMeasuresToUI();
+    writer.updateSheetMusic = jest.fn();
+    writer.updateUrl = jest.fn();
+  });
+
+  test('addMeasureButtonClick adds a measure and duplicates notes from last measure', () => {
+    expect(writer.numberOfMeasures()).toBe(1);
+
+    writer.addMeasureButtonClick({});
+    expect(writer.numberOfMeasures()).toBe(2);
+    expect(document.getElementById('staff-container1')).not.toBeNull();
+    expect(document.getElementById('staff-container2')).not.toBeNull();
+    expect(writer.updateSheetMusic).toHaveBeenCalled();
+    expect(writer.updateUrl).toHaveBeenCalled();
+
+    // Notes in measure 2 should match measure 1
+    const m1Snare = grooveUtils.data.measures[0].toString(DrumType.SNARE);
+    const m2Snare = grooveUtils.data.measures[1].toString(DrumType.SNARE);
+    expect(m2Snare).toBe(m1Snare);
+  });
+
+  test('closeMeasureButtonClick removes measure and updates UI', () => {
+    writer.addMeasureButtonClick({});
+    expect(writer.numberOfMeasures()).toBe(2);
+
+    writer.closeMeasureButtonClick(2);
+    expect(writer.numberOfMeasures()).toBe(1);
+    expect(document.getElementById('staff-container1')).not.toBeNull();
+    expect(document.getElementById('staff-container2')).toBeNull();
+  });
+
+  test('closeMeasureButtonClick ignores removal when only 1 measure remains', () => {
+    expect(writer.numberOfMeasures()).toBe(1);
+    writer.closeMeasureButtonClick(1);
+    expect(writer.numberOfMeasures()).toBe(1);
+  });
+
+  test('addMeasure captures interactive UI edits made before clicking add', () => {
+    // Modify note 0 in UI (turn snare on beat 1)
+    writer.set_snare_state(0, 'normal');
+    expect(writer.is_snare_on(0)).toBe(true);
+
+    writer.addMeasure();
+    expect(writer.numberOfMeasures()).toBe(2);
+
+    // Both measure 1 and measure 2 should now have snare on position 0
+    expect(grooveUtils.data.measures[0].toString(DrumType.SNARE).startsWith('o')).toBe(true);
+    expect(grooveUtils.data.measures[1].toString(DrumType.SNARE).startsWith('o')).toBe(true);
+  });
+
+  test('removeMeasure with invalid indices returns false and leaves measures intact', () => {
+    writer.addMeasure();
+    expect(writer.numberOfMeasures()).toBe(2);
+
+    expect(writer.removeMeasure(-1)).toBe(false);
+    expect(writer.removeMeasure(5)).toBe(false);
+    expect(writer.numberOfMeasures()).toBe(2);
+  });
+
+  test('deleting middle measure correctly shifts remaining measures', () => {
+    // Create 3 measures: M1 default, M2 all snare, M3 default
+    writer.addMeasure(); // M2
+    writer.addMeasure(); // M3
+    expect(writer.numberOfMeasures()).toBe(3);
+
+    // Distinguish M2
+    grooveUtils.data.measures[1].setDataFromString(DrumType.SNARE, 'oooooooo');
+    writer.applyMeasuresToUI();
+
+    // Remove measure 2 (index 1)
+    writer.removeMeasure(1);
+    expect(writer.numberOfMeasures()).toBe(2);
+    expect(document.getElementById('staff-container3')).toBeNull();
+    expect(document.getElementById('staff-container2')).not.toBeNull();
+    // Remaining M2 should be the previous M3 (not the all-snare one)
+    expect(grooveUtils.data.measures[1].toString(DrumType.SNARE)).not.toBe('oooooooo');
+  });
+
+  test('preserves stickings and toms visibility across add and remove', () => {
+    writer.stickingsShowHide(true, true, true);
+    writer.showHideToms(true, true, true);
+
+    expect(writer.isStickingsVisible()).toBe(true);
+    expect(writer.isTomsVisible()).toBe(true);
+
+    writer.addMeasure();
+    expect(writer.isStickingsVisible()).toBe(true);
+    expect(writer.isTomsVisible()).toBe(true);
+
+    writer.removeMeasure(1);
+    expect(writer.isStickingsVisible()).toBe(true);
+    expect(writer.isTomsVisible()).toBe(true);
+  });
+});

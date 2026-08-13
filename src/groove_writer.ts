@@ -2212,85 +2212,64 @@ class GrooveWriter {
     this.updateCurrentURL();
   }
 
-  // remove a measure from the page
-  // measureNum is indexed starting at 1, not 0
-  closeMeasureButtonClick(measureNum: number) {
-    // var uiStickings = "";
-    // var uiHH = "";
-    // var uiTom1 = "";
-    // var uiTom4 = "";
-    // var uiSnare = "";
-    // var uiKick = "";
+  // Common UI refresh sequence after measures are added, removed, or scaled
+  refreshMeasureGrid(wasStickingsVisible: boolean = false, wasTomsVisible: boolean = false) {
+    this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
+    this.renderMeasureContainer();
+    this.applyMeasuresToUI();
 
-    // // get the encoded notes out of the UI.
-    // // run through all the measure, but don't include the one that we are deleting
-    // var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
-    // for (var i = 0; i < topIndex; i++) {
-    //   // skip the range we are deleting
-    //   if (i < (measureNum - 1) * this.data.notesPerMeasure || i >= measureNum * this.data.notesPerMeasure) {
-    //     uiStickings += get_sticking_state(i.toString()).url;
-    //     uiHH += get_hh_state(i.toString())?.getFirstTabChar() || '-';
-    //     uiTom1 += get_tom_state(i.toString(), 1).url;
-    //     uiTom4 += get_tom_state(i.toString(), 4).url;
-    //     uiSnare += get_snare_state(i.toString()).url;
-    //     uiKick += get_kick_state(i.toString()).url;
-    //   }
-    // }
+    if (wasStickingsVisible) this.stickingsShowHide(true, true, true);
+    if (wasTomsVisible) this.showHideToms(true, true, true);
 
-    // this.data.numberOfMeasures--;
-    this.data.measures.splice(measureNum, 1);
     this.updateUrl();
     this.updateSheetMusic();
-    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
-    // changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+  }
+
+  // Core method to add a measure (defaults to copying notes from the last measure)
+  addMeasure(): Measure {
+    this.syncUIToMeasures();
+
+    const wasStickingsVisible = this.isStickingsVisible();
+    const wasTomsVisible = this.isTomsVisible();
+
+    const lastMeasure = this.data.measures[this.data.measures.length - 1];
+    const newMeasure = lastMeasure ? lastMeasure.clone() : new Measure(this.data.timeSig, this.data.subdivision);
+    this.data.measures.push(newMeasure);
+
+    this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+    return newMeasure;
+  }
+
+  // Core method to remove a measure by 0-based index
+  removeMeasure(measureIndex: number): boolean {
+    if (this.data.numberOfMeasures <= 1 || measureIndex < 0 || measureIndex >= this.data.numberOfMeasures) {
+      return false;
+    }
+
+    this.syncUIToMeasures();
+
+    const wasStickingsVisible = this.isStickingsVisible();
+    const wasTomsVisible = this.isTomsVisible();
+
+    this.data.measures.splice(measureIndex, 1);
+
+    this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+    return true;
+  }
+
+  // Remove a measure from the page (measureNum is 1-indexed from UI buttons)
+  closeMeasureButtonClick(measureNum: number) {
+    this.removeMeasure(measureNum - 1);
   };
 
-  // add a measure to the page
-  // currently always at the end of the measures
-  // copy the notes from the last measure to the new measure
+  // Add a measure to the page button click handler
   addMeasureButtonClick = (event) => {
-    // var uiStickings = "";
-    // var uiHH = "";
-    // var uiTom1 = "";
-    // var uiTom4 = "";
-    // var uiSnare = "";
-    // var uiKick = "";
-    // var i;
-
-    // // get the encoded notes out of the UI.
-    // var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
-    // for (i = 0; i < topIndex; i++) {
-
-    //   uiStickings += get_sticking_state(i, "URL");
-    //   uiHH += get_hh_state(i, "URL");
-    //   uiTom1 += get_tom_state(i, 1, "URL");
-    //   uiTom4 += get_tom_state(i, 4, "URL");
-    //   uiSnare += get_snare_state(i, "URL");
-    //   uiKick += get_kick_state(i, "URL");
-    // }
-
-    // // run the the last measure twice to default in some notes
-    // for (i = topIndex - this.data.notesPerMeasure; i < topIndex; i++) {
-    //   uiStickings += get_sticking_state(i, "URL");
-    //   uiHH += get_hh_state(i, "URL");
-    //   uiTom1 += get_tom_state(i, 1, "URL");
-    //   uiTom4 += get_tom_state(i, 4, "URL");
-    //   uiSnare += get_snare_state(i, "URL");
-    //   uiKick += get_kick_state(i, "URL");
-    // }
-
-    // this.data.numberOfMeasures++;
-
-    // this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
-
-    // changeDivisionWithNotes(class_subDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    this.addMeasure();
 
     // reference the button and scroll it into view
     var add_measure_button = document.getElementById("addMeasureButton");
-    if (add_measure_button)
+    if (add_measure_button && typeof add_measure_button.scrollIntoView === 'function')
       add_measure_button.scrollIntoView({ block: "start", behavior: "smooth" });
-
-    this.updateSheetMusic();
 
     if (this.data.numberOfMeasures >= 5)
       window.alert("Please be aware that the Groove Scribe is not designed to write an entire musical score.\n" +

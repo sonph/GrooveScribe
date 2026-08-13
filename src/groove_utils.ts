@@ -701,6 +701,17 @@ class Measure {
     }
     return newArray;
   }
+
+  clone(): Measure {
+    const copy = new Measure(this.timeSig, this.tabSubdivision);
+    for (const drum of DrumType.ALL) {
+      const arr = this.getArray(drum);
+      if (arr) {
+        copy.arrays.set(drum.name, [...arr]);
+      }
+    }
+    return copy;
+  }
 }
 
 interface DecodedGrooveUrl {
