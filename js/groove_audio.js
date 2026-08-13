@@ -168,11 +168,14 @@ function getNoteScaler(notes_per_measure, timeSig) {
         return Math.ceil(notesPerMeasureInFullSizeArray(true, timeSig) / notes_per_measure);
     return Math.ceil(notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
 }
-function create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes) {
+function create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes, HH2_array) {
     var mapping_array = new Array(num_notes);
     for (var i = 0; i < num_notes; i++) {
         var hasNote = false;
         if (HH_array && HH_array[i] !== false && HH_array[i] !== null && HH_array[i] !== undefined && HH_array[i] !== '-') {
+            hasNote = true;
+        }
+        if (HH2_array && HH2_array[i] !== false && HH2_array[i] !== null && HH2_array[i] !== undefined && HH2_array[i] !== '-') {
             hasNote = true;
         }
         if (snare_array && snare_array[i] !== false && snare_array[i] !== null && snare_array[i] !== undefined && snare_array[i] !== '-') {
@@ -279,8 +282,9 @@ function MIDI_build_midi_url_count_in_track(timeSig, tempo) {
     }
     return "data:audio/midi;base64," + btoa(midiFile.toBytes());
 }
-function MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig, metronomeSolo = false, offsetClickStartBeat = "1") {
+function MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig, metronomeSolo = false, offsetClickStartBeat = "1", HH2_Array) {
     var prev_hh_note = 46; // default open hi-hat to mute previous open hats on first stroke
+    var prev_hh2_note = 46;
     var midi_channel = 9; // standard MIDI percussion channel
     if (swing_percentage < 0 || swing_percentage > 0.99) {
         console.log("Swing percentage out of range in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
@@ -317,6 +321,22 @@ function MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_A
                 delay_for_next_note = 0;
                 if (HH_Array[i] == constant_ABC_HH_Open)
                     prev_hh_note = hh_note;
+            }
+            if (HH2_Array && HH2_Array[i] !== false && HH2_Array[i] !== null && HH2_Array[i] !== undefined && HH2_Array[i] !== '-') {
+                const hh2Lookup = hihatMidiFor(HH2_Array[i], midi_output_type);
+                const hh2_note = hh2Lookup ? hh2Lookup.note : false;
+                const hh2_velocity = hh2Lookup ? hh2Lookup.velocity : MIDI_VELOCITY_NORMAL;
+                if (hh2_note !== false) {
+                    if (prev_hh2_note !== false) {
+                        midiTrack.addNoteOff(midi_channel, prev_hh2_note, delay_for_next_note);
+                        prev_hh2_note = false;
+                        delay_for_next_note = 0;
+                    }
+                    midiTrack.addNoteOn(midi_channel, hh2_note, delay_for_next_note, hh2_velocity);
+                    delay_for_next_note = 0;
+                    if (HH2_Array[i] == constant_ABC_HH_Open)
+                        prev_hh2_note = hh2_note;
+                }
             }
             const snLookup = snareMidiFor(Snare_Array[i], midi_output_type);
             const snare_note = snLookup ? snLookup.note : false;

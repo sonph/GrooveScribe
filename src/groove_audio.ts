@@ -201,12 +201,15 @@ function getNoteScaler(notes_per_measure: number, timeSig: TimeSignature): numbe
   return Math.ceil(notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
 }
 
-function create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number): Array<boolean> {
+function create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number, HH2_array?: Array<any> | null): Array<boolean> {
   var mapping_array = new Array(num_notes);
 
   for (var i = 0; i < num_notes; i++) {
     var hasNote = false;
     if (HH_array && HH_array[i] !== false && HH_array[i] !== null && HH_array[i] !== undefined && HH_array[i] !== '-') {
+      hasNote = true;
+    }
+    if (HH2_array && HH2_array[i] !== false && HH2_array[i] !== null && HH2_array[i] !== undefined && HH2_array[i] !== '-') {
       hasNote = true;
     }
     if (snare_array && snare_array[i] !== false && snare_array[i] !== null && snare_array[i] !== undefined && snare_array[i] !== '-') {
@@ -333,9 +336,11 @@ function MIDI_from_HH_Snare_Kick_Arrays(
   swing_percentage: number,
   timeSig: TimeSignature,
   metronomeSolo: boolean = false,
-  offsetClickStartBeat: string = "1"
+  offsetClickStartBeat: string = "1",
+  HH2_Array?: Array<any> | null
 ): void {
   var prev_hh_note: any = 46; // default open hi-hat to mute previous open hats on first stroke
+  var prev_hh2_note: any = 46;
   var midi_channel = 9; // standard MIDI percussion channel
 
   if (swing_percentage < 0 || swing_percentage > 0.99) {
@@ -380,6 +385,25 @@ function MIDI_from_HH_Snare_Kick_Arrays(
 
         if (HH_Array[i] == constant_ABC_HH_Open)
           prev_hh_note = hh_note;
+      }
+
+      if (HH2_Array && HH2_Array[i] !== false && HH2_Array[i] !== null && HH2_Array[i] !== undefined && HH2_Array[i] !== '-') {
+        const hh2Lookup = hihatMidiFor(HH2_Array[i], midi_output_type);
+        const hh2_note: any = hh2Lookup ? hh2Lookup.note : false;
+        const hh2_velocity = hh2Lookup ? hh2Lookup.velocity : MIDI_VELOCITY_NORMAL;
+
+        if (hh2_note !== false) {
+          if (prev_hh2_note !== false) {
+            midiTrack.addNoteOff(midi_channel, prev_hh2_note, delay_for_next_note);
+            prev_hh2_note = false;
+            delay_for_next_note = 0;
+          }
+          midiTrack.addNoteOn(midi_channel, hh2_note, delay_for_next_note, hh2_velocity);
+          delay_for_next_note = 0;
+
+          if (HH2_Array[i] == constant_ABC_HH_Open)
+            prev_hh2_note = hh2_note;
+        }
       }
 
       const snLookup = snareMidiFor(Snare_Array[i], midi_output_type);

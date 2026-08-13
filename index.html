@@ -42,6 +42,7 @@
     #measureContainer .nav-col-highlight,
     #measureContainer .bg-highlight.nav-col-highlight,
     #measureContainer .hi-hat.nav-col-highlight,
+    #measureContainer .hi-hat2.nav-col-highlight,
     #measureContainer .snare.nav-col-highlight,
     #measureContainer .kick.nav-col-highlight,
     #measureContainer .tom.nav-col-highlight,
@@ -50,6 +51,7 @@
       border-radius: 4px !important;
     }
     #measureContainer .hi-hat-container.nav-row-highlight,
+    #measureContainer .hi-hat2-container.nav-row-highlight,
     #measureContainer .snare-container.nav-row-highlight,
     #measureContainer .kick-container.nav-row-highlight,
     #measureContainer .toms-container.nav-row-highlight,
@@ -67,6 +69,7 @@
       box-shadow: none !important;
     }
     #measureContainer .hi-hat.nav-note-cursor,
+    #measureContainer .hi-hat2.nav-note-cursor,
     #measureContainer .snare.nav-note-cursor,
     #measureContainer .kick.nav-note-cursor,
     #measureContainer .tom.nav-note-cursor,
@@ -78,6 +81,7 @@
       position: relative !important;
     }
     #measureContainer.nav-active .hi-hat.nav-note-cursor,
+    #measureContainer.nav-active .hi-hat2.nav-note-cursor,
     #measureContainer.nav-active .snare.nav-note-cursor,
     #measureContainer.nav-active .kick.nav-note-cursor,
     #measureContainer.nav-active .tom.nav-note-cursor,
@@ -433,6 +437,21 @@
       </ul>
     </div>
     <div class="noteContextMenu">
+      <ul id="hh2ContextMenu" class="list">
+        <li onclick='myGrooveWriter.notePopupClick("hh2", "off");'>Off (-/Esc)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","normal");'>Hi-hat normal (x)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","open");'>Hi-hat open (o)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","accent");'>Hi-hat accent (X)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","crash");'>Crash (c)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","ride");'>Ride (r)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","ride_bell");'>Ride Bell (b)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","cow_bell");'>Cow Bell (m)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","stacker");'>Stacker (s)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","metronome_normal");'>Click (k)</li>
+        <li onclick='myGrooveWriter.notePopupClick("hh2","metronome_accent");'>Click - accent (K)</li>
+      </ul>
+    </div>
+    <div class="noteContextMenu">
       <ul id="tom1ContextMenu" class="list">
         <li onclick='myGrooveWriter.notePopupClick("tom1", "off");'>Off</li>
         <li onclick='myGrooveWriter.notePopupClick("tom1", "normal");'>Tom Normal</li>
@@ -481,6 +500,16 @@
         <li onclick='myGrooveWriter.noteLabelPopupClick("hh", "upbeats");'>upbeats</li>
         <li id='mute_hh_menu_item' onclick='myGrooveWriter.noteLabelPopupClick("hh", "mute");'>mute HH sound</li>
         <li onclick='myGrooveWriter.noteLabelPopupClick("hh", "cancel");'>cancel</li>
+      </ul>
+    </div>
+    <div class="noteContextMenu">
+      <ul id="hh2LabelContextMenu" class="list">
+        <li onclick='myGrooveWriter.noteLabelPopupClick("hh2", "all_off");'>all H2 <b>Off</b></li>
+        <li onclick='myGrooveWriter.noteLabelPopupClick("hh2", "all_on");'>all H2 <b>On</b></li>
+        <li onclick='myGrooveWriter.noteLabelPopupClick("hh2", "downbeats");'>downbeats</li>
+        <li onclick='myGrooveWriter.noteLabelPopupClick("hh2", "upbeats");'>upbeats</li>
+        <li id='mute_hh2_menu_item' onclick='myGrooveWriter.noteLabelPopupClick("hh2", "mute");'>mute H2 sound</li>
+        <li onclick='myGrooveWriter.noteLabelPopupClick("hh2", "cancel");'>cancel</li>
       </ul>
     </div>
     <div class="noteContextMenu">

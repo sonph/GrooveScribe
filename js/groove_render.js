@@ -60,11 +60,12 @@ _a = DrumType;
 DrumType.NONE = new _a('None');
 DrumType.STICKINGS = new _a('Stickings');
 DrumType.HIHAT = new _a('H', setOf('HH'));
+DrumType.HIHAT2 = new _a('H2');
 DrumType.SNARE = new _a('S');
 DrumType.KICK = new _a('K', setOf('B', 'BD'));
 DrumType.TOM1 = new _a('T1');
 DrumType.TOM4 = new _a('T4');
-DrumType.ALL = setOf(_a.STICKINGS, _a.HIHAT, _a.SNARE, _a.KICK, _a.TOM1, _a.TOM4);
+DrumType.ALL = setOf(_a.STICKINGS, _a.HIHAT, _a.HIHAT2, _a.SNARE, _a.KICK, _a.TOM1, _a.TOM4);
 DrumType.ALL_TOMS = setOf(_a.TOM1.name, _a.TOM4.name);
 function noteAttrs(html_id_prefix, iconClass) {
     return {
@@ -113,6 +114,12 @@ class AbcNote {
                 m.set(drumType, new Map());
             }
             m.get(drumType).set(abcNote.note, abcNote.tabChar);
+            if (drumType === DrumType.HIHAT.name) {
+                if (!m.has(DrumType.HIHAT2.name)) {
+                    m.set(DrumType.HIHAT2.name, new Map());
+                }
+                m.get(DrumType.HIHAT2.name).set(abcNote.note, abcNote.tabChar);
+            }
         }
         return m;
     }
@@ -125,6 +132,12 @@ class AbcNote {
             }
             for (let tabChar of abcNote.tabChar) {
                 m.get(drumType).set(tabChar, abcNote);
+                if (drumType === DrumType.HIHAT.name) {
+                    if (!m.has(DrumType.HIHAT2.name)) {
+                        m.set(DrumType.HIHAT2.name, new Map());
+                    }
+                    m.get(DrumType.HIHAT2.name).set(tabChar, abcNote);
+                }
             }
         }
         return m;
@@ -613,12 +626,21 @@ function encodeGrooveQueryString(state) {
         if (!state.showToms && drum.isTom())
             continue;
         const arrays = [];
+        let hasAnyNotes = false;
         for (const measure of state.measures) {
             const str = measure.toString(drum);
-            if (str)
+            if (str) {
                 arrays.push(str);
+                if (str.split('').some(c => c !== '-')) {
+                    hasAnyNotes = true;
+                }
+            }
         }
-        parts.push(`${drum.name}=|${arrays.join('|')}|`);
+        if (drum.equals(DrumType.HIHAT2) && !hasAnyNotes)
+            continue;
+        if (arrays.length > 0) {
+            parts.push(`${drum.name}=|${arrays.join('|')}|`);
+        }
     }
     return '?' + parts.join('&');
 }
@@ -725,23 +747,27 @@ class GrooveData {
         }
         return parts;
     }
-    static hasNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array) {
+    static hasNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array, hh2_array) {
         if (i >= hh_array.length)
             return false;
         return hh_array[i] !== null
+            || (hh2_array != null && hh2_array[i] !== null)
             || snare_array[i] !== null
             || kick_array[i] !== null
             || (tom1_array != null && tom1_array[i] !== null)
             || (tom4_array != null && tom4_array[i] !== null);
     }
     // Returns null if no note at this position, otherwise, a list of AbcNote objects.
-    static getNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array) {
+    static getNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array, hh2_array) {
         if (i >= hh_array.length) {
             return [];
         }
         const s = [];
         if (hh_array[i] !== null) {
             s.push(tabCharToAbcNote(DrumType.HIHAT, hh_array[i]));
+        }
+        if (hh2_array && hh2_array[i] !== null) {
+            s.push(tabCharToAbcNote(DrumType.HIHAT2, hh2_array[i]));
         }
         if (snare_array[i] !== null) {
             s.push(tabCharToAbcNote(DrumType.SNARE, snare_array[i]));
@@ -758,7 +784,7 @@ class GrooveData {
         return s.length > 0 ? s : null;
     }
     // Same as getNotesAtPosition, but with snare BEFORE hi-hat in chord order
-    static getTripletNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array) {
+    static getTripletNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array, hh2_array) {
         if (i >= hh_array.length) {
             return [];
         }
@@ -768,6 +794,9 @@ class GrooveData {
         }
         if (hh_array[i] !== null) {
             s.push(tabCharToAbcNote(DrumType.HIHAT, hh_array[i]));
+        }
+        if (hh2_array && hh2_array[i] !== null) {
+            s.push(tabCharToAbcNote(DrumType.HIHAT2, hh2_array[i]));
         }
         if (kick_array[i] !== null) {
             s.push(tabCharToAbcNote(DrumType.KICK, kick_array[i]));
@@ -815,7 +844,7 @@ class GrooveData {
     }
     // Emit ABC for one measure of a non-triplet subdivision.
     appendPlainMeasureAbc(line, drumArrays) {
-        const [hh, sn, kk, t1, t4] = drumArrays;
+        const [hh, sn, kk, t1, t4, hh2] = drumArrays;
         const numNotesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
         var currentNotes = null;
         var currentNotesPosition = 0;
@@ -825,16 +854,16 @@ class GrooveData {
                 GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
                 return;
             }
-            const hasNote = GrooveData.hasNotesAtPosition(i, hh, sn, kk, t1, t4);
+            const hasNote = GrooveData.hasNotesAtPosition(i, hh, sn, kk, t1, t4, hh2);
             if (i === 0) {
                 if (hasNote) {
-                    currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
+                    currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4, hh2);
                 }
                 continue;
             }
             if (hasNote) {
                 GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
-                currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
+                currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4, hh2);
                 currentNotesPosition = i;
             }
             else if (atStartOfBeat) {
@@ -849,7 +878,7 @@ class GrooveData {
     }
     // Emit ABC for one measure of a triplet subdivision.
     appendTripletMeasureAbc(line, drumArrays) {
-        const [hh, sn, kk, t1, t4] = drumArrays;
+        const [hh, sn, kk, t1, t4, hh2] = drumArrays;
         const noteLength = this.subdivision.abcPositionLength();
         const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
         const marker = `(${notesPerBeat}:${notesPerBeat}:${notesPerBeat}`;
@@ -859,21 +888,21 @@ class GrooveData {
             }
             let hasSubdivisions = false;
             for (let k = 1; k < notesPerBeat; k++) {
-                if (GrooveData.hasNotesAtPosition(beat + k, hh, sn, kk, t1, t4)) {
+                if (GrooveData.hasNotesAtPosition(beat + k, hh, sn, kk, t1, t4, hh2)) {
                     hasSubdivisions = true;
                     break;
                 }
             }
             if (!hasSubdivisions) {
                 const beatLength = 32 / this.timeSig.bottom.value;
-                const notes = GrooveData.getTripletNotesAtPosition(beat, hh, sn, kk, t1, t4);
+                const notes = GrooveData.getTripletNotesAtPosition(beat, hh, sn, kk, t1, t4, hh2);
                 GrooveData.appendAbcNotes(line, notes, beatLength);
             }
             else {
                 line.push(marker);
                 for (let k = 0; k < notesPerBeat; k++) {
                     const i = beat + k;
-                    const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4);
+                    const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4, hh2);
                     GrooveData.appendAbcNotes(line, notes, noteLength);
                 }
             }
@@ -956,11 +985,12 @@ class GrooveData {
             stickingsVoiceParts.push(stickingPart);
             // Hands voice for measure m
             const hh_array = measure.getArray(DrumType.HIHAT);
+            const hh2_array = measure.getArray(DrumType.HIHAT2);
             const snare_array = measure.getArray(DrumType.SNARE);
             const kick_array = measure.getArray(DrumType.KICK);
             const tom1_array = measure.getArray(DrumType.TOM1);
             const tom4_array = measure.getArray(DrumType.TOM4);
-            const drumArrays = [hh_array, snare_array, kick_array, tom1_array, tom4_array];
+            const drumArrays = [hh_array, snare_array, kick_array, tom1_array, tom4_array, hh2_array];
             const handsSegments = [];
             if (beginPrefix) {
                 handsSegments.push(beginPrefix + ' ');

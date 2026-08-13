@@ -219,8 +219,8 @@ class GrooveUtils {
     return getNoteScaler(notes_per_measure, timeSig);
   };
 
-  create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number): Array<boolean> {
-    return create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes);
+  create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number, HH2_array?: Array<any> | null): Array<boolean> {
+    return create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes, HH2_array);
   };
 
   figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number): string | number {
@@ -380,7 +380,7 @@ class GrooveUtils {
     return MIDI_build_midi_url_count_in_track(timeSig, this.getTempo());
   };
 
-  MIDI_from_HH_Snare_Kick_Arrays(midiTrack: any, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>> | null, midi_output_type: string, metronome_frequency: number, num_notes: number, num_notes_for_swing: number, swing_percentage: number, timeSig: TimeSignature): void {
+  MIDI_from_HH_Snare_Kick_Arrays(midiTrack: any, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>> | null, midi_output_type: string, metronome_frequency: number, num_notes: number, num_notes_for_swing: number, swing_percentage: number, timeSig: TimeSignature, HH2_Array?: Array<any> | null): void {
     var isTriplets = this.isTripletDivisionFromNotesPerMeasure(num_notes, timeSig);
     var offsetClickStartBeat = this.getMetronomeOptionsOffsetClickStartRotation(isTriplets);
     MIDI_from_HH_Snare_Kick_Arrays(
@@ -396,7 +396,8 @@ class GrooveUtils {
       swing_percentage,
       timeSig,
       this.metronomeSolo,
-      offsetClickStartBeat
+      offsetClickStartBeat,
+      HH2_Array
     );
   };
 
@@ -420,6 +421,7 @@ class GrooveUtils {
     for (var measureIndex = 0; measureIndex < myGrooveData.numberOfMeasures; measureIndex++) {
       const measure = myGrooveData.measures[measureIndex];
       const hhArray = measure ? measure.getScaledArray(DrumType.HIHAT, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.HIHAT, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
+      const hh2Array = measure ? measure.getScaledArray(DrumType.HIHAT2, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.HIHAT2, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
       const snareArray = measure ? measure.getScaledArray(DrumType.SNARE, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.SNARE, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
       const kickArray = measure ? measure.getScaledArray(DrumType.KICK, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.KICK, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
       const tomsArray: Array<Array<any>> = [
@@ -440,7 +442,8 @@ class GrooveUtils {
         fullSizePerMeasure,
         num_notes_for_swing,
         swing_percentage,
-        myGrooveData.timeSig
+        myGrooveData.timeSig,
+        hh2Array
       );
 
       this.note_mapping_array = this.note_mapping_array.concat(
@@ -449,7 +452,8 @@ class GrooveUtils {
           snareArray,
           kickArray,
           tomsArray,
-          fullSizePerMeasure
+          fullSizePerMeasure,
+          hh2Array
         )
       );
     }

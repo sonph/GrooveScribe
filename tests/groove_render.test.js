@@ -150,4 +150,39 @@ describe('groove_render.js isolated execution', () => {
     expect(notation).toContain('V:Stickings\n|: x4 x4 x4 x4 :| [1 x4 x4 x4 x4 :|');
     expect(notation).not.toContain('z4');
   });
+
+  describe('Cymbal 2 (H2) parsing, encoding, and ABC chord generation', () => {
+    test('parses H2 parameter from URL and generates chords when played simultaneously with H', () => {
+      // H has hi-hat pulse 'xxxxxxxx', H2 has ride bell on downbeats 'b---b---'
+      const url = '?TimeSig=4/4&Div=8&Tempo=90&H=|xxxxxxxx|&H2=|b---b---|&S=|--o---o-|&K=|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+
+      expect(data.measures[0].toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+      expect(data.measures[0].toString(DrumType.HIHAT2)).toBe('b---b---');
+
+      const notation = data.getAbcNotation();
+      // On beat 1 (pos 0): Hi-hat (^g1), Ride Bell (^B'1), Kick (F1) -> chord in hands/feet
+      // Beat 1 hands should have chord with both cymbals: [^g1^B'1]
+      expect(notation).toContain('^B\'1');
+      expect(notation).toContain('^g1');
+    });
+
+    test('toQueryString omits H2 when empty and includes H2 when populated', () => {
+      const emptyH2Data = new GrooveData().fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+      expect(emptyH2Data.toQueryString()).not.toContain('H2=');
+
+      const populatedH2Data = new GrooveData().fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&H2=|r-r-r-r-|&S=|--o---o-|&K=|o---o---|');
+      expect(populatedH2Data.toQueryString()).toContain('H2=|r-r-r-r-|');
+    });
+
+    test('triplet measure with simultaneous Hi-hat and Cymbal 2 stacker/cowbell', () => {
+      const url = '?TimeSig=4/4&Div=12&H=|xxxxxx------|&H2=|------ssssss|&S=|---O-----O--|&K=|o-----o-----|';
+      const data = new GrooveData().fromUrl(url);
+
+      expect(data.measures[0].toString(DrumType.HIHAT2)).toBe('------ssssss');
+      const notation = data.getAbcNotation();
+      expect(notation).toContain('V:Hands stem=up');
+      expect(notation).toBeDefined();
+    });
+  });
 });

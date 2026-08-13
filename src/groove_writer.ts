@@ -69,6 +69,29 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["K", "metronome_accent"],
     ])
   }],
+  ["hh2ContextMenu", {
+    type: "hh2",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["x", "normal"],
+      ["o", "open"],
+      ["O", "open"],
+      ["X", "accent"],
+      ["c", "crash"],
+      ["C", "crash"],
+      ["r", "ride"],
+      ["R", "ride"],
+      ["b", "ride_bell"],
+      ["B", "ride_bell"],
+      ["m", "cow_bell"],
+      ["M", "cow_bell"],
+      ["s", "stacker"],
+      ["S", "stacker"],
+      ["k", "metronome_normal"],
+      ["K", "metronome_accent"],
+    ])
+  }],
   ["snareContextMenu", {
     type: "snare",
     note_mapping: new Map([
@@ -140,6 +163,19 @@ const MODE_TO_NOTE: Map<string, Map<string, AbcNote>> = new Map([
     ['metronome_normal', AbcNote.HH_METRONOME_NORMAL],
     ['metronome_accent', AbcNote.HH_METRONOME_ACCENT],
   ])],
+  [DrumType.HIHAT2.name, new Map<string, AbcNote>([
+    ['normal', AbcNote.HH_NORMAL],
+    ['accent', AbcNote.HH_ACCENT],
+    ['open', AbcNote.HH_OPEN],
+    ['close', AbcNote.HH_CLOSE],
+    ['ride', AbcNote.HH_RIDE],
+    ['ride_bell', AbcNote.HH_RIDE_BELl],
+    ['cow_bell', AbcNote.HH_COW_BELL],
+    ['crash', AbcNote.HH_CRASH],
+    ['stacker', AbcNote.HH_STACKER],
+    ['metronome_normal', AbcNote.HH_METRONOME_NORMAL],
+    ['metronome_accent', AbcNote.HH_METRONOME_ACCENT],
+  ])],
   [DrumType.SNARE.name, new Map<string, AbcNote>([
     ['normal', AbcNote.SN_NORMAL],
     ['accent', AbcNote.SN_ACCENT],
@@ -173,6 +209,7 @@ function modeToNote(drumType: DrumType, mode: string): AbcNote {
 // single-prefix bases (HH_NORMAL = {hh_cross}).
 const NOTES_FOR_DRUM: Map<string, ReadonlyArray<AbcNote>> = new Map([
   [DrumType.HIHAT.name, AbcNote.HH_ALL],
+  [DrumType.HIHAT2.name, AbcNote.HH_ALL],
   [DrumType.SNARE.name, AbcNote.SN_ALL],
   [DrumType.STICKINGS.name, AbcNote.STICKINGS_ALL],
   [DrumType.TOM1.name, [AbcNote.T1_NORMAL]],
@@ -379,7 +416,7 @@ class GrooveWriter {
   have_shown_mixed_division_message: boolean = false;
   class_app_title: string = "Groove Scribe";
   class_measure_for_note_label_click: number = 0;
-  isMeasureContainerActive: boolean = false;
+  isMeasureContainerActive: boolean = true;
   isAudioPlaying: boolean = false;
   get isMeasureContainerSelected(): boolean {
     return this.isMeasureContainerActive;
@@ -508,8 +545,13 @@ class GrooveWriter {
       case DrumType.TOM4.name:
         return this.isNoteOn(AbcNote.T4_NORMAL.getFirstHtmlIdPrefix() + id) ? AbcNote.T4_NORMAL : null;
       case DrumType.HIHAT.name:
-        for (const note of AbcNote.HH_ALL) {
-          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) return note;
+        for (const note of NOTES_FOR_DRUM.get(DrumType.HIHAT.name) || AbcNote.HH_ALL) {
+          if (this._isAbcNoteOn(note, id, false)) return note;
+        }
+        return null;
+      case DrumType.HIHAT2.name:
+        for (const note of NOTES_FOR_DRUM.get(DrumType.HIHAT.name) || AbcNote.HH_ALL) {
+          if (this._isAbcNoteOn(note, id, true)) return note;
         }
         return null;
       case DrumType.STICKINGS.name:
@@ -527,15 +569,19 @@ class GrooveWriter {
     [DrumType.TOM1.name]:      { all: [AbcNote.T1_NORMAL],                                          placeholder: AbcNote.T1_NORMAL },
     [DrumType.TOM4.name]:      { all: [AbcNote.T4_NORMAL],                                          placeholder: AbcNote.T4_NORMAL },
     [DrumType.HIHAT.name]:     { all: AbcNote.HH_ALL,                                               placeholder: AbcNote.HH_NORMAL },
+    [DrumType.HIHAT2.name]:    { all: AbcNote.HH_ALL,                                               placeholder: AbcNote.HH_NORMAL },
     [DrumType.STICKINGS.name]: { all: [AbcNote.STICK_R, AbcNote.STICK_L, AbcNote.STICK_BOTH, AbcNote.STICK_COUNT], placeholder: AbcNote.STICK_R },
   };
 
   setDrumNote(id: number, note: AbcNote, makeSound: boolean = false, offDrumType: DrumType | null = null): void {
-    const drumType = note.drumType === DrumType.NONE ? offDrumType : note.drumType;
+    const isHH2Target = offDrumType ? (offDrumType.name === DrumType.HIHAT2.name || offDrumType.equals(DrumType.HIHAT2)) : false;
+    const drumType = isHH2Target ? DrumType.HIHAT2 : (note.drumType === DrumType.NONE ? offDrumType : note.drumType);
+    const isHH2 = isHH2Target || (drumType ? (drumType.name === DrumType.HIHAT2.name || drumType.equals(DrumType.HIHAT2)) : false);
     const { all: notes, placeholder } = GrooveWriter.DRUM_TYPE_NOTES[drumType.name];
 
     for (const n of notes) {
-      for (const prefix of getAsSet(n.htmlAttrs.html_id_prefix)) {
+      for (const rawPrefix of getAsSet(n.htmlAttrs.html_id_prefix)) {
+        const prefix = isHH2 ? rawPrefix.replace('hh_', 'hh2_') : rawPrefix;
         const element = document.getElementById(prefix + id);
         if (!element) continue;
         element.classList.remove("note-on", "note-off");
@@ -549,7 +595,8 @@ class GrooveWriter {
 
     const target = note.isOff() ? placeholder : note;
     const stateClass = note.isOff() ? "note-off" : "note-on";
-    for (const prefix of getAsSet(target.htmlAttrs.html_id_prefix)) {
+    for (const rawPrefix of getAsSet(target.htmlAttrs.html_id_prefix)) {
+      const prefix = isHH2 ? rawPrefix.replace('hh_', 'hh2_') : rawPrefix;
       const element = document.getElementById(prefix + id);
       if (!element) continue;
       element.classList.remove("note-hidden");
@@ -986,7 +1033,14 @@ class GrooveWriter {
     return false;
   }
 
-  noteLabelPopupClick(instrument: string, action: string): boolean {
+  noteLabelPopupClick(instrument: string, action: string, measure?: number): boolean {
+    if (measure !== undefined) {
+      this.class_measure_for_note_label_click = measure;
+    }
+    if (!this.class_measure_for_note_label_click) {
+      this.class_measure_for_note_label_click = 1;
+    }
+
     var setFunction: ((i: number, mode: string, makeSound: boolean) => void) | null = null;
 
     switch (instrument) {
@@ -995,6 +1049,9 @@ class GrooveWriter {
         break;
       case "hh":
         setFunction = (i, m, s) => this.set_hh_state(i, m, s);
+        break;
+      case "hh2":
+        setFunction = (i, m, s) => this.set_hh2_state(i, m, s);
         break;
       case "tom1":
         setFunction = (i, m, s) => this.set_tom1_state(i, m, s);
@@ -1041,11 +1098,13 @@ class GrooveWriter {
             console.log("Bad sticking case in noteLabelPopupClick");
             break;
         }
-      } else if (instrument == "hh" && action == "downbeats") {
-        this.set_hh_state(i, (i % 2 === 0 ? "normal" : "off"), i == startIndex);
+      } else if ((instrument == "hh" || instrument == "hh2") && action == "downbeats") {
+        const fn = instrument == "hh2" ? (idx: number, m: string, s: boolean) => this.set_hh2_state(idx, m, s) : (idx: number, m: string, s: boolean) => this.set_hh_state(idx, m, s);
+        fn(i, (i % 2 === 0 ? "normal" : "off"), i == startIndex);
 
-      } else if (instrument == "hh" && action == "upbeats") {
-        this.set_hh_state(i, (i % 2 === 0 ? "off" : "normal"), i == (startIndex + 1));
+      } else if ((instrument == "hh" || instrument == "hh2") && action == "upbeats") {
+        const fn = instrument == "hh2" ? (idx: number, m: string, s: boolean) => this.set_hh2_state(idx, m, s) : (idx: number, m: string, s: boolean) => this.set_hh_state(idx, m, s);
+        fn(i, (i % 2 === 0 ? "off" : "normal"), i == (startIndex + 1));
 
       } else if (instrument == "snare" && action == "all_on") {
         this.set_snare_state(i, "accent", i == startIndex);
@@ -1143,6 +1202,9 @@ class GrooveWriter {
         case "hh":
           this.set_hh_state(id, this.is_hh_on(id) ? "off" : "normal", true);
           break;
+        case "hh2":
+          this.set_hh2_state(id, this.is_hh2_on(id) ? "off" : "normal", true);
+          break;
         case "snare":
           this.set_snare_state(id, this.is_snare_on(id) ? "off" : "accent", true);
           break;
@@ -1170,6 +1232,7 @@ class GrooveWriter {
     switch (type) {
       case "sticking": this.set_sticking_state(id, new_setting, true); break;
       case "hh":       this.set_hh_state(id, new_setting, true); break;
+      case "hh2":      this.set_hh2_state(id, new_setting, true); break;
       case "tom1":     this.set_tom1_state(id, new_setting, true); break;
       case "tom4":     this.set_tom4_state(id, new_setting, true); break;
       case "snare":    this.set_snare_state(id, new_setting, true); break;
@@ -1252,10 +1315,11 @@ class GrooveWriter {
   // A note is on iff all of its html_id_prefixes are on. Variants that share
   // a prefix (HH_OPEN/CLOSE/ACCENT/NORMAL all use hh_cross) are distinguished
   // by a secondary prefix.
-  _isAbcNoteOn(note: AbcNote, id: number | string): boolean {
+  _isAbcNoteOn(note: AbcNote, id: number | string, isHH2: boolean = false): boolean {
     const prefixes = getAsSet(note.htmlAttrs.html_id_prefix);
     if (prefixes.size === 0) return false;
-    for (const prefix of prefixes) {
+    for (const rawPrefix of prefixes) {
+      const prefix = isHH2 ? rawPrefix.replace('hh_', 'hh2_') : rawPrefix;
       if (!this.isNoteOn(prefix + id)) return false;
     }
     return true;
@@ -1270,9 +1334,11 @@ class GrooveWriter {
       if (kickOn) return AbcNote.KI_NORMAL;
       return null;
     }
-    const notes = NOTES_FOR_DRUM.get(drumType.name) || [];
+    const isHH2 = drumType ? (drumType.name === DrumType.HIHAT2.name || drumType.equals(DrumType.HIHAT2)) : false;
+    const lookupType = isHH2 ? DrumType.HIHAT : drumType;
+    const notes = NOTES_FOR_DRUM.get(lookupType.name) || [];
     for (const note of notes) {
-      if (this._isAbcNoteOn(note, id)) return note;
+      if (this._isAbcNoteOn(note, id, isHH2)) return note;
     }
     return null;
   }
@@ -1288,6 +1354,10 @@ class GrooveWriter {
 
   get_hh_state(id: number | string): { abc: string | false, url: string } {
     return this.getDrumState(id, DrumType.HIHAT);
+  }
+
+  get_hh2_state(id: number | string): { abc: string | false, url: string } {
+    return this.getDrumState(id, DrumType.HIHAT2);
   }
 
   get_snare_state(id: number | string): { abc: string | false, url: string } {
@@ -1309,6 +1379,9 @@ class GrooveWriter {
   is_hh_on(id: number | string): boolean {
     return this.get_hh_state(id).abc !== false;
   }
+  is_hh2_on(id: number | string): boolean {
+    return this.get_hh2_state(id).abc !== false;
+  }
   is_snare_on(id: number | string): boolean {
     return this.get_snare_state(id).abc !== false;
   }
@@ -1321,6 +1394,9 @@ class GrooveWriter {
 
   set_hh_state(id: number | string, mode: string, makeSound: boolean = false): void {
     this.setDrumNote(Number(id), modeToNote(DrumType.HIHAT, mode), makeSound, DrumType.HIHAT);
+  }
+  set_hh2_state(id: number | string, mode: string, makeSound: boolean = false): void {
+    this.setDrumNote(Number(id), modeToNote(DrumType.HIHAT2, mode), makeSound, DrumType.HIHAT2);
   }
   set_snare_state(id: number | string, mode: string, makeSound: boolean = false): void {
     this.setDrumNote(Number(id), modeToNote(DrumType.SNARE, mode), makeSound, DrumType.SNARE);
@@ -1434,7 +1510,7 @@ class GrooveWriter {
   }
 
   // Extracts note array of a single measure from the clickable UI and scales it to 32 (or 48) elements.
-  get32NoteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, startIndexForClickableUI: number): number {
+  get32NoteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, startIndexForClickableUI: number, HH2_Array?: Array<any>): number {
     var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
 
     for (var i = 0; i < this.data.notesPerMeasure; i++) {
@@ -1444,6 +1520,9 @@ class GrooveWriter {
         Sticking_Array[array_index] = this.get_sticking_state(i + startIndexForClickableUI).abc;
 
       HH_Array[array_index] = this.get_hh_state(i + startIndexForClickableUI).abc;
+      if (HH2_Array) {
+        HH2_Array[array_index] = this.get_hh2_state(i + startIndexForClickableUI).abc;
+      }
 
       if (this.isTomsVisible()) {
         Toms_Array[0][array_index] = this.get_tom_state(i + startIndexForClickableUI, 1).abc;
@@ -1457,9 +1536,11 @@ class GrooveWriter {
     return Snare_Array.length;
   }
 
-  muteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, measureIndex: number): void {
+  muteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, measureIndex: number, HH2_Array?: Array<any>): void {
     if (this.isInstrumentMuted("hh", measureIndex + 1))
       HH_Array.fill(false);
+    if (HH2_Array && this.isInstrumentMuted("hh2", measureIndex + 1))
+      HH2_Array.fill(false);
     if (this.isInstrumentMuted("snare", measureIndex + 1))
       Snare_Array.fill(false);
     if (this.isInstrumentMuted("kick", measureIndex + 1))
@@ -1500,6 +1581,7 @@ class GrooveWriter {
   createMidiUrlFromClickableUI(MIDI_type: string): string {
     var Sticking_Array = this.get_empty_note_array_in_32nds();
     var HH_Array = this.get_empty_note_array_in_32nds();
+    var HH2_Array = this.get_empty_note_array_in_32nds();
     var Snare_Array = this.get_empty_note_array_in_32nds();
     var Kick_Array = this.get_empty_note_array_in_32nds();
     var Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
@@ -1510,8 +1592,8 @@ class GrooveWriter {
 
     var metronomeFrequency = this.getMetronomeFrequency();
 
-    var num_notes = this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
-    this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
+    var num_notes = this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0, HH2_Array);
+    this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0, HH2_Array);
 
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
@@ -1540,10 +1622,10 @@ class GrooveWriter {
             Kick_Array = this.filter_kick_array_for_permutation(Kick_Array);
             new_kick_array = this.merge_kick_arrays(new_kick_array, Kick_Array);
 
-            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
             this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes)
+              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes, HH2_Array)
             );
           }
         }
@@ -1561,10 +1643,10 @@ class GrooveWriter {
             else
               new_snare_array = this.get_snare_permutation_array(i);
 
-            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+            this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
             this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes)
+              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes, HH2_Array)
             );
           }
         }
@@ -1577,26 +1659,27 @@ class GrooveWriter {
         else
           num_notes_for_swing = 16 * this.data.timeSig.top / this.data.timeSig.bottom.value;
 
-        this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+        this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
         this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-          this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes)
+          this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
         );
 
         for (i = 1; i < this.data.numberOfMeasures; i++) {
           Sticking_Array = this.get_empty_note_array_in_32nds();
           HH_Array = this.get_empty_note_array_in_32nds();
+          HH2_Array = this.get_empty_note_array_in_32nds();
           Snare_Array = this.get_empty_note_array_in_32nds();
           Kick_Array = this.get_empty_note_array_in_32nds();
           Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
 
-          this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, this.data.notesPerMeasure * i);
-          this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
+          this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, this.data.notesPerMeasure * i, HH2_Array);
+          this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i, HH2_Array);
 
-          this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+          this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
           this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-            this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes)
+            this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
           );
         }
         break;
@@ -1740,11 +1823,12 @@ class GrooveWriter {
     var svgTarget = document.getElementById("svgTarget"),
       diverr = document.getElementById("diverr");
 
-    var abc_source = (document.getElementById("ABCsource") as HTMLInputElement).value;
+    var abcSourceElem = document.getElementById("ABCsource") as HTMLInputElement | null;
+    var abc_source = abcSourceElem ? abcSourceElem.value : "";
     var svg_return = this.myGrooveUtils.renderABCtoSVG(abc_source);
 
-    diverr.innerHTML = svg_return.error_html;
-    svgTarget.innerHTML = svg_return.svg;
+    if (diverr) diverr.innerHTML = svg_return.error_html;
+    if (svgTarget) svgTarget.innerHTML = svg_return.svg;
   }
 
   // Render an SVG that is good for download.
@@ -1954,6 +2038,7 @@ class GrooveWriter {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
       this.set_sticking_state(i, 'off');
       this.set_hh_state(i, 'off');
+      this.set_hh2_state(i, 'off');
       this.set_tom1_state(i, 'off');
       this.set_tom4_state(i, 'off');
       this.set_snare_state(i, 'off');
@@ -2042,6 +2127,7 @@ class GrooveWriter {
       rows.push("sticking");
     }
     rows.push("hh");
+    rows.push("hh2");
     if (this.isTomsVisible()) {
       rows.push("tom1");
     }
@@ -2077,6 +2163,8 @@ class GrooveWriter {
         return document.getElementById("sticking" + index);
       case "hh":
         return document.getElementById("hi-hat" + index);
+      case "hh2":
+        return document.getElementById("hi-hat2" + index) || document.getElementById("hi-hat2-" + index);
       case "tom1":
         return document.getElementById("tom1-" + index);
       case "snare":
@@ -2136,7 +2224,7 @@ class GrooveWriter {
     if (bgEle) {
       bgEle.classList.add("nav-col-highlight");
     }
-    const allInstruments = ["sticking", "hh", "tom1", "snare", "tom4", "kick"];
+    const allInstruments = ["sticking", "hh", "hh2", "tom1", "snare", "tom4", "kick"];
     for (const inst of allInstruments) {
       const el = this.getNoteElement(inst, this.selectedNoteIndex);
       if (el) {
@@ -2149,41 +2237,33 @@ class GrooveWriter {
     const staff = document.getElementById("staff-container" + measureIndex);
     if (staff) {
       let rowSelector = "";
-      let labelSelector = "";
       switch (this.selectedInstrument) {
         case "sticking":
         case "stickings":
           rowSelector = ".stickings-container";
-          labelSelector = ".stickings-label";
           break;
         case "hh":
           rowSelector = ".hi-hat-container";
-          labelSelector = ".hh-label";
+          break;
+        case "hh2":
+          rowSelector = ".hi-hat2-container";
           break;
         case "tom1":
           rowSelector = "#tom1-container";
-          labelSelector = "#tom1-label";
           break;
         case "snare":
           rowSelector = ".snare-container";
-          labelSelector = ".snare-label";
           break;
         case "tom4":
           rowSelector = "#tom4-container";
-          labelSelector = "#tom4-label";
           break;
         case "kick":
           rowSelector = ".kick-container";
-          labelSelector = ".kick-label";
           break;
       }
       if (rowSelector) {
         const rowEle = staff.querySelector(rowSelector);
         if (rowEle) rowEle.classList.add("nav-row-highlight");
-      }
-      if (labelSelector) {
-        const labelEle = staff.querySelector(labelSelector);
-        if (labelEle) labelEle.classList.add("nav-label-highlight");
       }
     }
 
@@ -2316,10 +2396,14 @@ class GrooveWriter {
     if (!target || typeof target.closest !== "function") return;
 
     // 1. Check for specific note element
-    const noteEl = target.closest(".hi-hat, .snare, .kick, .tom, .sticking") as HTMLElement | null;
+    const noteEl = target.closest(".hi-hat, .hi-hat2, .snare, .kick, .tom, .sticking") as HTMLElement | null;
     if (noteEl && noteEl.id) {
       const idStr = noteEl.id;
-      if (idStr.startsWith("hi-hat")) {
+      if (idStr.startsWith("hi-hat2")) {
+        this.selectedInstrument = "hh2";
+        const idx = parseInt(idStr.replace(/^hi-hat2-?/, ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("hi-hat")) {
         this.selectedInstrument = "hh";
         const idx = parseInt(idStr.replace("hi-hat", ""), 10);
         if (!isNaN(idx)) this.selectedNoteIndex = idx;
@@ -2356,6 +2440,10 @@ class GrooveWriter {
     }
 
     // 3. Check for instrument labels
+    if (target.closest(".hh2-label")) {
+      this.selectedInstrument = "hh2";
+      return;
+    }
     if (target.closest(".hh-label")) {
       this.selectedInstrument = "hh";
       return;
@@ -2382,7 +2470,9 @@ class GrooveWriter {
     }
 
     // 4. Check for row containers
-    if (target.closest(".hi-hat-container")) {
+    if (target.closest(".hi-hat2-container")) {
+      this.selectedInstrument = "hh2";
+    } else if (target.closest(".hi-hat-container")) {
       this.selectedInstrument = "hh";
     } else if (target.closest("#tom1-container")) {
       this.selectedInstrument = "tom1";
@@ -2491,6 +2581,7 @@ class GrooveWriter {
     // DOM would wipe the not-yet-loaded notes.
     this.set_Default_notes(window.location.search);
     this.setupPermutationMenu();
+    this.setMeasureContainerSelected(true);
 
     // The DOM defaults to view-mode CSS (to prevent flicker), so if the URL
     // asks for edit mode we need to flip it.
@@ -2915,7 +3006,7 @@ class GrooveWriter {
         for (let i = 0; i < arr.length; i++) {
           const note = arr[i] ? tabCharToAbcNote(drum, arr[i]) : null;
           if (note) {
-            this.setDrumNote(start + i, note, false);
+            this.setDrumNote(start + i, note, false, drum);
           } else {
             this.setDrumNote(start + i, AbcNote.OFF, false, drum);
           }
@@ -3051,7 +3142,7 @@ class GrooveWriter {
   // Copy notes from src to dst, scaling positions by the ratio of notesPerMeasure.
   // Both measures must have the same triplet-ness so the scale factor divides evenly.
   static rescaleMeasure(src: Measure, dst: Measure): void {
-    const drums = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
+    const drums = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.HIHAT2, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
     const srcLen = src.notesPerMeasure;
     const dstLen = dst.notesPerMeasure;
     for (const drum of drums) {
@@ -3126,6 +3217,7 @@ class GrooveWriter {
 							<span class="notes-row-container">\
 								<div class="line-labels">\
 									<div class="hh-label" onClick="myGrooveWriter.noteLabelClick(event, \'hh\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'hh\', ' + baseindex + ')">Hi-hat</div>\
+									<div class="hh2-label" onClick="myGrooveWriter.noteLabelClick(event, \'hh2\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'hh2\', ' + baseindex + ')">H2</div>\
 									<div class="tom-label" id="tom1-label" onClick="myGrooveWriter.noteLabelClick(event, \'tom1\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'tom1\', ' + baseindex + ')">Tom</div>\
 									<div class="snare-label" onClick="myGrooveWriter.noteLabelClick(event, \'snare\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'snare\', ' + baseindex + ')">Snare</div>\
 									<div class="tom-label" id="tom4-label" onClick="myGrooveWriter.noteLabelClick(event, \'tom4\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'tom4\', ' + baseindex + ')">Tom</div>\
@@ -3138,7 +3230,8 @@ class GrooveWriter {
 									<div class="staff-line-2"></div>\
 									<div class="staff-line-3"></div>\
 									<div class="staff-line-4"></div>\
-									<div class="staff-line-5"></div>\n');
+									<div class="staff-line-5"></div>\
+									<div class="staff-line-6"></div>\n');
 
     newHTML += ('\
 										<div class="background-highlight-container">\
@@ -3179,6 +3272,34 @@ class GrooveWriter {
       }
     }
     newHTML += '<div class="unmuteHHButton" id="unmutehhButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("hh", ' + baseindex + ', false)\'><span class="fa-stack unmuteHHStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></div>';
+    newHTML += ('<div class="end_note_space"></div>\n</div>\n');
+
+    newHTML += ('\
+										<div class="hi-hat2-container">\
+											<div class="opening_note_space"> </div>');
+    for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
+
+      newHTML += ('\
+														<div id="hi-hat2' + i + '" class="hi-hat2" onClick="myGrooveWriter.noteLeftClick(event, \'hh2\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh2\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh2\', ' + i + ')">\
+															<div class="hh2_crash note_part"  id="hh2_crash' + i + '"><i class="fa fa-asterisk"></i></div>\
+															<div class="hh2_ride note_part"   id="hh2_ride' + i + '"><i class="fa fa-dot-circle-o"></i></div>\
+															<div class="hh2_ride_bell note_part"   id="hh2_ride_bell' + i + '"><i class="fa fa-bell-o"></i></div>\
+															<div class="hh2_cow_bell note_part"    id="hh2_cow_bell' + i + '"><i class="fa fa-plus-square-o"></i></div>\
+															<div class="hh2_stacker note_part"   id="hh2_stacker' + i + '"><i class="fa fa-bars"></i></div>\
+															<div class="hh2_metronome_normal note_part"   id="hh2_metronome_normal' + i + '"><i class="fa fa-neuter"></i></div>\
+															<div class="hh2_metronome_accent note_part"   id="hh2_metronome_accent' + i + '"><i class="fa fa-map-pin"></i></div>\
+															<div class="hh2_cross note_part"  id="hh2_cross' + i + '"><i class="fa fa-times"></i></div>\
+															<div class="hh2_open note_part"   id="hh2_open' + i + '"><i class="fa fa-circle-o"></i></div>\
+															<div class="hh2_close note_part"  id="hh2_close' + i + '"><i class="fa fa-plus"></i></div>\
+															<div class="hh2_accent note_part" id="hh2_accent' + i + '"><i class="fa fa-angle-right"></i></div>\
+														</div>\n\
+													');
+
+      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+        newHTML += ('<div class="space_between_note_groups"> </div> \n');
+      }
+    }
+    newHTML += '<div class="unmuteHH2Button" id="unmutehh2Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("hh2", ' + baseindex + ', false)\'><span class="fa-stack unmuteHH2Stack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></div>';
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
     newHTML += ('\
