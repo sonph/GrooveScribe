@@ -1,5 +1,5 @@
 /*jslint browser:true devel:true */
-/*global Abc, MIDI, Midi */
+/*global Abc, MIDI, Midi, Pablo, ShareButton */
 
 declare var MIDI: any;
 declare var Midi: any;
@@ -7,1451 +7,15 @@ declare var Abc: any;
 declare var Pablo: any;
 declare var ShareButton: any;
 
-var global_midiInitialized = false;
-
-var constant_MAX_MEASURES = 10;
-var constant_DEFAULT_TEMPO = 80;
-var constant_NUMBER_OF_TOMS = 4;
-
-var CONSTANT_Midi_play_time_zero = "0:00";
-
-const MIDI_VELOCITY_NORMAL = 85;
-const MIDI_VELOCITY_ACCENT = 120;
-const MIDI_VELOCITY_GHOST = 50;
-
-const MIDI_METRONOME_1 = 76;
-const MIDI_METRONOME_NORMAL = 77;
-
-const MIDI_HIHAT_NORMAL = 42;
-const MIDI_HIHAT_OPEN = 46;
-const MIDI_HIHAT_ACCENT = 108;
-const MIDI_HIHAT_CRASH = 49;
-const MIDI_HIHAT_STACKER = 52;
-const MIDI_HIHAT_METRONOME_NORMAL = 77;
-const MIDI_HIHAT_METRONOME_ACCENT = 76;
-const MIDI_HIHAT_RIDE = 51;
-const MIDI_HIHAT_RIDE_BELL = 53;
-const MIDI_HIHAT_COW_BELL = 105;
-const MIDI_HIHAT_FOOT = 44;
-const MIDI_SNARE_NORMAL = 38;
-const MIDI_SNARE_ACCENT = 22;
-const MIDI_SNARE_GHOST = 21;
-const MIDI_SNARE_XSTICK = 37;
-const MIDI_SNARE_BUZZ = 104;
-const MIDI_SNARE_FLAM = 107;
-const MIDI_SNARE_DRAG = 103;
-const MIDI_KICK_NORMAL = 35;
-const MIDI_TOM1_NORMAL = 48;
-const MIDI_TOM2_NORMAL = 47;
-const MIDI_TOM3_NORMAL = 45;
-const MIDI_TOM4_NORMAL = 43;
-
-const constant_ABC_STICK_R = '"R"x';
-const constant_ABC_STICK_L = '"L"x';
-const constant_ABC_STICK_BOTH = '"R/L"x';
-const constant_ABC_STICK_COUNT = '"count"x';
-const constant_ABC_STICK_OFF = '""x';
-const constant_ABC_HH_Ride = "^A'";
-const constant_ABC_HH_Ride_Bell = "^B'";
-const constant_ABC_HH_Cow_Bell = "^D'";
-const constant_ABC_HH_Crash = "^c'";
-const constant_ABC_HH_Stacker = "^d'";
-const constant_ABC_HH_Metronome_Normal = "^e'";
-const constant_ABC_HH_Metronome_Accent = "^f'";
-const constant_ABC_HH_Open = "!open!^g";
-const constant_ABC_HH_Close = "!plus!^g";
-const constant_ABC_HH_Accent = "!accent!^g";
-const constant_ABC_HH_Normal = "^g";
-const constant_ABC_SN_Ghost = "!(.!!).!c";
-const constant_ABC_SN_Accent = "!accent!c";
-const constant_ABC_SN_Normal = "c";
-const constant_ABC_SN_XStick = "^c";
-const constant_ABC_SN_Buzz = "!///!c";
-const constant_ABC_SN_Flam = "!accent!{/c}c";
-const constant_ABC_SN_Drag = "{/cc}c";
-const constant_ABC_KI_SandK = "[F^d,]";
-const constant_ABC_KI_Splash = "^d,";
-const constant_ABC_KI_Normal = "F";
-const constant_ABC_T1_Normal = "e";
-const constant_ABC_T2_Normal = "d";
-const constant_ABC_T3_Normal = "B";
-const constant_ABC_T4_Normal = "A";
-const constant_ABC_OFF = false;
-
-// MIDI note lookup for a hi-hat ABC token. Returns null for OFF/unknown.
-// "general_MIDI" collapses variants to the normal note + varied velocity;
-// "Custom" uses distinct sample IDs for accent/etc.
-function hihatMidiFor(abcVal, midi_output_type: string): { note: number; velocity: number } | null {
-  switch (abcVal) {
-    case constant_ABC_HH_Normal: case constant_ABC_HH_Close:
-      return { note: MIDI_HIHAT_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Accent:
-      return midi_output_type == "general_MIDI"
-        ? { note: MIDI_HIHAT_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
-        : { note: MIDI_HIHAT_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Open: return { note: MIDI_HIHAT_OPEN, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Ride: return { note: MIDI_HIHAT_RIDE, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Ride_Bell: return { note: MIDI_HIHAT_RIDE_BELL, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Cow_Bell: return { note: MIDI_HIHAT_COW_BELL, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Crash: return { note: MIDI_HIHAT_CRASH, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Stacker: return { note: MIDI_HIHAT_STACKER, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Metronome_Normal: return { note: MIDI_HIHAT_METRONOME_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_HH_Metronome_Accent: return { note: MIDI_HIHAT_METRONOME_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
-    default: return null;
+// In Node/CommonJS test environments, automatically require sub-modules if not loaded.
+if (typeof require !== "undefined") {
+  try {
+    require('./groove_render.js');
+    require('./groove_audio.js');
+    require('./groove_ui.js');
+  } catch (e) {
+    // In browser or non-file environments
   }
-}
-
-// MIDI note lookup for a snare ABC token. See hihatMidiFor() for midi_output_type semantics.
-function snareMidiFor(abcVal, midi_output_type: string): { note: number; velocity: number } | null {
-  const isGM = midi_output_type == "general_MIDI";
-  switch (abcVal) {
-    case constant_ABC_SN_Normal: return { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_SN_Flam:
-      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
-                  : { note: MIDI_SNARE_FLAM, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_SN_Drag:
-      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
-                  : { note: MIDI_SNARE_DRAG, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_SN_Accent:
-      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
-                  : { note: MIDI_SNARE_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_SN_Ghost:
-      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_GHOST }
-                  : { note: MIDI_SNARE_GHOST, velocity: MIDI_VELOCITY_GHOST };
-    case constant_ABC_SN_XStick: return { note: MIDI_SNARE_XSTICK, velocity: MIDI_VELOCITY_NORMAL };
-    case constant_ABC_SN_Buzz: return { note: MIDI_SNARE_BUZZ, velocity: MIDI_VELOCITY_NORMAL };
-    default: return null;
-  }
-}
-
-// MIDI note lookup for a kick ABC token. `kick` is the bass drum, `splash` is the hi-hat foot;
-// SandK ("Splash and Kick") plays both simultaneously.
-function kickMidiFor(abcVal): { kick: number | null; splash: number | null } {
-  switch (abcVal) {
-    case constant_ABC_KI_Splash: return { kick: null, splash: MIDI_HIHAT_FOOT };
-    case constant_ABC_KI_SandK:
-    case "[F^d,]":
-      return { kick: MIDI_KICK_NORMAL, splash: MIDI_HIHAT_FOOT };
-    case constant_ABC_KI_Normal: return { kick: MIDI_KICK_NORMAL, splash: null };
-    default: return { kick: null, splash: null };
-  }
-}
-
-// Adjust a base note duration for swing feel. Swing groups notes in 4s
-// (1-e-&-a): the 1 and the & get longer, the e and the a get shorter, so
-// the pulse becomes 1--e&--a2--e&--a...
-function swingAdjustedDuration(
-  i: number,
-  baseDuration: number,
-  swingPercentage: number,
-  numNotes: number,
-  numNotesForSwing: number,
-): number {
-  if (swingPercentage === 0) return baseDuration;
-  const scaler = numNotes / numNotesForSwing;
-  const val = i % (4 * scaler);
-  // Positions 0 (the "1") and 2 (the "&") get lengthened; 1 (the "e") and 3
-  // (the "a") get shortened by the same amount.
-  const lengthen = val < scaler || (val >= scaler * 2 && val < scaler * 3);
-  return baseDuration + (lengthen ? 1 : -1) * baseDuration * swingPercentage;
-}
-
-// Return the number of notes to subtract from the metronome index so that
-// the click lands on the requested subdivision. '1' means no shift.
-function metronomeOffsetShift(
-  offsetClickStartBeat: string,
-  isTriplets: boolean,
-  sixteenthNoteFrequency: number,
-): number {
-  const straightOnly = offsetClickStartBeat === 'E' || offsetClickStartBeat === 'AND' || offsetClickStartBeat === 'A';
-  const tripletOnly = offsetClickStartBeat === 'TI' || offsetClickStartBeat === 'TA';
-  if (isTriplets && straightOnly) {
-    console.log(`OffsetClickStart error: straight offset '${offsetClickStartBeat}' in triplet context`);
-  }
-  if (!isTriplets && tripletOnly) {
-    console.log(`OffsetClickStart error: triplet offset '${offsetClickStartBeat}' in straight context`);
-  }
-  switch (offsetClickStartBeat) {
-    case '1':   return 0;
-    case 'E':   return sixteenthNoteFrequency;
-    case 'AND': return 2 * sixteenthNoteFrequency;
-    case 'A':   return 3 * sixteenthNoteFrequency;
-    case 'TI':  return sixteenthNoteFrequency * 2;
-    case 'TA':  return 2 * (sixteenthNoteFrequency * 2);
-    default:
-      console.log(`bad case in metronomeOffsetShift: ${offsetClickStartBeat}`);
-      return 0;
-  }
-}
-
-// Return which metronome sound (if any) should fire at this note index.
-// Downbeat 1 is loudest, other beats are normal-volume clicks; extra
-// subdivisions (8ths / 16ths) fire only when metronome_frequency asks for them.
-function metronomeNoteAt(
-  specificIndex: number,
-  metronomeFrequency: number,
-  isTriplets: boolean,
-  timeSig: TimeSignature,
-): { note: number; velocity: number } | null {
-  if (specificIndex < 0) return null;
-  const quarterNoteFrequency = isTriplets ? 12 : 8;
-  const eighthNoteFrequency = isTriplets ? 6 : 4;
-  const sixteenthNoteFrequency = 2;
-  const measureFrequency = quarterNoteFrequency * timeSig.top * (4 / timeSig.bottom.value);
-
-  if (specificIndex === 0 || specificIndex % measureFrequency === 0) {
-    return { note: MIDI_METRONOME_1, velocity: MIDI_VELOCITY_ACCENT };
-  }
-  if (specificIndex % quarterNoteFrequency === 0) {
-    return { note: MIDI_METRONOME_NORMAL, velocity: MIDI_VELOCITY_ACCENT };
-  }
-  if (metronomeFrequency === 8 && specificIndex % eighthNoteFrequency === 0) {
-    return { note: MIDI_METRONOME_NORMAL, velocity: MIDI_VELOCITY_ACCENT };
-  }
-  if (metronomeFrequency === 16 && specificIndex % sixteenthNoteFrequency === 0) {
-    return { note: MIDI_METRONOME_NORMAL, velocity: 25 };
-  }
-  return null;
-}
-
-function tomMidiFor(abcVal): number | null {
-  switch (abcVal) {
-    case constant_ABC_T1_Normal: return MIDI_TOM1_NORMAL;
-    case constant_ABC_T2_Normal: return MIDI_TOM2_NORMAL;
-    case constant_ABC_T3_Normal: return MIDI_TOM3_NORMAL;
-    case constant_ABC_T4_Normal: return MIDI_TOM4_NORMAL;
-    default: return null;
-  }
-}
-
-var global_current_midi_start_time: any = 0;
-var global_last_midi_update_time: any = 0;
-var global_total_midi_play_time_msecs = 0;
-var global_total_midi_notes = 0;
-var global_total_midi_repeats = 0;
-
-function setOf<T>(...args: T[]): Set<T> {
-  return new Set(args);
-}
-
-class DrumType {
-  name: string;
-  alternates: Set<string>;
-
-  static NONE = new DrumType('None');
-  static STICKINGS = new DrumType('Stickings');
-  static HIHAT = new DrumType('H', setOf('HH'));
-  static SNARE = new DrumType('S');
-  static KICK = new DrumType('K', setOf('B', 'BD'));
-  static TOM1 = new DrumType('T1');
-  static TOM4 = new DrumType('T4');
-
-  static ALL = setOf(this.STICKINGS, this.HIHAT, this.SNARE, this.KICK, this.TOM1, this.TOM4);
-  static ALL_TOMS = setOf(this.TOM1.name, this.TOM4.name);
-
-  constructor(name: string, alternates: Set<string> = setOf()) {
-    this.name = name;
-    this.alternates = alternates;
-  }
-
-  static of(name: string) {
-    return new DrumType(name);
-  }
-
-  equals(other: DrumType): boolean {
-    return this.name === other.name;
-  }
-
-  isTom(): boolean {
-    return DrumType.ALL_TOMS.has(this.name);
-  }
-
-  toString(): string {
-    return `DrumType[${this.name}]`;
-  }
-}
-
-interface AbcNoteHtmlAttrs {
-  html_id_prefix: string | Set<string>;
-  iconClass?: string;
-}
-
-function noteAttrs(html_id_prefix: string | Set<string>, iconClass?: string): AbcNoteHtmlAttrs {
-  return {
-    html_id_prefix: html_id_prefix,
-    iconClass: iconClass
-  };
-}
-
-function getAsSet(value: string | Set<string>): Set<string> {
-  if (typeof value === 'string') {
-    return setOf(value);
-  }
-  return value;
-}
-
-function getFirstElement<T>(set: Set<T>): T | null;
-function getFirstElement<T>(e: T): T | null;
-function getFirstElement<T>(v: Set<T> | T): T | null {
-  if (v instanceof Set) {
-    return v.values().next().value || null;
-  }
-  return v;
-}
-
-class AbcNote {
-  drumType: DrumType;
-  note: string;
-  tabChar: Set<string>;
-  htmlAttrs: AbcNoteHtmlAttrs;
-  modifier: string | null;
-  midiNote: number | null;
-
-  static OFF = new AbcNote(DrumType.NONE, '', setOf('-'), null, noteAttrs(''), null);
-
-  static STICK_R = new AbcNote(DrumType.STICKINGS, '"R"x', setOf('R'), null, noteAttrs('sticking_right'));
-  static STICK_L = new AbcNote(DrumType.STICKINGS, '"L"x', setOf('L'), null, noteAttrs('sticking_left'));
-  static STICK_BOTH = new AbcNote(DrumType.STICKINGS, '"R/L"x', setOf('b', 'B'), null, noteAttrs('sticking_both'));
-  static STICK_COUNT = new AbcNote(DrumType.STICKINGS, '"count"x', setOf('c'), null, noteAttrs('sticking_count'), 39);
-  static STICK_OFF = new AbcNote(DrumType.STICKINGS, '""x', setOf('-'));
-  static STICKINGS_ALL = [
-    this.STICK_R,
-    this.STICK_L,
-    this.STICK_BOTH,
-    this.STICK_COUNT,
-  ];
-
-  static HH_RIDE = new AbcNote(DrumType.HIHAT, "^A'", setOf('r'), null, noteAttrs('hh_ride', 'fa-dot-circle-o'), 51);
-  static HH_RIDE_BELl = new AbcNote(DrumType.HIHAT, "^B'", setOf('b', 'B'), null, noteAttrs('hh_ride_bell', 'fa-bell-o'), 53);
-  static HH_COW_BELL = new AbcNote(DrumType.HIHAT, "^D'", setOf('m', 'M'), null, noteAttrs('hh_cow_bell', 'fa-plus-square-o'), 105);
-  static HH_CRASH = new AbcNote(DrumType.HIHAT, "^c'", setOf('c'), null, noteAttrs('hh_crash', 'fa-asterisk'), 49);
-  static HH_STACKER = new AbcNote(DrumType.HIHAT, "^d'", setOf('s'), null, noteAttrs('hh_stacker', 'fa-bars'), 52);
-  static HH_METRONOME_NORMAL = new AbcNote(DrumType.HIHAT, "^e'", setOf('n'), null, noteAttrs('hh_metronome_normal', 'fa-neuter'), 77);
-  static HH_METRONOME_ACCENT = new AbcNote(DrumType.HIHAT, "^f'", setOf('N'), null, noteAttrs('hh_metronome_accent', 'fa-map-pin'), 76);
-  static HH_OPEN = new AbcNote(DrumType.HIHAT, "^g", setOf('o'), '!open!', noteAttrs(setOf('hh_cross', 'hh_open'), 'fa-circle-o'), 46);
-  static HH_CLOSE = new AbcNote(DrumType.HIHAT, "^g", setOf('+'), '!plus!', noteAttrs(setOf('hh_cross', 'hh_close'), 'fa-plus'), 44);
-  static HH_ACCENT = new AbcNote(DrumType.HIHAT, "^g", setOf('X'), '!accent!', noteAttrs(setOf('hh_cross', 'hh_accent'), 'fa-angle-right'), 108);
-  static HH_NORMAL = new AbcNote(DrumType.HIHAT, "^g", setOf('x'), null, noteAttrs('hh_cross', 'fa-times'), 42);
-  static HH_ALL = [
-    this.HH_RIDE,
-    this.HH_RIDE_BELl,
-    this.HH_COW_BELL,
-    this.HH_CRASH,
-    this.HH_STACKER,
-    this.HH_METRONOME_NORMAL,
-    this.HH_METRONOME_ACCENT,
-    this.HH_OPEN,
-    this.HH_CLOSE,
-    this.HH_ACCENT,
-    this.HH_NORMAL
-  ];
-
-  static SN_GHOST = new AbcNote(DrumType.SNARE, "!(.!!).!c", setOf('g'), null, noteAttrs('snare_ghost', 'fa-circle'), 21);
-  // snare_accent must be first, otherwise snare_circle is checked and SN_NORMAL is returned instead.
-  static SN_ACCENT = new AbcNote(DrumType.SNARE, "c", setOf('O'), '!accent!', noteAttrs(setOf('snare_accent', 'snare_circle'), 'fa-chevron-right'), 22);
-  static SN_NORMAL = new AbcNote(DrumType.SNARE, "c", setOf('o'), null, noteAttrs('snare_circle'), 38);
-  static SN_XSTICK = new AbcNote(DrumType.SNARE, "^c", setOf('x'), null, noteAttrs('snare_xstick', 'fa-times'), 37);
-  static SN_BUZZ = new AbcNote(DrumType.SNARE, "!///!c", setOf('b'), null, noteAttrs('snare_buzz', 'fa-bars'), 104);
-  static SN_FLAM = new AbcNote(DrumType.SNARE, "c", setOf('f'), '!accent!{/c}', noteAttrs('snare_flam'), 107);
-  static SN_DRAG = new AbcNote(DrumType.SNARE, "c", setOf('d'), '{//c}', noteAttrs('snare_drag'), 103);
-  static SN_IDS = ['snare_circle', 'snare_ghost', 'snare_accent', 'snare_xstick', 'snare_buzz', 'snare_flam', 'snare_drag'];
-  static SN_ALL = [
-    this.SN_GHOST,
-    this.SN_ACCENT,
-    this.SN_NORMAL,
-    this.SN_XSTICK,
-    this.SN_BUZZ,
-    this.SN_FLAM,
-    this.SN_DRAG
-  ];
-
-  static KI_SANDK = new AbcNote(DrumType.KICK, "[F^d,]", setOf('X'), null, noteAttrs(setOf('kick_circle', 'kick_splash')));
-  static KI_SPLASH = new AbcNote(DrumType.KICK, "^d,", setOf('x'), null, noteAttrs('kick_splash', 'fa-times'), 36);
-  static KI_NORMAL = new AbcNote(DrumType.KICK, "F", setOf('o'), null, noteAttrs('kick_circle'), 35);
-
-  static T1_NORMAL = new AbcNote(DrumType.TOM1, "e", setOf('o'), null, noteAttrs('tom_circle1-'), 48);
-  static T4_NORMAL = new AbcNote(DrumType.TOM4, "A", setOf('o'), null, noteAttrs('tom_circle4-'), 43);
-
-  static ALL_NOTES = [
-    this.STICK_R,
-    this.STICK_L,
-    this.STICK_BOTH,
-    this.STICK_COUNT,
-    this.STICK_OFF,
-    this.HH_RIDE,
-    this.HH_RIDE_BELl,
-    this.HH_COW_BELL,
-    this.HH_CRASH,
-    this.HH_STACKER,
-    this.HH_METRONOME_NORMAL,
-    this.HH_METRONOME_ACCENT,
-    this.HH_OPEN,
-    this.HH_CLOSE,
-    this.HH_ACCENT,
-    this.HH_NORMAL,
-    this.SN_GHOST,
-    this.SN_ACCENT,
-    this.SN_NORMAL,
-    this.SN_XSTICK,
-    this.SN_BUZZ,
-    this.SN_FLAM,
-    this.SN_DRAG,
-    this.KI_SANDK,
-    this.KI_SPLASH,
-    this.KI_NORMAL,
-    this.T1_NORMAL,
-    this.T4_NORMAL,
-  ];
-
-  static ABC_NOTE_TO_TAB_CHAR = AbcNote.createAbcNoteToTabCharMap();
-  static TAB_CHAR_TO_ABC_NOTE = AbcNote.createTabCharToAbcNoteMap();
-
-  constructor(drumType: DrumType, note: string, tabChar: Set<string>, modifier: string | null = null, htmlAttrs: AbcNoteHtmlAttrs | null = null, midiNote: number | null = null) {
-    this.drumType = drumType;
-    this.note = note;
-    this.tabChar = tabChar || new Set();
-    this.htmlAttrs = htmlAttrs;
-    this.modifier = modifier;
-    this.midiNote = midiNote;
-  }
-
-  getFirstTabChar() {
-    return getFirstElement(this.tabChar);
-  }
-
-  getFirstHtmlIdPrefix(): string | null {
-    if (this.htmlAttrs?.html_id_prefix instanceof Set) {
-      return getFirstElement(this.htmlAttrs.html_id_prefix);
-    }
-    return this.htmlAttrs?.html_id_prefix || null;
-  }
-
-  isOff(): boolean {
-    return this.note === AbcNote.OFF.note;
-  }
-
-  static createAbcNoteToTabCharMap() {
-    const m = new Map();
-    for (let abcNote of AbcNote.ALL_NOTES) {
-      const drumType = abcNote.drumType.name;
-      if (!m.has(drumType)) {
-        m.set(drumType, new Map());
-      }
-      m.get(drumType).set(abcNote.note, abcNote.tabChar);
-    }
-    return m;
-  }
-
-  static createTabCharToAbcNoteMap() {
-    const m = new Map();
-    for (let abcNote of AbcNote.ALL_NOTES) {
-      const drumType = abcNote.drumType.name;
-      if (!m.has(drumType)) {
-        m.set(drumType, new Map());
-      }
-      for (let tabChar of abcNote.tabChar) {
-        m.get(drumType).set(tabChar, abcNote);
-      }
-    }
-    return m;
-  }
-}
-
-// DrumType and note string to tab char string.
-function abcNoteToTabChar(drumType: DrumType, abcNote: string | AbcNote): string | null {
-  if (abcNote instanceof AbcNote) {
-    abcNote = abcNote.note;
-  }
-  return AbcNote.ABC_NOTE_TO_TAB_CHAR.get(drumType.name)?.get(abcNote)?.values().next().value || null;
-}
-
-// DrumType and tab char string to AbcNote.
-function tabCharToAbcNote(drumType: DrumType, tabChar: string): AbcNote | null {
-  return AbcNote.TAB_CHAR_TO_ABC_NOTE.get(drumType.name)?.get(tabChar) || null;
-}
-
-class Subdivision {
-  // Length of note will be 1/value.
-  value: number;
-
-  static NONE = new Subdivision(0);
-  static WHOLE = new Subdivision(1);
-  static HALF = new Subdivision(2);
-  static QUARTER = new Subdivision(4);
-  static EIGHTH = new Subdivision(8);
-  static EIGHTH_TRIPLET = new Subdivision(12);
-  static SIXTEENTH = new Subdivision(16);
-  static SIXTEENTH_TRIPLET = new Subdivision(24);
-  static S_32ND = new Subdivision(32);
-  static S_48TH = new Subdivision(48);
-
-  constructor(number: number) {
-    if (typeof number === 'number' && Number.isInteger(number) && number >= 0) {
-      this.value = number;
-    } else {
-      console.log(`Invalid Subdivision value: ${number}, default to QUARTER.`);
-      this.value = Subdivision.QUARTER.value;
-    }
-  }
-
-  isTriplet(): boolean {
-    return this.value % 12 == 0;
-  }
-
-  // Denominator for ABC's L: header. Triplets fix L:1/32 with note lengths
-  // scaled to 48 units per 4/4 measure — abc2svg rejects fractional L: values
-  // like 1/12, and (p:q:r triplet markers reconcile the mismatch with M:4/4.
-  abcNoteLength(): number {
-    return this.isTriplet() ? 32 : this.value;
-  }
-
-  // Length (in L: units) of a single grid position at this subdivision.
-  abcPositionLength(): number {
-    return this.isTriplet() ? 48 / this.value : 1;
-  }
-
-  static of(number: number): Subdivision {
-    return new Subdivision(number);
-  }
-
-  equals(other: Subdivision): boolean {
-    return this.value === other.value;
-  }
-
-  divideBy(other: Subdivision): number {
-    return other.value / this.value;
-  }
-}
-
-class TimeSignature {
-  top: number;
-  bottom: Subdivision;
-
-  static COMMON_TIME_44 = new TimeSignature(4, Subdivision.QUARTER);
-
-  constructor(top: number, bottom: Subdivision) {
-    if (typeof top !== 'number' || top <= 0 || !Number.isInteger(top)) {
-      throw new Error('TimeSignature numbers must be positive integers.');
-    }
-    if (!(bottom instanceof Subdivision)) {
-      throw new Error('TimeSignature bottom must be an instance of Subdivision.');
-    }
-    this.top = top;
-    this.bottom = bottom;
-  }
-
-  toString() {
-    return `${this.top}/${this.bottom.value}`;
-  }
-
-  equals(other: TimeSignature): boolean {
-    return this.top === other.top && this.bottom.equals(other.bottom);
-  }
-
-  static fromString(timeSigString: string): TimeSignature {
-    var split_arr = timeSigString.split("/");
-    if (split_arr.length != 2) {
-      return TimeSignature.COMMON_TIME_44;
-    }
-
-    var timeSigTop = parseInt(split_arr[0]);
-    var timeSigBottom = parseInt(split_arr[1]);
-
-    if (timeSigTop < 1 || timeSigTop > 32)
-      timeSigTop = 4;
-    // only valid if 2,4,8, or 16
-    if (timeSigBottom != 2 && timeSigBottom != 4 && timeSigBottom != 8 && timeSigBottom != 16)
-      timeSigBottom = 4;
-    return new TimeSignature(timeSigTop, Subdivision.of(timeSigBottom));
-  };
-}
-
-class Measure {
-  timeSig: TimeSignature;
-  tabSubdivision: Subdivision;
-  notesPerMeasure: number;
-  arrays: Map<string, Array<string | null> | null>;
-
-  constructor(timeSig: TimeSignature, tabSubdivision: Subdivision) {
-
-    this.timeSig = timeSig;
-    this.tabSubdivision = tabSubdivision;
-    const notesPerBeat = timeSig.bottom.divideBy(tabSubdivision);
-    this.notesPerMeasure = notesPerBeat * timeSig.top;
-
-    // Stores tab note string or `null`. Use getArray(DrumType) instead of accessing this directly.
-    this.arrays = new Map<string, Array<string | null>>();
-    this.arrays.set(DrumType.STICKINGS.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
-    this.arrays.set(DrumType.HIHAT.name, Measure.fillArray(
-      Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.HH_NORMAL.getFirstTabChar(), 0, 2));
-    this.arrays.set(DrumType.SNARE.name, Measure.fillArray(
-      Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.SN_ACCENT.getFirstTabChar(), notesPerBeat, notesPerBeat * 2));
-    this.arrays.set(DrumType.KICK.name, Measure.fillArray(
-      Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.KI_NORMAL.getFirstTabChar(), 0, notesPerBeat * 2));
-    this.arrays.set(DrumType.TOM1.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
-    this.arrays.set(DrumType.TOM4.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
-  }
-
-  // String should be without the bar separators `|`.
-  setDataFromString(drumType: DrumType, string: string) {
-    if (string.length !== this.notesPerMeasure) {
-      throw new Error(`Expected string of length ${this.notesPerMeasure}, got ${string} of length ${string.length}`);
-    }
-    const array = Measure.createEmptyArrayOfLength(this.notesPerMeasure);
-    for (let i = 0; i < string.length; i++) {
-      if (string.charAt(i) !== '-') {
-        array[i] = string.charAt(i);
-      }
-    }
-    this.arrays.set(drumType.name, array);
-  }
-
-  toString(drumType: DrumType): string {
-    if (!this.getArray(drumType)) {
-      console.log(`no value for Drum type: ${drumType}`);
-      return '';
-    }
-    return this.getArray(drumType).map((e) => e || '-').join('');
-  }
-
-  getArray(drumType: DrumType): Array<string | null> {
-    return this.arrays.get(drumType.name) || [];
-  }
-
-  static createEmptyArrayOfLength(length: number): Array<string | null> {
-    const array = new Array(length);
-    array.fill(null);
-    return array;
-  }
-
-  static fillArray(array: Array<string | null>, note: string, firstPosition: number, distance: number): Array<string | null> {
-    for (let i = firstPosition; i < array.length; i += distance) {
-      array[i] = note;
-    }
-    return array;
-  }
-
-  getScaledArray(drumType: DrumType, newSize: number): Array<string | null> {
-    const array = this.getArray(drumType);
-    if (array.length === newSize) {
-      return array;
-    }
-
-    const newArray = new Array(newSize);
-    newArray.fill(null);
-    const scaleFactor = Math.floor(newSize / array.length);
-    for (let i = 0; i < array.length; i++) {
-      const newIndex = i * scaleFactor;
-      if (array[i] !== null) {
-        newArray[newIndex] = array[i];
-      }
-    }
-    return newArray;
-  }
-
-  clone(): Measure {
-    const copy = new Measure(this.timeSig, this.tabSubdivision);
-    for (const drum of DrumType.ALL) {
-      const arr = this.getArray(drum);
-      if (arr) {
-        copy.arrays.set(drum.name, [...arr]);
-      }
-    }
-    return copy;
-  }
-}
-
-interface MeasureTextEntry {
-  begin?: string;
-  end?: string;
-}
-
-interface DecodedGrooveUrl {
-  viewMode: boolean;
-  debugMode: boolean;
-  timeSig: TimeSignature;
-  subdivision: Subdivision;
-  metronomeFrequency: number;
-  title: string;
-  author: string;
-  comments: string;
-  tempo: number;
-  swingPercent: number;
-  showLegend: boolean;
-  showTempo: boolean;
-  repeatBegins: Set<number>;
-  repeatEnds: Set<number>;
-  repeatEndings: Map<number, string>;
-  measureText: Map<number, MeasureTextEntry>;
-  subText: string;
-  // Raw pipe-delimited tab strings keyed by DrumType.name (e.g. "H", "S", "K").
-  drumTabs: Map<string, string>;
-}
-
-// Pure parser: URL query string → typed decoded fields. No DOM, no side effects.
-function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
-  const params = new URLSearchParams(paramsString);
-
-  const drumTabs = new Map<string, string>();
-  for (const drum of DrumType.ALL) {
-    const data = params.get(drum.name);
-    if (data) {
-      drumTabs.set(drum.name, data);
-    }
-  }
-
-  const repeatBegins = new Set<number>();
-  const rbParam = params.get('RepeatBegins');
-  if (rbParam) {
-    rbParam.split(';').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).forEach(n => repeatBegins.add(n));
-  }
-
-  const repeatEnds = new Set<number>();
-  const reParam = params.get('RepeatEnds');
-  if (reParam) {
-    reParam.split(';').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).forEach(n => repeatEnds.add(n));
-  }
-
-  const repeatEndings = new Map<number, string>();
-  const rendParam = params.get('RepeatEndings');
-  if (rendParam) {
-    rendParam.split(';').forEach(entry => {
-      const parts = entry.split(':');
-      if (parts.length >= 2) {
-        const m = parseInt(parts[0].trim(), 10);
-        const ending = parts[1].trim();
-        if (!isNaN(m) && m > 0 && ending) {
-          repeatEndings.set(m, ending);
-        }
-      }
-    });
-  }
-
-  const measureText = new Map<number, MeasureTextEntry>();
-  const mtParam = params.get('MeasureText');
-  if (mtParam) {
-    mtParam.split(';').forEach(entry => {
-      const parts = entry.split(':');
-      if (parts.length >= 2) {
-        const m = parseInt(parts[0].trim(), 10);
-        if (isNaN(m) || m <= 0) return;
-        let isBegin = true;
-        let text = "";
-        if (parts.length === 2) {
-          text = decodeURIComponent(parts[1]);
-        } else {
-          const type = parts[1].toLowerCase();
-          isBegin = type.startsWith('b') || type.startsWith('s');
-          text = decodeURIComponent(parts.slice(2).join(':'));
-        }
-        if (!measureText.has(m)) {
-          measureText.set(m, {});
-        }
-        const obj = measureText.get(m)!;
-        if (isBegin) {
-          obj.begin = text;
-        } else {
-          obj.end = text;
-        }
-      }
-    });
-  }
-
-  const subText = params.get('subText') ? decodeURIComponent(params.get('subText')!) : '';
-
-  return {
-    viewMode: params.get('Mode') === 'view',
-    debugMode: params.get('Debug') === '1',
-    timeSig: params.get('TimeSig') ? TimeSignature.fromString(params.get('TimeSig')) : TimeSignature.COMMON_TIME_44,
-    subdivision: params.get('Div') ? Subdivision.of(parseInt(params.get('Div'))) : Subdivision.SIXTEENTH,
-    metronomeFrequency: Math.max(parseInt(params.get('MetronomeFreq')) || 0, 0),
-    title: params.get('Title') || '',
-    author: params.get('Author') || '',
-    comments: params.get('Comments') || '',
-    tempo: Math.min(Math.max(parseInt(params.get('Tempo')) || constant_DEFAULT_TEMPO, 20), 400),
-    swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
-    showLegend: params.get('Legend') === '1' || params.get('showLegend') === '1',
-    showTempo: params.get('ShowTempo') === '1' || params.get('EmbedTempoTimeSig') === 'true',
-    repeatBegins,
-    repeatEnds,
-    repeatEndings,
-    measureText,
-    subText,
-    drumTabs,
-  };
-}
-
-function buildMeasuresFromTabs(drumTabs: Map<string, string>, timeSig: TimeSignature, subdivision: Subdivision): Array<Measure> {
-  const measures: Array<Measure> = [];
-  for (const drum of DrumType.ALL) {
-    const data = drumTabs.get(drum.name);
-    if (!data) continue;
-    const measureData = GrooveData.splitTabIntoMeasureStrings(data);
-    for (let i = 0; i < measureData.length; i++) {
-      if (measures[i] === undefined) {
-        measures.push(new Measure(timeSig, subdivision));
-      }
-      measures[i].setDataFromString(drum, measureData[i]);
-    }
-  }
-  return measures;
-}
-
-// Minimal shape encodeGrooveQueryString needs from GrooveData. Declared as an
-// interface so tests can pass plain objects without constructing a full class.
-interface EncodableGrooveState {
-  debugMode: boolean;
-  viewMode: boolean;
-  grooveDBAuthoring: boolean;
-  timeSig: TimeSignature;
-  subdivision: Subdivision;
-  title: string;
-  author: string;
-  comments: string;
-  tempo: number;
-  swingPercent: number;
-  metronomeFrequency: number;
-  measures: Array<Measure>;
-  showStickings: boolean;
-  showToms: boolean;
-  showLegend?: boolean;
-  showTempo?: boolean;
-}
-
-// Build query string manually (not URLSearchParams) so `|` and `/` are preserved
-// verbatim in drum tabs and time signatures — percent-encoding breaks the tabs.
-function encodeGrooveQueryString(state: EncodableGrooveState): string {
-  const parts: string[] = [];
-  const add = (key: string, value: string | null | undefined) => {
-    if (value) parts.push(`${key}=${value}`);
-  };
-  add('Debug', state.debugMode ? '1' : '');
-  add('Mode', state.viewMode ? 'view' : 'edit');
-  add('GDB_Author', state.grooveDBAuthoring ? '1' : '');
-  add('TimeSig', state.timeSig.toString());
-  add('Div', state.subdivision.value.toString());
-  add('Title', encodeURIComponent(state.title));
-  add('Author', encodeURIComponent(state.author));
-  add('Comments', encodeURIComponent(state.comments));
-  add('Tempo', state.tempo.toString());
-  add('Swing', state.swingPercent ? state.swingPercent.toString() : '');
-  add('MetronomeFreq', state.metronomeFrequency ? state.metronomeFrequency.toString() : '');
-  if (state.showLegend) add('Legend', '1');
-  if (state.showTempo) add('ShowTempo', '1');
-
-  for (const drum of DrumType.ALL) {
-    if (!state.showStickings && drum.equals(DrumType.STICKINGS)) continue;
-    if (!state.showToms && drum.isTom()) continue;
-    const arrays: string[] = [];
-    for (const measure of state.measures) {
-      const str = measure.toString(drum);
-      if (str) arrays.push(str);
-    }
-    parts.push(`${drum.name}=|${arrays.join('|')}|`);
-  }
-
-  return '?' + parts.join('&');
-}
-
-class GrooveData {
-  timeSig: TimeSignature;
-  subdivision: Subdivision;
-  measures: Array<Measure>;
-  showTempo: boolean;
-  showToms: boolean;
-  showStickings: boolean;
-  showLegend: boolean;
-  title: string;
-  author: string;
-  comments: string;
-  swingPercent: number;
-  tempo: number;
-  kickStemsUp: boolean;
-  metronomeFrequency: number; // 0, 4, 8, 16
-  debugMode: boolean;
-  grooveDBAuthoring: boolean;
-  viewMode: boolean;
-  repeatBegins: Set<number>;
-  repeatEnds: Set<number>;
-  repeatEndings: Map<number, string>;
-  measureText: Map<number, MeasureTextEntry>;
-  subText: string;
-
-  constructor(timeSig = TimeSignature.COMMON_TIME_44, subdivision = Subdivision.SIXTEENTH, numberOfMeasures = 1) {
-    this.timeSig = timeSig;
-    this.subdivision = subdivision;
-
-    this.measures = [];
-    for (let i = 0; i < numberOfMeasures; i++) {
-      this.measures.push(new Measure(this.timeSig, this.subdivision));
-    }
-
-    this.showTempo = false;
-    this.showToms = false;
-    this.showStickings = false;
-    this.showLegend = false;
-    this.title = "";
-    this.author = "";
-    this.comments = "";
-    this.swingPercent = 0;
-    this.tempo = constant_DEFAULT_TEMPO;
-    this.kickStemsUp = true;
-    this.metronomeFrequency = 0; // 0, 4, 8, 16
-    this.debugMode = true;
-    this.grooveDBAuthoring = false;
-    this.viewMode = false;
-    this.repeatBegins = new Set();
-    this.repeatEnds = new Set();
-    this.repeatEndings = new Map();
-    this.measureText = new Map();
-    this.subText = "";
-  }
-
-  get numberOfMeasures(): number {
-    return this.measures.length;
-  }
-
-  get notesPerMeasure(): number {
-    return this.timeSig.top * this.timeSig.bottom.divideBy(this.subdivision);
-  }
-
-  get notesPerBeat(): number {
-    return this.timeSig.bottom.divideBy(this.subdivision);
-  }
-
-  fromUrl(paramsString: string): GrooveData {
-    const decoded = decodeGrooveUrl(paramsString);
-    this.viewMode = decoded.viewMode;
-    this.debugMode = decoded.debugMode;
-    this.timeSig = decoded.timeSig;
-    this.subdivision = decoded.subdivision;
-    this.metronomeFrequency = decoded.metronomeFrequency;
-    this.title = decoded.title;
-    this.author = decoded.author;
-    this.comments = decoded.comments;
-    this.tempo = decoded.tempo;
-    this.swingPercent = decoded.swingPercent;
-    this.showLegend = decoded.showLegend;
-    this.showTempo = decoded.showTempo;
-    this.repeatBegins = decoded.repeatBegins;
-    this.repeatEnds = decoded.repeatEnds;
-    this.repeatEndings = decoded.repeatEndings;
-    this.measureText = decoded.measureText;
-    this.subText = decoded.subText;
-
-    const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
-    if (measures.length !== 0) {
-      this.measures = measures;
-    } else {
-      // Preserve legacy fallback: URL with no drum data triggers default groove.
-      // The recursive call resets TimeSig/Div/etc. to the defaults in the fallback
-      // string; callers who want to keep other fields should provide drum data.
-      this.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
-    }
-
-    return this;
-  }
-
-  toUrl(url_destination: string = ''): string {
-    // window.* stays here so the pure encoder can run in tests / Node.
-    const base = window.location.protocol + "//" + window.location.host + window.location.pathname;
-    return base + encodeGrooveQueryString(this);
-  }
-
-  static splitTabIntoMeasureStrings(string: string): Array<string> {
-    if (!string) {
-      return [];
-    }
-    var parts = string.split('|');
-    if (string.startsWith('|')) {
-      if (parts.length === 1) {
-        return [];
-      }
-      parts = parts.slice(1, parts.length);
-    }
-    if (string.endsWith('|')) {
-      parts = parts.slice(0, parts.length - 1);
-    }
-    return parts;
-  }
-
-  static hasNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array?: Array<string | null>, tom4_array?: Array<string | null>): boolean {
-    if (i >= hh_array.length) return false;
-    return hh_array[i] !== null
-      || snare_array[i] !== null
-      || kick_array[i] !== null
-      || (tom1_array != null && tom1_array[i] !== null)
-      || (tom4_array != null && tom4_array[i] !== null);
-  }
-
-  // Returns null if no note at this position, otherwise, a list of AbcNote objects.
-  static getNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array: Array<string | null>, tom4_array: Array<string | null>): Array<AbcNote> | null {
-    if (i >= hh_array.length) {
-      return [];
-    }
-    const s = [];
-    if (hh_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.HIHAT, hh_array[i]));
-    }
-    if (snare_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.SNARE, snare_array[i]));
-    }
-    if (kick_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.KICK, kick_array[i]));
-    }
-    if (tom1_array && tom1_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.TOM1, tom1_array[i]));
-    }
-    if (tom4_array && tom4_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.TOM4, tom4_array[i]));
-    }
-    return s.length > 0 ? s : null;
-  }
-
-  // Same as getNotesAtPosition, but with snare BEFORE hi-hat in chord order —
-  // matches the legacy triplet output format (e.g. `[c4^g4]`, not `[^g4c4]`).
-  static getTripletNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array: Array<string | null>, tom4_array: Array<string | null>): Array<AbcNote> | null {
-    if (i >= hh_array.length) {
-      return [];
-    }
-    const s = [];
-    if (snare_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.SNARE, snare_array[i]));
-    }
-    if (hh_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.HIHAT, hh_array[i]));
-    }
-    if (kick_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.KICK, kick_array[i]));
-    }
-    if (tom1_array && tom1_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.TOM1, tom1_array[i]));
-    }
-    if (tom4_array && tom4_array[i] !== null) {
-      s.push(tabCharToAbcNote(DrumType.TOM4, tom4_array[i]));
-    }
-    return s.length > 0 ? s : null;
-  }
-
-  // If notes is null, interpret as a rest.
-  static appendAbcNotes(abcs: Array<string>, notes: Array<AbcNote> | null, length: number): void {
-    if (length === 0) {
-      return;
-    }
-    if (notes === null || notes.length === 0) {
-      // Append rest.
-      abcs.push('z' + length);
-      return;
-    }
-    if (notes.length === 1) {
-      if (notes[0].note.startsWith('[') && notes[0].note.endsWith(']')) {
-        const inner = notes[0].note.slice(1, -1);
-        abcs.push((notes[0].modifier || '') + '[' + inner + length + ']');
-      } else {
-        abcs.push((notes[0].modifier || '') + notes[0].note + length);
-      }
-    } else {
-      // Multiple notes, use a chord.
-      // Accents have to be before and outside of brackets.
-      const accents = new Set();
-      for (const note of notes) {
-        if (note.modifier) {
-          accents.add(note.modifier || '');
-        }
-      }
-      abcs.push(Array.from(accents).join('') + '[' + notes.map(n => {
-        const inner = n.note.startsWith('[') && n.note.endsWith(']') ? n.note.slice(1, -1) : n.note;
-        return inner + length;
-      }).join('') + ']');
-    }
-  }
-
-  // Emit ABC for one measure of a non-triplet subdivision. Notes are emitted at
-  // their natural length in units of L: (which equals subdivision.value here).
-  appendPlainMeasureAbc(line: Array<string>, drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>]): void {
-    const [hh, sn, kk, t1, t4] = drumArrays;
-    const numNotesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
-    var currentNotes: Array<AbcNote> | null = null;
-    var currentNotesPosition = 0;
-    // Scan positions and emit a note (or rest) whenever a new event or beat
-    // boundary is reached. Length = distance from the previous emission.
-    for (let i = 0; i <= hh.length; i++) {
-      const atStartOfBeat = (i % numNotesPerBeat === 0);
-      if (i === hh.length) {
-        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
-        return;
-      }
-      const hasNote = GrooveData.hasNotesAtPosition(i, hh, sn, kk, t1, t4);
-      if (i === 0) {
-        if (hasNote) {
-          currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
-        }
-        continue;
-      }
-      if (hasNote) {
-        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
-        currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
-        currentNotesPosition = i;
-      } else if (atStartOfBeat) {
-        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
-        currentNotes = null;
-        currentNotesPosition = i;
-      }
-      // Space before a new beat breaks the beam so notes don't beam across beats.
-      if (atStartOfBeat) {
-        line.push(' ');
-      }
-    }
-  }
-
-  // Emit ABC for one measure of a triplet subdivision (8th/16th/32nd triplets).
-  // Uses L:1/32 with (n:n:n markers (n = notes per beat: 3, 6, or 12) so abc2svg
-  // reconciles the n-in-a-beat mismatch with M:4/4. Each grid position emits a
-  // note (or rest) of length 48/subdivision.
-  appendTripletMeasureAbc(line: Array<string>, drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>]): void {
-    const [hh, sn, kk, t1, t4] = drumArrays;
-    const noteLength = this.subdivision.abcPositionLength();
-    const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
-    const marker = `(${notesPerBeat}:${notesPerBeat}:${notesPerBeat}`;
-    for (let beat = 0; beat < hh.length; beat += notesPerBeat) {
-      if (beat > 0) {
-        line.push(' ');
-      }
-      let hasSubdivisions = false;
-      for (let k = 1; k < notesPerBeat; k++) {
-        if (GrooveData.hasNotesAtPosition(beat + k, hh, sn, kk, t1, t4)) {
-          hasSubdivisions = true;
-          break;
-        }
-      }
-
-      if (!hasSubdivisions) {
-        const beatLength = 32 / this.timeSig.bottom.value;
-        const notes = GrooveData.getTripletNotesAtPosition(beat, hh, sn, kk, t1, t4);
-        GrooveData.appendAbcNotes(line, notes, beatLength);
-      } else {
-        line.push(marker);
-        for (let k = 0; k < notesPerBeat; k++) {
-          const i = beat + k;
-          const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4);
-          GrooveData.appendAbcNotes(line, notes, noteLength);
-        }
-      }
-    }
-  }
-
-  // We use 2 voices, Stickings and Hands. Stickings for stickings. Hands for HH, Snare, Kick and Toms.
-  // Note length is a multiple of the subdivision. Subdivision is set with `L:` in the header.
-  // For example, `L:1/8` and `f1` means a 1/8 note, `f2` means a 1/4 note.
-  getAbcNotation(): string {
-    const isTriplet = this.subdivision.isTriplet();
-    const stickingsVoiceParts: string[] = [];
-    const handsVoiceParts: string[] = [];
-
-    for (let measureNum = 0; measureNum < this.measures.length; measureNum++) {
-      const measure = this.measures[measureNum];
-      const m = measureNum + 1;
-      const lastMeasure = (measureNum === this.measures.length - 1);
-
-      let measureRests: string;
-      if (isTriplet) {
-        const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
-        const perBeat = ('x' + this.subdivision.abcPositionLength()).repeat(notesPerBeat);
-        measureRests = Array(this.timeSig.top).fill(perBeat).join(' ');
-      } else {
-        const abcUnitsPerBeat = this.subdivision.abcNoteLength() / this.timeSig.bottom.value;
-        const beatRest = 'z' + abcUnitsPerBeat;
-        measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
-      }
-
-      const hasRepeatBegin = this.repeatBegins && this.repeatBegins.has(m);
-      const hasRepeatEnd = this.repeatEnds && this.repeatEnds.has(m);
-      const altEnding = this.repeatEndings ? this.repeatEndings.get(m) : undefined;
-      const textBegin = this.measureText ? this.measureText.get(m)?.begin : undefined;
-      const textEnd = this.measureText ? this.measureText.get(m)?.end : undefined;
-
-      let beginPrefix = '';
-      if (hasRepeatBegin) {
-        beginPrefix = altEnding ? `|:[${altEnding}` : '|:';
-      } else if (altEnding) {
-        beginPrefix = `[${altEnding}`;
-      }
-
-      let endBar: string;
-      if (hasRepeatEnd) {
-        endBar = ':|';
-      } else if (lastMeasure) {
-        endBar = '||';
-      } else {
-        endBar = '|';
-      }
-
-      // Stickings voice for measure m
-      let stickingPart = (beginPrefix ? beginPrefix + ' ' : '') + measureRests + ' ' + endBar;
-      stickingsVoiceParts.push(stickingPart);
-
-      // Hands voice for measure m
-      const hh_array = measure.getArray(DrumType.HIHAT);
-      const snare_array = measure.getArray(DrumType.SNARE);
-      const kick_array = measure.getArray(DrumType.KICK);
-      const tom1_array = measure.getArray(DrumType.TOM1);
-      const tom4_array = measure.getArray(DrumType.TOM4);
-      const drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>] = [hh_array, snare_array, kick_array, tom1_array, tom4_array];
-
-      const handsSegments: string[] = [];
-      if (beginPrefix) {
-        handsSegments.push(beginPrefix + ' ');
-      }
-      if (textBegin) {
-        handsSegments.push(`"${textBegin}"`);
-      }
-      if (isTriplet) {
-        this.appendTripletMeasureAbc(handsSegments, drumArrays);
-      } else {
-        this.appendPlainMeasureAbc(handsSegments, drumArrays);
-      }
-      if (textEnd) {
-        handsSegments.push(`"${textEnd}"`);
-      }
-      const endBarWithSpacing = isTriplet ? ' ' + endBar : (lastMeasure && !hasRepeatEnd ? ' ' + endBar : endBar);
-      handsSegments.push(endBarWithSpacing);
-
-      handsVoiceParts.push(handsSegments.join(''));
-    }
-
-    const lines: string[] = [];
-    lines.push('V:Stickings\n' + stickingsVoiceParts.join(' '));
-    lines.push('V:Hands stem=up\n%%voicemap drum\n' + handsVoiceParts.join(' '));
-
-    return lines.join('\n') + '\n';
-  }
-
-  getAbcHeader(isPermutation: boolean, renderWidth: number, showLegend: boolean = false): string {
-    // 0 is GrooveUtil index if there are multiple instances.
-    var fullABC = `%abc\n%%fullsvg _0\nX:6\nM:${this.timeSig.toString()}\n`;
-    if (this.title) {
-      fullABC += `T: ${this.title}\n`;
-    }
-    if (this.author) {
-      fullABC += `C: ${this.author}\n%%musicspace 20px\n`;
-    }
-
-    if (renderWidth < 400)
-      renderWidth = 400; // min-width
-    if (renderWidth > 3000)
-      renderWidth = 3000; // max-width
-    // the width of the music is always 25% bigger than what we pass in.   Go figure.
-    renderWidth = Math.floor(renderWidth * 0.75);
-
-    fullABC += `L:1/${this.subdivision.abcNoteLength()}\n`;
-
-    if (isPermutation)
-      fullABC += "%%stretchlast 0\n";
-    else
-      fullABC += "%%stretchlast 1\n";
-
-    fullABC += '%%flatbeams 1\n' +
-      '%%ornament up\n' +
-      `%%pagewidth ${renderWidth}px\n` +
-      '%%leftmargin 0cm\n' +
-      '%%rightmargin 0cm\n' +
-      '%%topspace 10px\n' +
-      '%%titlefont calibri 20\n' +
-      '%%partsfont calibri 16\n' +
-      '%%gchordfont calibri 16\n' +
-      '%%annotationfont calibri 16\n' +
-      '%%infofont calibri 16\n' +
-      '%%textfont calibri 16\n' +
-      '%%deco (. 0 a 5 1 1 "@-8,-3("\n' +
-      '%%deco ). 0 a 5 1 1 "@4,-3)"\n' +
-      '%%beginsvg\n' +
-      ' <defs>\n' +
-      ' <path id="Xhead" d="m-3,-3 l6,6 m0,-6 l-6,6" class="stroke" style="stroke-width:1.2"/>\n' +
-      ' <path id="Trihead" d="m-3,2 l 6,0 l-3,-6 l-3,6 l6,0" class="stroke" style="stroke-width:1.2"/>\n' +
-      ' </defs>\n' +
-      '%%endsvg\n' +
-      '%%map drum ^g heads=Xhead print=g       % Hi-Hat\n' +
-      '%%map drum ^c\' heads=Xhead print=c\'   % Crash\n' +
-      '%%map drum ^d\' heads=Xhead print=d\'   % Stacker\n' +
-      '%%map drum ^e\' heads=Xhead print=e\'   % Metronome click\n' +
-      '%%map drum ^f\' heads=Xhead print=f\'   % Metronome beep\n' +
-      '%%map drum ^A\' heads=Xhead print=A\'   % Ride\n' +
-      '%%map drum ^B\' heads=Trihead print=A\' % Ride Bell\n' +
-      '%%map drum ^D\' heads=Trihead print=g   % Cow Bell\n' +
-      '%%map drum ^c heads=Xhead print=c  % Cross Stick\n' +
-      '%%map drum ^d, heads=Xhead print=d,  % Foot Splash\n';
-
-    if (showLegend || this.showLegend) {
-      fullABC += "%%staves (Stickings Hands Feet)\n";
-    } else {
-      fullABC += "%%staves (Stickings Hands)\n";
-    }
-
-    if (this.comments) {
-      fullABC += `P: ${this.comments}\n%%musicspace 20px\n`;
-    }
-
-    // the K ends the header;
-    fullABC += "K:C clef=perc\n";
-
-    if (showLegend || this.showLegend) {
-      fullABC += 'V:Stickings\n' +
-        'x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 ||\n' +
-        'V:Hands stem=up \n' +
-        '%%voicemap drum\n' +
-        '"^Hi-Hat"^g8 "^Open"!open!^g8 ' +
-        '"^Crash"^c\'8 "^Stacker"^d\'8 "^Ride"^A\'8 "^Ride Bell"^B\'8 x4 "^Tom"e8 "^Tom"A8 "^Snare"c8 "^Buzz"!///!c8 "^Cross"^c8 "^Ghost  "!(.!!).!c8 "^Flam"{/c}c8  x20 ||\n' +
-        'V:Feet stem=down \n' +
-        '%%voicemap drum\n' +
-        'x104 "^Kick"F8 "^HH foot"^d,8 x8 ||\n' +
-        'T:\n';
-    }
-
-    if (this.showTempo) {
-      const beatUnit = (this.timeSig.bottom.value === 8 && this.timeSig.top % 3 === 0) ? '3/8' : `1/${this.timeSig.bottom.value}`;
-      fullABC += `Q: ${beatUnit}=${this.tempo}\n`;
-    }
-
-    return fullABC;
-  }
-}
-
-class MidiEventCallback {
-  grooveUtils: GrooveUtils;
-  noteHasChangedSinceLastDataLoad: boolean;
-  midiEventCallbacks: object;
-  grooveUtilsUniqueIndex: number;
-  playEvent: (root?: any) => void;
-  playEventCallback: (() => void) | null;
-  create_MIDIURLFromGrooveData: (data: GrooveData) => string;
-  loadMIDIFromURL: (url: string) => void;
-  getMidiImageLocation: () => string;
-
-  constructor(grooveUtils: GrooveUtils) {
-    this.grooveUtils = grooveUtils;
-    this.grooveUtilsUniqueIndex = grooveUtils.grooveUtilsUniqueIndex;
-    this.noteHasChangedSinceLastDataLoad = false;
-
-    this.playEvent = function () {
-      var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
-      if (icon)
-        icon.className = "midiPlayImage Playing";
-      if (this.playEventCallback) {
-        this.playEventCallback();
-      }
-    };
-  }
-
-  loadMidiDataEvent(_playStarting?: boolean): void {
-    if (this.grooveUtils && this.grooveUtils.data) {
-      var midiURL = this.create_MIDIURLFromGrooveData(this.grooveUtils.data);
-      this.loadMIDIFromURL(midiURL);
-      this.noteHasChangedSinceLastDataLoad = false;
-    } else {
-      console.log("can't load midi song. data is empty");
-    }
-  }
-
-  doesMidiDataNeedRefresh(): boolean {
-    return this.noteHasChangedSinceLastDataLoad;
-  }
-
-  pauseEvent(): void {
-    var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
-    if (icon)
-      icon.className = "midiPlayImage Paused";
-  }
-
-  resumeEvent(): void { };
-  stopEvent(): void {
-    var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
-    if (icon)
-      icon.className = "midiPlayImage Stopped";
-  }
-  repeatChangeEvent(newValue: boolean): void {
-    if (newValue)
-      (document.getElementById("midiRepeatImage" + this.grooveUtilsUniqueIndex) as HTMLImageElement).src = this.getMidiImageLocation() + "repeat.png";
-    else
-      (document.getElementById("midiRepeatImage" + this.grooveUtilsUniqueIndex) as HTMLImageElement).src = this.getMidiImageLocation() + "grey_repeat.png";
-  }
-  percentProgress(percent: number): void { };
-  notePlaying(note_type?: string, note_position?: number): void { };
-
-  midiInitialized(): void {
-    var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
-    if (icon) {
-      icon.className = "midiPlayImage Stopped";
-      icon.onclick = (event: MouseEvent) => {
-        this.grooveUtils.startOrStopMIDI_playback();
-      };
-    }
-    this.grooveUtils.setupHotKeys();
-  }
-}
-
-// Callback class for abc2svg generator library.
-// See https://chiselapp.com/user/moinejf/repository/abc2svg/wiki?name=interface-1.
-class SVGLibCallback {
-  abc_obj: AbcObj;
-  abc_svg_output: string;
-  abc_error_output: string;
-  svg_highlight_y: number;
-  svg_highlight_h: number;
-  page_format: boolean;
-  grooveUtilsUniqueIndex: number;
-  abcNoteNumIndex: number;
-
-  constructor() {
-    this.abc_obj = null;
-    this.abc_svg_output = "";
-    this.abc_error_output = "";
-    this.svg_highlight_y = 0;
-    this.svg_highlight_h = 44;
-    this.page_format = true;
-    this.grooveUtilsUniqueIndex = 0;
-    this.abcNoteNumIndex = 0;
-  }
-
-  read_file(fn: string): string {
-    return "";
-  };
-
-  errmsg(msg: string, l?: number, c?: number): void {
-    this.abc_error_output += msg + "<br/>\n";
-  };
-
-  get_abcmodel(tsfirst: any, voice_tb: any, music_types: any): void { };
-
-  anno_start(type: string, start: any, stop: any, x: number, y: number, w: number, h: number): void { };
-  anno_stop(type: string, start: any, stop: any, x: number, y: number, w: number, h: number): void {
-    if (type == "bar") {
-      this.svg_highlight_y = y + 5;
-      this.svg_highlight_h = h + 10;
-    }
-    if (type == "note" || type == "grace") {
-      y = this.svg_highlight_y;
-      h = this.svg_highlight_h;
-      this.abc_obj.out_svg('<rect class="abcr" id="abcNoteNum_' + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumIndex + '" x="');
-      this.abc_obj.out_sxsy(x, '" y="', y);
-      this.abc_obj.out_svg('" width="' + w.toFixed(2) + '" height="' + h.toFixed(2) + '"/>\n');
-
-      // Grace note is attached to the primary note, so keep the same note index.
-      if (type != "grace")
-        this.abcNoteNumIndex++;
-    }
-  };
-
-  img_out(str: string): void {
-    this.abc_svg_output += str;
-  };
-}
-
-// https://chiselapp.com/user/moinejf/repository/abc2svg/wiki?name=interface-1
-interface AbcObj {
-  new(callback: SVGLibCallback): AbcObj;
-  tosvg(file_name: string, ABC_source: string, start_offset?: number, end_offset?: number): any;
-  out_svg(text: string): void;
-  out_sxsy(x_offset: number, separator: string, y_offset: number): void;
 }
 
 class GrooveUtils {
@@ -1493,7 +57,7 @@ class GrooveUtils {
     this.tempoChangeCallback = null;
     this.visible_context_menu = false;
 
-    if (!excludeAbcForTesting) {
+    if (!excludeAbcForTesting && typeof Abc !== "undefined") {
       this.abcToSVGCallback = new SVGLibCallback();
       this.abc_obj = new Abc(this.abcToSVGCallback);
       this.abcToSVGCallback.abc_obj = this.abc_obj;
@@ -1519,9 +83,8 @@ class GrooveUtils {
     return (def_value);
   };
 
-
   is_touch_device(): boolean {
-    return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+    return is_touch_device();
   };
 
   documentOnClickHanderCloseContextMenu = (event: MouseEvent): void => {
@@ -1561,11 +124,11 @@ class GrooveUtils {
   };
 
   isTripletDivision(subdivision: number): boolean {
-    return subdivision % 12 === 0;
+    return isTripletDivision(subdivision);
   }
 
   isTripletDivisionFromNotesPerMeasure(notesPerMeasure: number, timeSig: TimeSignature): boolean {
-    return this.isTripletDivision((notesPerMeasure / timeSig.top) * timeSig.bottom.value);
+    return isTripletDivisionFromNotesPerMeasure(notesPerMeasure, timeSig);
   }
 
   getMetronomeSolo(): boolean {
@@ -1622,22 +185,8 @@ class GrooveUtils {
     return this.metronomeOffsetClickStartRotation = 0;
   };
 
-  // Merges two drum tab lines. "-" are blanks overwritten by non-blank tokens.
-  // When both lines have notes at position i, dominateLine takes priority.
   mergeDrumTabLines(dominateLine: string, subordinateLine: string): string {
-    var newLine = "";
-    for (var i = 0; i < Math.max(dominateLine.length, subordinateLine.length); i++) {
-      const firstChar = dominateLine.charAt(i);
-      const secondChar = subordinateLine.charAt(i) || '-';
-      if (firstChar !== '-') {
-        newLine += firstChar;
-      } else if (secondChar !== '-') {
-        newLine += secondChar;
-      } else {
-        newLine += '-';
-      }
-    }
-    return newLine;
+    return mergeDrumTabLines(dominateLine, subordinateLine);
   };
 
   setupHotKeys(): void {
@@ -1658,115 +207,28 @@ class GrooveUtils {
     };
   }
 
-
   noteGroupingSize(notes_per_measure: number, timeSig: TimeSignature): number {
-    var note_grouping: number;
-    var usingTriplets = this.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig);
-
-    if (usingTriplets) {
-      if (timeSig.top != 2 && timeSig.bottom.value != 4)
-        console.log("Triplets are only supported in 2/4 and 4/4 time");
-      note_grouping = notes_per_measure / (timeSig.top * (4 / timeSig.bottom.value));
-    } else if (timeSig.top == 3) {
-      note_grouping = (notes_per_measure) / 3;
-    } else if (timeSig.top % 6 == 0 && timeSig.bottom.value % 8 == 0) {
-      note_grouping = notes_per_measure / (2 * timeSig.top / 6);
-    } else {
-      note_grouping = (notes_per_measure / timeSig.top) * (timeSig.bottom.value / 4);
-    }
-    return note_grouping;
+    return noteGroupingSize(notes_per_measure, timeSig);
   };
 
   notesPerMeasureInFullSizeArray(is_triplet_division: boolean, timeSig: TimeSignature): number {
-    if (is_triplet_division) {
-      return 48 * (timeSig.top / timeSig.bottom.value);
-    }
-    return 32 * (timeSig.top / timeSig.bottom.value);
+    return notesPerMeasureInFullSizeArray(is_triplet_division, timeSig);
   }
 
   getNoteScaler(notes_per_measure: number, timeSig: TimeSignature): number {
-    if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36) {
-      console.log("Error in getNoteScaler, out of range: " + timeSig.top);
-      return 1.0;
-    }
-    if (this.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig))
-      return Math.ceil(this.notesPerMeasureInFullSizeArray(true, timeSig) / notes_per_measure);
-    return Math.ceil(this.notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
+    return getNoteScaler(notes_per_measure, timeSig);
   };
 
-
   create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number): Array<boolean> {
-    var mapping_array = new Array(num_notes);
-
-    for (var i = 0; i < num_notes; i++) {
-      var hasNote = false;
-      if (HH_array && HH_array[i] !== false && HH_array[i] !== null && HH_array[i] !== undefined && HH_array[i] !== '-') {
-        hasNote = true;
-      }
-      if (snare_array && snare_array[i] !== false && snare_array[i] !== null && snare_array[i] !== undefined && snare_array[i] !== '-') {
-        hasNote = true;
-      }
-      if (kick_array && kick_array[i] !== false && kick_array[i] !== null && kick_array[i] !== undefined && kick_array[i] !== '-') {
-        hasNote = true;
-      }
-      if (!hasNote && toms_array) {
-        for (var j = 0; j < toms_array.length; j++) {
-          if (toms_array[j] && toms_array[j][i] !== undefined && toms_array[j][i] !== false && toms_array[j][i] !== null && toms_array[j][i] !== '-') {
-            hasNote = true;
-            break;
-          }
-        }
-      }
-      mapping_array[i] = hasNote;
-    }
-
-    return mapping_array;
+    return create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes);
   };
 
   figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number): string | number {
-    const note_index = index % notes_per_measure;
-    const implied_sub_division = sub_division * (4 / time_sig_bottom);
-    switch (implied_sub_division) {
-      case 4:
-        return note_index + 1;
-      case 8:
-        return (note_index % 2 === 0) ? Math.floor(note_index / 2) + 1 : "&";
-      case 12:
-        if (note_index % 3 === 0) return Math.floor(note_index / 3) + 1;
-        return (note_index % 3 == 1) ? "&" : "a";
-      case 24:
-        if (note_index % 3 === 0) return Math.floor(note_index / 6) + 1;
-        return (note_index % 3 == 1) ? "&" : "a";
-      case 48:
-        if (note_index % 3 === 0) return Math.floor(note_index / 12) + 1;
-        return (note_index % 3 == 1) ? "&" : "a";
-      case 16:
-      case 32:
-      default:
-        var whole_note_interval = implied_sub_division / 4;
-        if (note_index % 4 === 0)
-          return Math.floor(note_index / whole_note_interval) + 1;
-        else if (note_index % 4 === 1)
-          return "e";
-        else if (note_index % 4 === 2)
-          return "&";
-        else
-          return "a";
-    }
+    return figure_out_sticking_count_for_index(index, notes_per_measure, sub_division, time_sig_bottom);
   };
 
   convert_sticking_counts_to_actual_counts(sticking_array: Array<string>, time_division: number, timeSig: TimeSignature): void {
-    var cur_div_of_array = this.isTripletDivision(time_division) ? 48 : 32;
-    var actual_notes_per_measure_in_this_array = this.notesPerMeasureInFullSizeArray(cur_div_of_array === 48, timeSig);
-    var notes_per_measure_in_time_division = ((time_division / 4) * timeSig.top) * (4 / timeSig.bottom.value);
-
-    for (var i in sticking_array) {
-      if (sticking_array[i] == '"count"x') {
-        var adjusted_index = Math.floor(Number(i) / (actual_notes_per_measure_in_this_array / notes_per_measure_in_time_division));
-        var new_count = this.figure_out_sticking_count_for_index(adjusted_index, notes_per_measure_in_time_division, time_division, timeSig.bottom.value);
-        sticking_array[i] = '"' + new_count + '"x';
-      }
-    }
+    convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig);
   };
 
   renderABCtoSVG(abcString: string): { svg: string, error_html: string } {
@@ -1915,129 +377,27 @@ class GrooveUtils {
   };
 
   MIDI_build_midi_url_count_in_track(timeSig: TimeSignature): string {
-    var midiFile = new Midi.File();
-    var midiTrack = new Midi.Track();
-    midiFile.addTrack(midiTrack);
-
-    midiTrack.setTempo(this.getTempo());
-    midiTrack.setInstrument(0, 0x13);
-
-    // Initial blank note avoids midi player skipping the first beat.
-    midiTrack.addNoteOff(9, 60, 1);
-
-    var noteDelay = 128;
-    if (timeSig.bottom.value == 8)
-      noteDelay = 64;
-    else if (timeSig.bottom.value == 16)
-      noteDelay = 32;
-
-    midiTrack.addNoteOn(9, MIDI_METRONOME_1, 0, MIDI_VELOCITY_NORMAL);
-    midiTrack.addNoteOff(9, MIDI_METRONOME_1, noteDelay);
-    for (var i = 1; i < timeSig.top; i++) {
-      midiTrack.addNoteOn(9, MIDI_METRONOME_NORMAL, 0, MIDI_VELOCITY_NORMAL);
-      midiTrack.addNoteOff(9, MIDI_METRONOME_NORMAL, noteDelay);
-    }
-
-    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+    return MIDI_build_midi_url_count_in_track(timeSig, this.getTempo());
   };
 
-  /*
-   * midi_output_type: "general_MIDI" or "Custom"
-   * num_notes: number of notes in the arrays (32 or 48 per measure)
-   * metronome_frequency: 0, 4, 8, 16 (none, quarter notes, 8ths, 16ths)
-   * num_notes_for_swing: base division note count to determine upbeat swing positions
-   */
   MIDI_from_HH_Snare_Kick_Arrays(midiTrack: any, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>> | null, midi_output_type: string, metronome_frequency: number, num_notes: number, num_notes_for_swing: number, swing_percentage: number, timeSig: TimeSignature): void {
-    var prev_hh_note: any = 46; // default open hi-hat to mute previous open hats on first stroke
-    var midi_channel = 9; // standard MIDI percussion channel
-
-    if (swing_percentage < 0 || swing_percentage > 0.99) {
-      console.log("Swing percentage out of range in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
-      swing_percentage = 0;
-    }
-
-    if (midiTrack.events.length < 4) {
-      midiTrack.addNoteOff(midi_channel, 60, 1);
-    }
-
     var isTriplets = this.isTripletDivisionFromNotesPerMeasure(num_notes, timeSig);
     var offsetClickStartBeat = this.getMetronomeOptionsOffsetClickStartRotation(isTriplets);
-    var delay_for_next_note = 0;
-
-    for (var i = 0; i < num_notes; i++) {
-      const baseDuration = isTriplets ? 10.666 : 16;
-      const duration = swingAdjustedDuration(i, baseDuration, swing_percentage, num_notes, num_notes_for_swing);
-
-      if (metronome_frequency > 0) {
-        const sixteenthNoteFrequency = 2;
-        const metronome_specific_index = i - metronomeOffsetShift(offsetClickStartBeat, isTriplets, sixteenthNoteFrequency);
-        const metronomeHit = metronomeNoteAt(metronome_specific_index, metronome_frequency, isTriplets, timeSig);
-        if (metronomeHit !== null) {
-          midiTrack.addNoteOn(midi_channel, metronomeHit.note, delay_for_next_note, metronomeHit.velocity);
-          delay_for_next_note = 0;
-        }
-      }
-
-      if (!this.metronomeSolo) {
-        const hhLookup = hihatMidiFor(HH_Array[i], midi_output_type);
-        const hh_note: any = hhLookup ? hhLookup.note : false;
-        const hh_velocity = hhLookup ? hhLookup.velocity : MIDI_VELOCITY_NORMAL;
-
-        if (hh_note !== false) {
-          if (prev_hh_note !== false) {
-            midiTrack.addNoteOff(midi_channel, prev_hh_note, delay_for_next_note);
-            prev_hh_note = false;
-            delay_for_next_note = 0;
-          }
-          midiTrack.addNoteOn(midi_channel, hh_note, delay_for_next_note, hh_velocity);
-          delay_for_next_note = 0;
-
-          if (HH_Array[i] == constant_ABC_HH_Open)
-            prev_hh_note = hh_note;
-        }
-
-        const snLookup = snareMidiFor(Snare_Array[i], midi_output_type);
-        const snare_note: any = snLookup ? snLookup.note : false;
-        const snare_velocity = snLookup ? snLookup.velocity : MIDI_VELOCITY_NORMAL;
-
-        if (snare_note !== false) {
-          midiTrack.addNoteOn(midi_channel, snare_note, delay_for_next_note, snare_velocity);
-          delay_for_next_note = 0;
-        }
-
-        const kickLookup = kickMidiFor(Kick_Array[i]);
-        const kick_note: any = kickLookup.kick !== null ? kickLookup.kick : false;
-        const kick_splash_note: any = kickLookup.splash !== null ? kickLookup.splash : false;
-        if (kick_note !== false) {
-          midiTrack.addNoteOn(midi_channel, kick_note, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-          delay_for_next_note = 0;
-        }
-        if (kick_splash_note !== false) {
-          if (prev_hh_note !== false) {
-            midiTrack.addNoteOff(midi_channel, prev_hh_note, delay_for_next_note);
-            prev_hh_note = false;
-            delay_for_next_note = 0;
-          }
-          midiTrack.addNoteOn(midi_channel, kick_splash_note, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-          delay_for_next_note = 0;
-        }
-
-        if (Toms_Array) {
-          for (var which_array = 0; which_array < constant_NUMBER_OF_TOMS; which_array++) {
-            const tomLookup = tomMidiFor(Toms_Array[which_array]?.[i]);
-            if (tomLookup !== null) {
-              midiTrack.addNoteOn(midi_channel, tomLookup, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-              delay_for_next_note = 0;
-            }
-          }
-        }
-      }
-
-      delay_for_next_note += duration;
-    }
-
-    if (delay_for_next_note)
-      midiTrack.addNoteOff(0, 60, delay_for_next_note - 1);
+    MIDI_from_HH_Snare_Kick_Arrays(
+      midiTrack,
+      HH_Array,
+      Snare_Array,
+      Kick_Array,
+      Toms_Array,
+      midi_output_type,
+      metronome_frequency,
+      num_notes,
+      num_notes_for_swing,
+      swing_percentage,
+      timeSig,
+      this.metronomeSolo,
+      offsetClickStartBeat
+    );
   };
 
   create_MIDIURLFromGrooveData(myGrooveData: GrooveData, MIDI_type?: string): string {
@@ -2098,12 +458,10 @@ class GrooveUtils {
   };
 
   loadMIDIFromURL(midiURL: string): void {
-
     MIDI.Player.timeWarp = 1; // speed the song is played back
     MIDI.Player.BPM = this.getTempo();
     MIDI.Player.loadFile(midiURL, this.midiLoaderCallback());
   };
-
 
   pauseMIDI_playback(): void {
     if (this.isMIDIPaused === false) {
@@ -2115,7 +473,6 @@ class GrooveUtils {
     }
   };
 
-  // play button or keypress
   startMIDI_playback(): void {
     if (MIDI.Player.playing) {
       return;
@@ -2136,7 +493,6 @@ class GrooveUtils {
     this.isMIDIPaused = false;
   };
 
-  // stop button or keypress
   stopMIDI_playback(): void {
     if (MIDI.Player.playing || this.isMIDIPaused) {
       this.isMIDIPaused = false;
@@ -2148,9 +504,7 @@ class GrooveUtils {
     }
   };
 
-  // modal play/stop button
   startOrStopMIDI_playback(): void {
-
     if (MIDI.Player.playing) {
       this.stopMIDI_playback();
     } else {
@@ -2158,9 +512,7 @@ class GrooveUtils {
     }
   };
 
-  // modal play/pause button
   startOrPauseMIDI_playback(): void {
-
     if (MIDI.Player.playing) {
       this.pauseMIDI_playback();
     } else {
@@ -2191,7 +543,7 @@ class GrooveUtils {
       soundfontUrl: this.getMidiSoundFontLocation(),
       instruments: ["gunshot"],
       callback: function () {
-        MIDI.programChange(9, 127); // use "Gunshot" instrument because I don't know how to create new ones
+        MIDI.programChange(9, 127);
         root.midiEventCallbacks.midiInitialized();
       }
     });
@@ -2201,8 +553,6 @@ class GrooveUtils {
     return global_current_midi_start_time;
   };
 
-  // calculate how long the midi has been playing total (since the last play/pause press
-  // this is computationally expensive
   getMidiPlayTime(): Date {
     var time_now = new Date();
     var play_time_diff = new Date(time_now.getTime() - global_current_midi_start_time.getTime());
@@ -2223,11 +573,9 @@ class GrooveUtils {
 
     global_last_midi_update_time = time_now;
 
-    return play_time_diff; // a time struct that represents the total time played so far since the last play button push
+    return play_time_diff;
   };
 
-  // update the midi play timer on the player.
-  // Keeps track of how long we have been playing.
   updateMidiPlayTime(): void {
     var totalTime = this.getMidiPlayTime();
     var time_string = totalTime.getUTCMinutes() + ":" + (totalTime.getSeconds() < 10 ? "0" : "") + totalTime.getSeconds();
@@ -2237,10 +585,6 @@ class GrooveUtils {
       MidiPlayTime.innerHTML = time_string;
   };
 
-  //var class_midi_note_num = 0;  // global, but only used in this function
-  // This is the function that the 3rd party midi library calls to give us events.
-  // This is different from the callbacks that we use for the midi code in this library to
-  // do events.   (Double chaining)
   ourMIDICallback(data: any): void {
     var percentComplete = (data.now / data.end);
     this.midiEventCallbacks.percentProgress(percentComplete * 100);
@@ -2251,9 +595,6 @@ class GrooveUtils {
     }
 
     if (data.now < 16) {
-      // this is considered the start.   It doesn't come in at zero for some reason
-      // The second note should always be at least 16 ms behind the first
-      //class_midi_note_num = 0;
       this.lastMidiTimeUpdate = -1;
     }
     if (data.now == data.end) {
@@ -2326,26 +667,7 @@ class GrooveUtils {
   };
 
   updateRangeSlider(sliderID: string): void {
-    var slider = document.getElementById(sliderID) as HTMLInputElement | null;
-    if (!slider)
-      return;
-    var programaticCSSRules = document.getElementById(sliderID + "CSSRules");
-    if (!programaticCSSRules) {
-      programaticCSSRules = document.createElement('style');
-      programaticCSSRules.id = sliderID + "CSSRules";
-      document.body.appendChild(programaticCSSRules);
-    }
-
-    var style_before = document.defaultView.getComputedStyle(slider, ":before");
-    var style_after = document.defaultView.getComputedStyle(slider, ":after");
-    var before_color = style_before.getPropertyValue('color');
-    var after_color = style_after.getPropertyValue('color');
-
-    var percent = Math.ceil(((Number(slider.value) - Number(slider.min)) / (Number(slider.max) - Number(slider.min))) * 100);
-
-    var new_style_str = '#' + sliderID + '::-moz-range-track' + '{ background: -moz-linear-gradient(left, ' + before_color + ' ' + percent + '%, ' + after_color + ' ' + percent + '%)}\n';
-    new_style_str += '#' + sliderID + '::-webkit-slider-runnable-track' + '{ background: -webkit-linear-gradient(left, ' + before_color + ' ' + '0%, ' + before_color + ' ' + percent + '%, ' + after_color + ' ' + percent + '%)}\n';
-    programaticCSSRules.textContent = new_style_str;
+    updateRangeSlider(sliderID);
   }
 
   setSwingSlider(newSetting: number): void {
@@ -2409,8 +731,6 @@ class GrooveUtils {
     }
   };
 
-  // Stub: pre-refactor code called this to toggle count-in on the metronome.
-  // No corresponding logic exists yet; treat as no-op to preserve UI state on caller side.
   setMetronomeCountIn(enabled: boolean): void {
     // intentional no-op
   }
@@ -2428,10 +748,12 @@ class GrooveUtils {
   };
 
   loadFullScreenGrooveScribe = (): void => {
-    var fullURL = (this as any).getUrlStringFromGrooveData(this.data, 'fullGrooveScribe');
+    var fullURL = (this as any).getUrlStringFromGrooveData ? (this as any).getUrlStringFromGrooveData(this.data, 'fullGrooveScribe') : this.data.toUrl();
 
     var win = window.open(fullURL, '_blank');
-    win.focus();
+    if (win) {
+      win.focus();
+    }
   };
 
   metronomeMiniMenuClick = (): void => {
@@ -2453,6 +775,10 @@ class GrooveUtils {
     var midiExpandImageElement = document.getElementById('midiExpandImage' + this.grooveUtilsUniqueIndex);
     var midiPlayTime = document.getElementById('MIDIPlayTime' + this.grooveUtilsUniqueIndex);
 
+    if (!playerControlElement || !playerControlRowElement || !tempoAndProgressElement || !midiMetronomeMenuElement || !gsLogoLoadFullGSElement || !midiExpandImageElement || !midiPlayTime) {
+      return;
+    }
+
     if (playerControlElement.className.indexOf("small") > -1 || (force && expandElseContract)) {
       playerControlElement.className = playerControlElement.className.replace(" small", "") + " large";
       playerControlRowElement.className = playerControlRowElement.className.replace(" small", "") + " large";
@@ -2473,42 +799,11 @@ class GrooveUtils {
   };
 
   addInlineMetronomeSVG(): string {
-    return '<svg class="midiMetronomeImage" version="1.1" width="30" height="30"' +
-      'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 100 100" ' +
-      'xml:space="preserve"><path d="M86.945,10.635c-0.863-0.494-1.964-0.19-2.455,0.673l-8.31,14.591l-2.891-1.745l-1.769,9.447l0.205,0.123' +
-      'l-1.303,2.286L63.111,6.819c-0.25-1-1.299-1.819-2.33-1.819H37.608c-1.031,0-2.082,0.818-2.334,1.818L13.454,93.182' +
-      'c-0.253,1,0.385,1.818,1.416,1.818h68.459c1.031,0,1.67-0.818,1.42-1.818L71.69,41.061l3.117-5.475l0.152,0.092l7.559-5.951' +
-      'l-3.257-1.966l8.355-14.67C88.11,12.226,87.81,11.127,86.945,10.635z M71.58,70.625H54.855l12.946-22.737l5.197,20.789' +
-      'C73.25,69.678,72.61,70.625,71.58,70.625z M50.714,70.625H26.57c-1.031,0-1.669-0.994-1.416-1.994L39.59,11.5' +
-      'c0.253-1,1.303-1.812,2.334-1.812h14.431c1.032,0,2.081,0.725,2.331,1.725l7.854,31.421L50.714,70.625z"></path></svg>'
+    return addInlineMetronomeSVG();
   }
 
   addInLineGScribeLogoLoneGSVG(): string {
-    return '<?xml version="1.0"?><svg width="20" heigth="30" viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">' +
-      ' <g>' +
-      '  <title>Layer 1</title>' +
-      '  <g id="svg_15">' +
-      '   <path fill="#000000" d="m27.467991,47.742001c-12.28299,0 -22.276001,-9.997009 -22.276001,-22.284c0,-12.27402 9.99402,-22.272 ' +
-      '22.276001,-22.272c12.278019,0 22.269009,9.99799 22.269009,22.272c-0.001011,12.286991 -9.992001,22.284 -22.269009,22.284zm0,-37.078001c-8.159,0 ' +
-      '-14.794981,6.644011 -14.794981,14.79801c0,8.162979 6.63599,14.791981 14.794981,14.791981c8.157009,0 14.803009,-6.629002 14.803009,-14.791981c0,-8.153999 ' +
-      '-6.646,-14.79801 -14.803009,-14.79801z" id="svg_16"/>' +
-      '   <path fill="#F7941E" d="m27.467991,33.90799c-4.665991,0 -8.445011,-3.786989 -8.445011,-8.446009c0,-4.653992 3.77902,-8.440981 8.445011,-8.440981c4.64999,0 ' +
-      '8.444,3.786989 8.444,8.440981c0.001007,4.659029 -3.792999,8.446009 -8.444,8.446009z" id="svg_17"/>' +
-      '   <g id="svg_18">' +
-      '	<path fill="#000000" d="m28.13699,85.571991c-5.79599,0 -24.746,-1.138 -24.746,-15.771004c0,-0.921997 0.125,-1.834976 0.39099,-2.791977l0.09399,-0.292999l9.21902,0l-0.151,0.517967c-0.198,0.701019 ' +
-      '-0.311,1.417999 -0.311,2.137024c0,6.332001 7.898991,8.583977 15.29199,8.583977c3.610991,0 15.394989,-0.626007 15.394989,-8.687988c0,-4.349014 -3.515987,-6.41901 -11.064968,-6.52301c-6.87302,0 ' +
-      '-11.539001,-0.159 -15.027012,-0.983002c-3.431,-0.807007 -4.132019,-1.12698 -6.926999,-2.752987c-3.63602,-2.385014 -5.39401,-5.328003 -5.39401,-8.99802c0,-3.687992 1.854,-6.860981 ' +
-      '5.668,-9.716003c0.72501,-0.502987 1.51801,-0.750977 2.37802,-0.750977c1.92099,0 3.824981,1.311977 4.16199,2.865997c0.22501,1.028992 0.48801,0.685001 -0.84,1.881992c-0.85501,0.766968 -3.64001,2.702 ' +
-      '-3.64001,5.167988c0,5.662041 10.78802,5.662041 17.235021,5.662041c16.113977,0 22.693998,4.063999 22.693998,14.03598c-0.00198,14.282013 -15.29599,16.415009 ' +
-      '-24.427,16.415009l-0.00001,0.000031l0,-0.000031l0,0l0,-0.000008z" id="svg_19"/>' +
-      '   </g>' +
-      '   <g id="svg_20">' +
-      '	<path fill="#000000" d="m46.504002,15.08499c-0.225983,0 -0.423,-0.101009 -4.70599,-2.934999c-2.208023,-1.46399 -4.708023,-3.121 -5.758003,-3.72501l-1.31601,-0.75101l20.405003,0l0,5.715l-8.224003,1.370999c-0.006989,0.01501 ' +
-      '-0.006989,0.03802 -0.01498,0.05801l-0.104,0.263l-0.282009,0.004l-0.000019,0.00001l0.000011,0z" id="svg_21"/>' +
-      '   </g>' +
-      '  </g>' +
-      ' </g>' +
-      '</svg>';
+    return addInLineGScribeLogoLoneGSVG();
   }
 
   HTMLForMidiPlayer(expandable?: boolean): string {
@@ -2550,14 +845,12 @@ class GrooveUtils {
     return newHTML;
   };
 
-  // pass in a tag ID.  (not a class)
-  // HTML will be put within the tag replacing whatever else was there
   AddMidiPlayerToPage(HTML_Id_to_attach_to: string, division: number, expandable?: boolean): void {
     var html_element = document.getElementById(HTML_Id_to_attach_to);
     if (html_element)
       html_element.innerHTML = this.HTMLForMidiPlayer(expandable);
 
-    // now attach the onclicks
+    // attach onclicks
     html_element = document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex);
     if (html_element) {
       html_element.addEventListener("input", this.tempoUpdateFromSlider, false);
@@ -2608,7 +901,6 @@ class GrooveUtils {
   };
 
   doesDivisionSupportSwing(division: number): boolean {
-
     if (this.isTripletDivision(division) || division == 4)
       return false;
 
@@ -2617,48 +909,3 @@ class GrooveUtils {
 }
 
 (globalThis as any).GrooveUtils = GrooveUtils;
-(globalThis as any).Subdivision = Subdivision;
-(globalThis as any).GrooveData = GrooveData;
-(globalThis as any).TimeSignature = TimeSignature;
-(globalThis as any).AbcNote = AbcNote;
-(globalThis as any).DrumType = DrumType;
-(globalThis as any).Measure = Measure;
-globalThis.abcNoteToTabChar = abcNoteToTabChar;
-globalThis.tabCharToAbcNote = tabCharToAbcNote;
-(globalThis as any).getAsSet = getAsSet;
-(globalThis as any).hihatMidiFor = hihatMidiFor;
-(globalThis as any).snareMidiFor = snareMidiFor;
-(globalThis as any).kickMidiFor = kickMidiFor;
-(globalThis as any).tomMidiFor = tomMidiFor;
-(globalThis as any).swingAdjustedDuration = swingAdjustedDuration;
-(globalThis as any).metronomeOffsetShift = metronomeOffsetShift;
-(globalThis as any).metronomeNoteAt = metronomeNoteAt;
-(globalThis as any).decodeGrooveUrl = decodeGrooveUrl;
-(globalThis as any).encodeGrooveQueryString = encodeGrooveQueryString;
-(globalThis as any).buildMeasuresFromTabs = buildMeasuresFromTabs;
-// Re-export ABC constants for tests
-(globalThis as any).constant_ABC_HH_Normal = constant_ABC_HH_Normal;
-(globalThis as any).constant_ABC_HH_Accent = constant_ABC_HH_Accent;
-(globalThis as any).constant_ABC_HH_Open = constant_ABC_HH_Open;
-(globalThis as any).constant_ABC_HH_Close = constant_ABC_HH_Close;
-(globalThis as any).constant_ABC_HH_Ride = constant_ABC_HH_Ride;
-(globalThis as any).constant_ABC_HH_Ride_Bell = constant_ABC_HH_Ride_Bell;
-(globalThis as any).constant_ABC_HH_Cow_Bell = constant_ABC_HH_Cow_Bell;
-(globalThis as any).constant_ABC_HH_Crash = constant_ABC_HH_Crash;
-(globalThis as any).constant_ABC_HH_Stacker = constant_ABC_HH_Stacker;
-(globalThis as any).constant_ABC_HH_Metronome_Normal = constant_ABC_HH_Metronome_Normal;
-(globalThis as any).constant_ABC_HH_Metronome_Accent = constant_ABC_HH_Metronome_Accent;
-(globalThis as any).constant_ABC_SN_Normal = constant_ABC_SN_Normal;
-(globalThis as any).constant_ABC_SN_Accent = constant_ABC_SN_Accent;
-(globalThis as any).constant_ABC_SN_Ghost = constant_ABC_SN_Ghost;
-(globalThis as any).constant_ABC_SN_Flam = constant_ABC_SN_Flam;
-(globalThis as any).constant_ABC_SN_Drag = constant_ABC_SN_Drag;
-(globalThis as any).constant_ABC_SN_XStick = constant_ABC_SN_XStick;
-(globalThis as any).constant_ABC_SN_Buzz = constant_ABC_SN_Buzz;
-(globalThis as any).constant_ABC_KI_Normal = constant_ABC_KI_Normal;
-(globalThis as any).constant_ABC_KI_Splash = constant_ABC_KI_Splash;
-(globalThis as any).constant_ABC_KI_SandK = constant_ABC_KI_SandK;
-(globalThis as any).constant_ABC_T1_Normal = constant_ABC_T1_Normal;
-(globalThis as any).constant_ABC_T2_Normal = constant_ABC_T2_Normal;
-(globalThis as any).constant_ABC_T3_Normal = constant_ABC_T3_Normal;
-(globalThis as any).constant_ABC_T4_Normal = constant_ABC_T4_Normal;

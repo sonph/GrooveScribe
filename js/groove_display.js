@@ -105,6 +105,9 @@ if (typeof (GrooveDisplay) === "undefined") {
     root.loadjscssfile("./abc2svg-1.js", "js");
 
     //	<!--   our custom JS  -->
+    root.loadjscssfile("./groove_render.js", "js");
+    root.loadjscssfile("./groove_audio.js", "js");
+    root.loadjscssfile("./groove_ui.js", "js");
     root.loadjscssfile("./groove_utils.js", "js");
 
     // stylesheet

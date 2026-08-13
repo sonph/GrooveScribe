@@ -6,31 +6,16 @@
 	<title>Embedded Groove</title>
 
 	<script src="./js/abc2svg-1.js"></script>
-	<script src="./js/groove_utils.js"></script>
+	<script src="./js/groove_render.js"></script>
 	<script>
-		function parseQuery(queryString) {
-			var query = {};
-			var pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
-			for (var i = 0; i < pairs.length; i++) {
-				if (!pairs[i]) continue;
-				var pair = pairs[i].split('=');
-				query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
-			}
-			return query;
-		}
-
 		window.addEventListener('DOMContentLoaded', function () {
 			var search = window.location.search || '';
-			var query = parseQuery(search);
-			var myGrooveUtils = new GrooveUtils();
-			var data = myGrooveUtils.data;
-			data.fromUrl(search);
+			var data = new GrooveData().fromUrl(search);
 
 			var textE = document.getElementById("subText");
 			var topDiv = document.getElementById("topDiv");
-			var text = query.subText;
-			if (text) {
-				textE.innerText = decodeURIComponent(text);
+			if (data.subText) {
+				textE.innerText = data.subText;
 			} else if (topDiv) {
 				topDiv.style.display = "none";
 			}
@@ -39,7 +24,7 @@
 			var renderWidth = 600;
 			var fullAbc = data.getAbcHeader(false, renderWidth, data.showLegend) + data.getAbcNotation();
 			console.log(fullAbc);
-			var svgReturn = myGrooveUtils.renderABCtoSVG(fullAbc);
+			var svgReturn = GrooveRenderer.renderABCtoSVG(fullAbc);
 
 			var editorUrl = "https://sonpham.me/GrooveScribe/index.html" + search;
 			svgTarget.innerHTML = '<a target="_blank" style="text-decoration: none" href="' + editorUrl + '">' + svgReturn.svg + '</a>';
