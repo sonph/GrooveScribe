@@ -1159,3 +1159,149 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
   });
 });
+
+describe('LeftHandNav and Embedding Options', () => {
+  let grooveUtils, writer;
+
+  const leftNavHtml = `
+    <div id="LeftHandNav">
+      <span id="divisionButtonContainer">
+        <span id="logoInSubdivision" class="left-button-content"><img src="images/GScribe_Logo_lone_g.svg"></span>
+        <span class="left-button edit-block" id="timeLabel"></span>
+        <span class="left-button subdivision edit-block" id="subdivision_8ths"></span>
+        <span class="left-button" id="view-edit-switch"></span>
+
+        <div class="nav-separator"></div>
+
+        <span class="left-button edit-block" id="undoButton"></span>
+        <span class="left-button edit-block" id="clearAllNotesButton"></span>
+        <span class="left-button edit-block" id="showHideTomsButton"></span>
+        <span class="left-button grooveDB_hidden" id="stickingsButton"></span>
+        <span class="left-button grooveDB_hidden" id="downloadButton"></span>
+
+        <div class="nav-separator"></div>
+
+        <span class="left-button" id="embeddingOptionsButton"></span>
+      </span>
+    </div>
+    <div id="embedTool" style="display: none;"></div>
+    <div class="noteContextMenu">
+      <ul id="stickingsContextMenu" class="list"></ul>
+      <ul id="downloadContextMenu" class="list"></ul>
+    </div>
+  `;
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    writer = new GrooveWriter(grooveUtils);
+    document.body.innerHTML = leftNavHtml;
+  });
+
+  test('toggleEmbedTool toggles embedTool visibility and embeddingOptionsButton selected state', () => {
+    const embedTool = document.getElementById('embedTool');
+    const embedBtn = document.getElementById('embeddingOptionsButton');
+
+    expect(embedTool.style.display).toBe('none');
+    expect(embedBtn.classList.contains('buttonSelected')).toBe(false);
+
+    // First toggle -> shows embedTool
+    writer.toggleEmbedTool();
+    expect(embedTool.style.display).toBe('block');
+    expect(embedBtn.classList.contains('buttonSelected')).toBe(true);
+
+    // Second toggle -> hides embedTool
+    writer.toggleEmbedTool();
+    expect(embedTool.style.display).toBe('none');
+    expect(embedBtn.classList.contains('buttonSelected')).toBe(false);
+  });
+
+  test('showHideEmbedTool alias functions identically to toggleEmbedTool', () => {
+    const embedTool = document.getElementById('embedTool');
+    expect(embedTool.style.display).toBe('none');
+
+    writer.showHideEmbedTool();
+    expect(embedTool.style.display).toBe('block');
+
+    writer.showHideEmbedTool();
+    expect(embedTool.style.display).toBe('none');
+  });
+
+  test('showMenuRightOfAnchor positions menu to the right of anchor and opens context menu', () => {
+    const anchor = document.getElementById('stickingsButton');
+    const menu = document.getElementById('stickingsContextMenu');
+
+    anchor.getBoundingClientRect = jest.fn(() => ({
+      top: 150,
+      bottom: 198,
+      left: 0,
+      right: 70,
+      width: 70,
+      height: 48
+    }));
+
+    writer.showMenuRightOfAnchor('stickingsContextMenu', 'stickingsButton');
+    expect(menu.style.top).toBe('150px');
+    expect(menu.style.left).toBe('72px');
+    expect(grooveUtils.visible_context_menu).toBe(menu);
+  });
+
+  test('stickingsAnchorClick and DownloadAnchorClick open menus to the right of their sidebar buttons', () => {
+    const stickingsBtn = document.getElementById('stickingsButton');
+    stickingsBtn.getBoundingClientRect = jest.fn(() => ({ top: 200, bottom: 248, left: 0, right: 70, width: 70, height: 48 }));
+
+    writer.stickingsAnchorClick();
+    expect(document.getElementById('stickingsContextMenu').style.top).toBe('200px');
+    expect(document.getElementById('stickingsContextMenu').style.left).toBe('72px');
+
+    const downloadBtn = document.getElementById('downloadButton');
+    downloadBtn.getBoundingClientRect = jest.fn(() => ({ top: 250, bottom: 298, left: 0, right: 70, width: 70, height: 48 }));
+
+    writer.DownloadAnchorClick();
+    expect(document.getElementById('downloadContextMenu').style.top).toBe('250px');
+    expect(document.getElementById('downloadContextMenu').style.left).toBe('72px');
+  });
+
+  test('Undo restores notes after clearAllNotes', () => {
+    const url = 'TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|';
+    grooveUtils.data.fromUrl(url);
+    document.body.innerHTML = `
+      <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+      <div id="musicalInput"></div>
+      <div id="tuneTitle"></div>
+      <div id="tuneAuthor"></div>
+      <div id="tuneComments"></div>
+      <input id="ABCsource" type="text" value="" />
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.applyMeasuresToUI();
+    writer.displayNewSVG = jest.fn();
+
+    // Seed the undo stack with initial state
+    writer.updateCurrentURL();
+
+    // Initial state: notes are present
+    expect(writer.is_hh_on(0)).toBe(true);
+    expect(writer.is_snare_on(2)).toBe(true);
+    expect(writer.is_kick_on(0)).toBe(true);
+
+    // Clear all notes
+    writer.clearAllNotes();
+
+    // All notes should be off
+    expect(writer.is_hh_on(0)).toBe(false);
+    expect(writer.is_snare_on(2)).toBe(false);
+    expect(writer.is_kick_on(0)).toBe(false);
+
+    // Perform Undo
+    writer.undoCommand();
+
+    // Notes should be restored
+    expect(writer.is_hh_on(0)).toBe(true);
+    expect(writer.is_snare_on(2)).toBe(true);
+    expect(writer.is_kick_on(0)).toBe(true);
+  });
+});

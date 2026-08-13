@@ -176,8 +176,29 @@
 
           <span class="left-button" onclick="myGrooveWriter.swapViewEditMode();"><span class="left-button-content"><span id="view-edit-switch">Switch to EDIT mode</span></span></span>
 
+          <div class="nav-separator"></div>
+
           <span class="left-button edit-block" id="undoButton" onclick="myGrooveWriter.undoCommand();"><span
-              class="left-button-content"><i class="fa fa-undo"></i>&nbsp;&nbsp;Undo</span></span>
+              class="left-button-content"><span><i class="fa fa-undo"></i><br>Undo</span></span></span>
+          <span class="left-button edit-block" id="clearAllNotesButton"
+            onclick="event.preventDefault(); myGrooveWriter.clearAllNotes();"><span
+              class="left-button-content"><span><i class="fa fa-trash"></i><br>Clear All</span></span></span>
+          <span class="left-button edit-block" id="showHideTomsButton"
+            onclick="event.preventDefault(); myGrooveWriter.showHideToms(false, false);"><span
+              class="left-button-content"><span><span class="left-toms-icons"><i id="icon-tom1" class="fa fa-circle"></i><i id="icon-tom2"
+                    class="fa fa-circle-o"></i><i id="icon-tom3" class="fa fa-circle-o"></i></span><br>Show Toms</span></span></span>
+          <span class="left-button grooveDB_hidden" id="stickingsButton"
+            onclick="myGrooveWriter.stickingsAnchorClick(event);"><span
+              class="left-button-content"><span><i id="icon-stickings" class="fa fa-pencil"></i><br>Show Stickings</span></span></span>
+          <span class="left-button grooveDB_hidden" id="downloadButton"
+            onclick="myGrooveWriter.DownloadAnchorClick(event);"><span
+              class="left-button-content"><span><i class="fa fa-download"></i><br>Download</span></span></span>
+
+          <div class="nav-separator"></div>
+
+          <span class="left-button" id="embeddingOptionsButton"
+            onclick="myGrooveWriter.toggleEmbedTool();"><span
+              class="left-button-content"><span><i class="fa fa-code"></i><br>Embed</span></span></span>
         </span>
 
       </div>
@@ -249,22 +270,6 @@
         </div>
 
 
-        <div id="bottomButtonRow" class="fullWidthEle">
-          <span class="pageBottomButton edit-block" id="clearAllNotesButton"
-            onclick="event.preventDefault(); myGrooveWriter.clearAllNotes();"><span class="bottomButtonIcon"><i
-                class="fa fa-trash fa-2x"></i></span><span class="bottomButtonLabel">CLEAR ALL</span></span>
-          <span class="pageBottomButton edit-block" id="showHideTomsButton"
-            onclick="event.preventDefault(); myGrooveWriter.showHideToms(false, false);"><span
-              class="bottomButtonIcon"><i id="icon-tom1" class="fa fa-circle"></i><i id="icon-tom2"
-                class="fa fa-circle-o"></i><i id="icon-tom3" class="fa fa-circle-o"></i></span><span
-              class="bottomButtonLabel">TOMS</span></span>
-          <span class=" grooveDB_hidden pageBottomButton" id="stickingsButton"
-            onclick="myGrooveWriter.stickingsAnchorClick();"><span class="bottomButtonLabel">STICKINGS</span></span>
-          <span class=" grooveDB_hidden pageBottomButton" id="downloadButton"
-            onclick="myGrooveWriter.DownloadAnchorClick();"><span class="bottomButtonIcon"><i
-                class="fa fa-download fa-2x"></i></span><span class="bottomButtonLabel">DOWNLOAD</span></span>
-
-        </div>
 
         <div id="embedTool" class="fullWidthEle">
           <h3><a href="https://www.notion.so/" target="_blank">

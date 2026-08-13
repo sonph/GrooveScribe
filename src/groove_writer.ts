@@ -404,7 +404,8 @@ class GrooveWriter {
     element.classList.remove(cssClass);
   }
 
-  addClass(element: HTMLElement, cssClass: string, addElseRemove: boolean = true): boolean {
+  addClass(element: HTMLElement | null, cssClass: string, addElseRemove: boolean = true): boolean {
+    if (!element) return false;
     if (addElseRemove) {
       element.classList.add(cssClass);
       return true;
@@ -664,6 +665,19 @@ class GrooveWriter {
     this.myGrooveUtils.showContextMenu(menu);
   }
 
+  // Position a context menu to the right of an anchor element
+  showMenuRightOfAnchor(menuId: string, anchorId: string): void {
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const anchor = document.getElementById(anchorId);
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      menu.style.top = rect.top + "px";
+      menu.style.left = (rect.right + 2) + "px";
+    }
+    this.myGrooveUtils.showContextMenu(menu);
+  }
+
   // Position a context menu at the event's click point (offset by dx/dy)
   showMenuAtEvent(menuId: string, event: MouseEvent | null, dx: number, dy: number): void {
     const menu = document.getElementById(menuId);
@@ -741,12 +755,12 @@ class GrooveWriter {
     this.showMenuBelowAnchor("helpContextMenu", "helpAnchor", 150);
   };
 
-  stickingsAnchorClick = (event: MouseEvent): void => {
-    this.showMenuAtEvent("stickingsContextMenu", event, -150, -100);
+  stickingsAnchorClick = (event?: MouseEvent): void => {
+    this.showMenuRightOfAnchor("stickingsContextMenu", "stickingsButton");
   };
 
-  DownloadAnchorClick = (event: MouseEvent): void => {
-    this.showMenuAtEvent("downloadContextMenu", event, -150, -150);
+  DownloadAnchorClick = (event?: MouseEvent): void => {
+    this.showMenuRightOfAnchor("downloadContextMenu", "downloadButton");
   };
 
   metronomeOptionsMenuSetSelectedState(): void {
@@ -1635,11 +1649,13 @@ class GrooveWriter {
 
     this.AddFullURLToUndoStack(newURL);
 
-    var title = (document.getElementById("tuneTitle") as HTMLInputElement).value.trim();
+    var titleEle = document.getElementById("tuneTitle") as HTMLInputElement | null;
+    var title = (titleEle && titleEle.value) ? titleEle.value.trim() : "";
     if (title !== "")
       newTitle = title;
 
-    var author = (document.getElementById("tuneAuthor") as HTMLInputElement).value.trim();
+    var authorEle = document.getElementById("tuneAuthor") as HTMLInputElement | null;
+    var author = (authorEle && authorEle.value) ? authorEle.value.trim() : "";
     if (author !== "") {
       if (title)
         newTitle += " by " + author;
@@ -1768,6 +1784,29 @@ class GrooveWriter {
       ABCResults.style.display = ABCResults.style.display === "block" ? "none" : "block";
     }
     return false;
+  }
+
+  toggleEmbedTool(): boolean {
+    const embedTool = document.getElementById("embedTool");
+    const btn = document.getElementById("embeddingOptionsButton");
+    if (embedTool) {
+      const isCurrentlyHidden = embedTool.style.display === "none" || (!embedTool.style.display && typeof window !== "undefined" && window.getComputedStyle && window.getComputedStyle(embedTool).display === "none");
+      if (isCurrentlyHidden) {
+        embedTool.style.display = "block";
+        if (btn) btn.classList.add("buttonSelected");
+        if (typeof embedTool.scrollIntoView === "function") {
+          embedTool.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        embedTool.style.display = "none";
+        if (btn) btn.classList.remove("buttonSelected");
+      }
+    }
+    return false;
+  }
+
+  showHideEmbedTool(): boolean {
+    return this.toggleEmbedTool();
   }
 
   updateUrl(): void {

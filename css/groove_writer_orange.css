@@ -53,6 +53,18 @@
 		border-right: 2px solid #000;
 		background: #393939;
 		z-index: 999;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+	#LeftHandNav::-webkit-scrollbar {
+		width: 3px;
+	}
+	#LeftHandNav::-webkit-scrollbar-track {
+		background: #2b2b2b;
+	}
+	#LeftHandNav::-webkit-scrollbar-thumb {
+		background: #555;
+		border-radius: 2px;
 	}
 	#TopNav {
 		position: fixed;
@@ -183,6 +195,16 @@
 		justify-content: center;
 		-webkit-justify-content: center;
 		transition: all .1s ease-in-out;
+	}
+	.left-button-content i.fa {
+		font-size: 13px;
+		margin-bottom: 2px;
+	}
+	.nav-separator {
+		border-top: 1px solid #222222;
+		border-bottom: 1px solid #555555;
+		height: 0px;
+		margin: 4px 6px;
 	}
 	#timeLabel {
 		height: 48px;  /* Override from above */
@@ -1099,19 +1121,9 @@
 	}
 	#stickingsButton {
 	}
-	#stickingsButton:before  {
-		font-family: FontAwesome;
-		font-size: 2em;
-		letter-spacing: -3px;
-		content: "\f065";
-		line-height: 32px;
-	}
-	#stickingsButton.ClickToHide:before {
-		font-family: FontAwesome;
-		font-size: 2em;
-		letter-spacing: -3px;
-		content: "\f066";
-		line-height: 32px;
+	#stickingsButton.ClickToHide .left-button-content,
+	#showHideTomsButton.ClickToHide .left-button-content {
+		color: #FFF;
 	}
 	#printButton {
 	}
@@ -1189,6 +1201,7 @@
 		-webkit-justify-content: space-around;
 	}
 	#embedTool {
+		display: none;
 		background: #fff;
 		padding: 2em;
 	}
@@ -1215,19 +1228,24 @@
 	.edit-block {
 		display: none;
 	}
-	/*  3 circles make up the tom icon.  Position them */
+	/*  3 circles make up the tom icon in left button */
+	.left-toms-icons {
+		display: inline-block;
+		margin-bottom: 1px;
+	}
 	#icon-tom1 {
-		font-size: 16px;
-		margin-top: 16px;
+		font-size: 10px;
+		vertical-align: middle;
 	}
 	#icon-tom2 {
-		font-size: 14px;
-		margin-left: -5px;
+		font-size: 8px;
+		margin-left: -1px;
 		vertical-align: top;
 	}
 	#icon-tom3 {
-		font-size: 20px;
-		margin-top: 11px;
+		font-size: 12px;
+		margin-left: -1px;
+		vertical-align: middle;
 	}
 	@media print {
 		/* keep at bottom so it overrides the styles above */

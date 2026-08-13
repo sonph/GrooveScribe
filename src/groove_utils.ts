@@ -1710,7 +1710,9 @@ class GrooveUtils {
   }
 
   tempoUpdate(tempo: number): void {
-    (document.getElementById('tempoTextField' + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + tempo;
+    var textField = document.getElementById('tempoTextField' + this.grooveUtilsUniqueIndex) as HTMLInputElement | null;
+    if (textField)
+      textField.value = "" + tempo;
     this.updateRangeSlider('tempoInput' + this.grooveUtilsUniqueIndex);
     this.midiNoteHasChanged();
 
@@ -1720,7 +1722,9 @@ class GrooveUtils {
 
   tempoUpdateFromTextField = (event: Event): void => {
     var newTempo = Number((event.target as HTMLInputElement).value);
-    (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + newTempo;
+    var tempoInput = document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement | null;
+    if (tempoInput)
+      tempoInput.value = "" + newTempo;
     this.tempoUpdate(newTempo);
   };
 
@@ -2174,7 +2178,9 @@ class GrooveUtils {
   };
 
   updateRangeSlider(sliderID: string): void {
-    var slider = document.getElementById(sliderID) as HTMLInputElement;
+    var slider = document.getElementById(sliderID) as HTMLInputElement | null;
+    if (!slider)
+      return;
     var programaticCSSRules = document.getElementById(sliderID + "CSSRules");
     if (!programaticCSSRules) {
       programaticCSSRules = document.createElement('style');
@@ -2195,7 +2201,9 @@ class GrooveUtils {
   }
 
   setSwingSlider(newSetting: number): void {
-    (document.getElementById("swingInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + newSetting;
+    var swingInput = document.getElementById("swingInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement | null;
+    if (swingInput)
+      swingInput.value = "" + newSetting;
     this.updateRangeSlider('swingInput' + this.grooveUtilsUniqueIndex);
   };
 
@@ -2225,10 +2233,13 @@ class GrooveUtils {
   };
 
   swingUpdateText(swingAmount: number): void {
+    var swingOutput = document.getElementById('swingOutput' + this.grooveUtilsUniqueIndex);
     if (this.swingIsEnabled === false) {
-      document.getElementById('swingOutput' + this.grooveUtilsUniqueIndex).innerHTML = "N/A";
+      if (swingOutput)
+        swingOutput.innerHTML = "N/A";
     } else {
-      document.getElementById('swingOutput' + this.grooveUtilsUniqueIndex).innerHTML = "" + swingAmount + "%";
+      if (swingOutput)
+        swingOutput.innerHTML = "" + swingAmount + "%";
       this.swingPercent = swingAmount;
       this.midiNoteHasChanged();
     }
@@ -2442,7 +2453,9 @@ class GrooveUtils {
     if (newTempo < 19 && newTempo > 281)
       return;
 
-    (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + newTempo;
+    var input = document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement | null;
+    if (input)
+      input.value = "" + newTempo;
     this.tempoUpdate(newTempo);
   };
 
