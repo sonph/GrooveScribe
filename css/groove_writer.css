@@ -711,7 +711,7 @@
 		text-align: center;
 		-webkit-justify-content: space-between;
 		display: -webkit-flex;
-		display: flex;
+		display: flex !important;
 		justify-content: space-between;
 	}
 

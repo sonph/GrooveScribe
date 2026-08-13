@@ -28,7 +28,6 @@ js/groove_audio.js
 js/groove_ui.js
 js/groove_utils.js
 js/groove_writer.js
-js/notion-embed.js
 js/jsmidgen.js
 js/share-button.min.js
 css/groove_debug.css

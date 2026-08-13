@@ -136,7 +136,6 @@
   <script src="js/groove_ui.js"></script>
   <script src="js/groove_utils.js"></script>
   <script src="js/groove_writer.js"></script>
-  <script src="js/notion-embed.js" defer></script>
 
   <script type="text/javascript">
     /*jslint browser:true evil:true on:true */
@@ -258,7 +257,7 @@
         <div class="warnings" id="diverr">
         </div>
 
-        <div id="sheetMusicTextFields" class="fullWidthEle grooveDB_hidden edit-block">
+        <div id="sheetMusicTextFields" class="fullWidthEle" style="display: flex;">
           <span class="sheetMusicTextField"><b>Title:</b> <input class="sheetMusicInputField" id="tuneTitle"
               onchange="myGrooveWriter.refresh_ABC();" oninput="myGrooveWriter.refresh_ABC();" type="text"></span>
           <span class="sheetMusicTextField"><b>Author:</b> <input class="sheetMusicInputField" id="tuneAuthor"
@@ -310,8 +309,8 @@
               <label for="convertedUrl">Embeddable link:</label>
               <input type="text" id="convertedUrl" name="convertedUrl"><br><br>
 
-              <button type="button" id="copyBtn">Copy link</button>
-              <button type="button" id="openLink">Open embed link</button>
+              <button type="button" id="copyBtn" onclick="myGrooveWriter.convertAndCopy();">Copy link</button>
+              <button type="button" id="openLink" onclick="myGrooveWriter.openEmbedLink();">Open embed link</button>
             </form>
           </div>
           <div>

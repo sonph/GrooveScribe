@@ -27,6 +27,57 @@
 /*global GrooveUtils, Midi, Share */
 /*global MIDI, constant_MAX_MEASURES, constant_DEFAULT_TEMPO, constant_ABC_STICK_R, constant_ABC_STICK_L, constant_ABC_STICK_BOTH, constant_ABC_STICK_OFF, constant_ABC_STICK_COUNT, constant_ABC_HH_Ride, constant_ABC_HH_Ride_Bell, constant_ABC_HH_Cow_Bell, constant_ABC_HH_Crash, constant_ABC_HH_Stacker, constant_ABC_HH_Open, constant_ABC_HH_Close, constant_ABC_HH_Accent, constant_ABC_HH_Normal, constant_ABC_SN_Ghost, constant_ABC_SN_Accent, constant_ABC_SN_Normal, constant_ABC_SN_XStick, constant_ABC_SN_Buzz, constant_ABC_SN_Flam, constant_ABC_SN_Drag, constant_ABC_KI_SandK, constant_ABC_KI_Splash, constant_ABC_KI_Normal, constant_ABC_T1_Normal, constant_ABC_T2_Normal, constant_ABC_T3_Normal, constant_ABC_T4_Normal, constant_NUMBER_OF_TOMS, constant_ABC_OFF, MIDI_VELOCITY_NORMAL, MIDI_VELOCITY_ACCENT, MIDI_VELOCITY_GHOST, constant_OUR_MIDI_METRONOME_1, constant_OUR_MIDI_METRONOME_NORMAL, constant_OUR_MIDI_HIHAT_NORMAL, constant_OUR_MIDI_HIHAT_OPEN, constant_OUR_MIDI_HIHAT_ACCENT, constant_OUR_MIDI_HIHAT_CRASH, constant_OUR_MIDI_HIHAT_STACKER, constant_OUR_MIDI_HIHAT_RIDE, constant_OUR_MIDI_HIHAT_FOOT, constant_OUR_MIDI_SNARE_NORMAL, constant_OUR_MIDI_SNARE_ACCENT, constant_OUR_MIDI_SNARE_GHOST, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_FLAM, onstant_OUR_MIDI_SNARE_DRAG, constant_OUR_MIDI_KICK_NORMAL, constant_OUR_MIDI_TOM1_NORMAL, constant_OUR_MIDI_TOM2_NORMAL, constant_OUR_MIDI_TOM4_NORMAL, constant_OUR_MIDI_TOM4_NORMAL */
 
+interface EmbedTableData {
+  repeatBegins: string;
+  repeatEnds: string;
+  repeatEndings: string;
+  measureText: string;
+}
+
+interface EmbedMeasureRowState {
+  repeatStart: boolean;
+  repeatEnd: boolean;
+  altEnding: string;
+  textBegin: string;
+  textEnd: string;
+}
+
+function setEmbedStatus(status: string): void {
+  const statusE = document.getElementById("status");
+  if (!statusE) return;
+  statusE.innerHTML = "<b>" + status + "</b>";
+  setTimeout(function () {
+    statusE.innerHTML = "";
+  }, 4000 /* ms */);
+}
+
+function encodeAfterLastColon(str: string, encode: boolean): string {
+  if (!str) return "";
+  return str.split(";").map(e => {
+    const parts = e.trim().split(":");
+    if (parts.length < 2) return e;
+    var convertedPart: string;
+    if (encode) {
+      convertedPart = encodeURIComponent(parts[parts.length - 1]);
+    } else {
+      convertedPart = decodeURIComponent(parts[parts.length - 1]);
+    }
+    return parts.slice(0, parts.length - 1).concat([convertedPart]).join(":");
+  }).join(";");
+}
+
+function parseQuery(queryString: string): Record<string, string> {
+  var query: Record<string, string> = {};
+  if (!queryString) return query;
+  var pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    if (!pairs[i]) continue;
+    var pair = pairs[i].split('=');
+    query[decodeURIComponent(pair[0])] = decodeURIComponent((pair[1] || '').replace(/\+/g, ' '));
+  }
+  return query;
+}
+
 type KeyShortcutMapping = Map<string, { type: string, note_mapping: Map<string, string> }>;
 
 const UNDO_STACK_MAX_SIZE = 40;
@@ -426,6 +477,7 @@ class GrooveWriter {
   }
   selectedNoteIndex: number = 0;
   selectedInstrument: string = "snare";
+  isConverting: boolean = false;
 
   constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
     this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
@@ -1901,9 +1953,7 @@ class GrooveWriter {
       if (isCurrentlyHidden) {
         embedTool.style.display = "block";
         if (btn) btn.classList.add("buttonSelected");
-        if (typeof (window as any).renderEmbedMeasureTable === "function") {
-          (window as any).renderEmbedMeasureTable(this.data.numberOfMeasures);
-        }
+        this.renderEmbedMeasureTable(this.data.numberOfMeasures);
         if (typeof embedTool.scrollIntoView === "function") {
           embedTool.scrollIntoView({ behavior: "smooth" });
         }
@@ -1917,6 +1967,399 @@ class GrooveWriter {
 
   showHideEmbedTool(): boolean {
     return this.toggleEmbedTool();
+  }
+
+  renderEmbedMeasureTable(numMeasures?: number | null): void {
+    const tbody = document.getElementById("embedMeasureTableBody") as HTMLTableSectionElement | null;
+    if (!tbody) return;
+
+    var count: number = numMeasures ?? 0;
+    if (!count) {
+      count = this.data ? this.data.numberOfMeasures : 1;
+    }
+    count = Math.max(1, count);
+
+    // Preserve existing row states
+    const existingRows = tbody.querySelectorAll("tr");
+    const existingData: Record<number, EmbedMeasureRowState> = {};
+    existingRows.forEach(row => {
+      const m = parseInt(row.getAttribute("data-measure") || "0", 10);
+      if (!m) return;
+      const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
+      const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
+      const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+      existingData[m] = {
+        repeatStart: startCb ? startCb.checked : false,
+        repeatEnd: endCb ? endCb.checked : false,
+        altEnding: altSel ? altSel.value : "",
+        textBegin: txtBegin ? txtBegin.value : "",
+        textEnd: txtEnd ? txtEnd.value : ""
+      };
+    });
+
+    var html = "";
+    for (var m = 1; m <= count; m++) {
+      let d = existingData[m];
+      if (!d && this.data) {
+        const isRepeatStart = this.data.repeatBegins && this.data.repeatBegins.has(m);
+        const isRepeatEnd = this.data.repeatEnds && this.data.repeatEnds.has(m);
+        const altEnding = this.data.repeatEndings && this.data.repeatEndings.get(m) ? this.data.repeatEndings.get(m) : "";
+        const textEntry = this.data.measureText && this.data.measureText.get(m) ? this.data.measureText.get(m) : {};
+        d = {
+          repeatStart: !!isRepeatStart,
+          repeatEnd: !!isRepeatEnd,
+          altEnding: altEnding || "",
+          textBegin: textEntry.begin || "",
+          textEnd: textEntry.end || ""
+        };
+      }
+      if (!d) {
+        d = { repeatStart: false, repeatEnd: false, altEnding: "", textBegin: "", textEnd: "" };
+      }
+      html += '<tr data-measure="' + m + '">' +
+        '<td>Measure ' + m + '</td>' +
+        '<td><input type="checkbox" class="embed-repeat-start" data-measure="' + m + '"' + (d.repeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.convert();"></td>' +
+        '<td><input type="checkbox" class="embed-repeat-end" data-measure="' + m + '"' + (d.repeatEnd ? ' checked' : '') + ' onchange="myGrooveWriter.convert();"></td>' +
+        '<td><select class="embed-alt-ending" data-measure="' + m + '" onchange="myGrooveWriter.convert();">' +
+          '<option value=""' + (d.altEnding === '' ? ' selected' : '') + '>None</option>' +
+          '<option value="1"' + (d.altEnding === '1' ? ' selected' : '') + '>1</option>' +
+          '<option value="2"' + (d.altEnding === '2' ? ' selected' : '') + '>2</option>' +
+          '<option value="3"' + (d.altEnding === '3' ? ' selected' : '') + '>3</option>' +
+          '<option value="4"' + (d.altEnding === '4' ? ' selected' : '') + '>4</option>' +
+        '</select></td>' +
+        '<td><input type="text" class="embed-text-begin" data-measure="' + m + '" value="' + (d.textBegin ? d.textBegin.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.convert();" onchange="myGrooveWriter.convert();"></td>' +
+        '<td><input type="text" class="embed-text-end" data-measure="' + m + '" value="' + (d.textEnd ? d.textEnd.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.convert();" onchange="myGrooveWriter.convert();"></td>' +
+      '</tr>';
+    }
+    tbody.innerHTML = html;
+    this.convert(false, false);
+  }
+
+  getEmbedTableData(): EmbedTableData | null {
+    const tbody = document.getElementById("embedMeasureTableBody") as HTMLTableSectionElement | null;
+    if (!tbody) return null;
+    const rows = tbody.querySelectorAll("tr");
+    if (rows.length === 0) return null;
+
+    const repeatBegins: number[] = [];
+    const repeatEnds: number[] = [];
+    const repeatEndings: string[] = [];
+    const measureTexts: string[] = [];
+
+    rows.forEach((row, idx) => {
+      const m = parseInt(row.getAttribute("data-measure") || (idx + 1).toString(), 10);
+      const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
+      const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
+      const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+
+      if (startCb && startCb.checked) {
+        repeatBegins.push(m);
+      }
+      if (endCb && endCb.checked) {
+        repeatEnds.push(m);
+      }
+      if (altSel && altSel.value) {
+        repeatEndings.push(m + ":" + altSel.value);
+      }
+      if (txtBegin && txtBegin.value.trim().length > 0) {
+        measureTexts.push(m + ":b:" + txtBegin.value.trim());
+      }
+      if (txtEnd && txtEnd.value.trim().length > 0) {
+        measureTexts.push(m + ":e:" + txtEnd.value.trim());
+      }
+    });
+
+    return {
+      repeatBegins: repeatBegins.join(";"),
+      repeatEnds: repeatEnds.join(";"),
+      repeatEndings: repeatEndings.join(";"),
+      measureText: measureTexts.join(";")
+    };
+  }
+
+  setEmbedTableData(data: Partial<EmbedTableData> | null): void {
+    if (!data) return;
+    const rbList: number[] = (data.repeatBegins || "").toString().split(";").filter(Boolean).map(Number);
+    const reList: number[] = (data.repeatEnds || "").toString().split(";").filter(Boolean).map(Number);
+    const altMap: Record<number, string> = {};
+    (data.repeatEndings || "").toString().split(";").filter(Boolean).forEach(part => {
+      const colon = part.indexOf(":");
+      if (colon !== -1) {
+        const m = parseInt(part.substring(0, colon), 10);
+        const val = part.substring(colon + 1);
+        if (m) altMap[m] = val;
+      }
+    });
+    const textBeginMap: Record<number, string> = {};
+    const textEndMap: Record<number, string> = {};
+    (data.measureText || "").toString().split(";").filter(Boolean).forEach(part => {
+      const segments = part.split(":");
+      if (segments.length >= 3) {
+        const m = parseInt(segments[0], 10);
+        const type = segments[1];
+        const text = segments.slice(2).join(":");
+        if (type === "b") textBeginMap[m] = text;
+        if (type === "e") textEndMap[m] = text;
+      }
+    });
+
+    var maxM = this.data ? this.data.numberOfMeasures : 1;
+    const allMeasureNumbers: number[] = [
+      ...rbList,
+      ...reList,
+      ...Object.keys(altMap).map(Number),
+      ...Object.keys(textBeginMap).map(Number),
+      ...Object.keys(textEndMap).map(Number)
+    ];
+    if (allMeasureNumbers.length > 0) {
+      maxM = Math.max(maxM, ...allMeasureNumbers);
+    }
+
+    this.renderEmbedMeasureTable(maxM);
+
+    const tbody = document.getElementById("embedMeasureTableBody") as HTMLTableSectionElement | null;
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll("tr");
+    rows.forEach(row => {
+      const m = parseInt(row.getAttribute("data-measure") || "0", 10);
+      const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
+      const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
+      const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+
+      if (startCb) startCb.checked = rbList.includes(m);
+      if (endCb) endCb.checked = reList.includes(m);
+      if (altSel) altSel.value = altMap[m] || "";
+      if (txtBegin) txtBegin.value = textBeginMap[m] || "";
+      if (txtEnd) txtEnd.value = textEndMap[m] || "";
+    });
+  }
+
+  syncTableToGrooveWriter(): void {
+    const tableData = this.getEmbedTableData();
+    if (!tableData) return;
+    this.data.repeatBegins = new Set(
+      tableData.repeatBegins ? tableData.repeatBegins.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+    );
+    this.data.repeatEnds = new Set(
+      tableData.repeatEnds ? tableData.repeatEnds.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+    );
+    const repeatEndings = new Map<number, string>();
+    if (tableData.repeatEndings) {
+      tableData.repeatEndings.split(";").filter(Boolean).forEach((part: string) => {
+        const [mStr, end] = part.split(":");
+        const m = parseInt(mStr, 10);
+        if (!isNaN(m) && end) repeatEndings.set(m, end);
+      });
+    }
+    this.data.repeatEndings = repeatEndings;
+    const measureText = new Map<number, MeasureTextEntry>();
+    if (tableData.measureText) {
+      tableData.measureText.split(";").filter(Boolean).forEach((part: string) => {
+        const [mStr, pos, ...rest] = part.split(":");
+        const m = parseInt(mStr, 10);
+        const txt = rest.join(":");
+        if (!isNaN(m) && txt) {
+          const entry = measureText.get(m) || {};
+          if (pos === "b") entry.begin = txt;
+          if (pos === "e") entry.end = txt;
+          measureText.set(m, entry);
+        }
+      });
+    }
+    this.data.measureText = measureText;
+  }
+
+  convert(selectUrl: boolean = false, refreshSheetMusic: boolean = true): void {
+    this.syncTableToGrooveWriter();
+
+    const args = typeof window !== "undefined" && window.location ? window.location.search : "";
+    var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
+
+    const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
+    const showTempo = showTempoElem ? showTempoElem.checked : (this.data ? this.data.showTempo : false);
+    if (this.data) {
+      this.data.showTempo = showTempo;
+    }
+    if (showTempo) {
+      convertedUrl = convertedUrl + "&ShowTempo=1";
+    }
+
+    const tuneComments = document.getElementById("tuneComments") as HTMLInputElement | null;
+    const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
+    const comments = (tuneComments && typeof tuneComments.value === "string" && tuneComments.value.trim().length > 0)
+      ? tuneComments.value.trim()
+      : (subTextElem && typeof subTextElem.value === "string" ? subTextElem.value.trim() : "");
+    if (comments.length > 0) {
+      convertedUrl += "&Comments=" + encodeURIComponent(comments);
+    }
+
+    const tableData = this.getEmbedTableData();
+    const rbElem = document.getElementById("repeatBegins") as HTMLInputElement | null;
+    const repeatBegins = tableData ? tableData.repeatBegins : (rbElem ? rbElem.value : "");
+    if (repeatBegins.length > 0) {
+      convertedUrl += "&RepeatBegins=" + repeatBegins;
+    }
+
+    const reElem = document.getElementById("repeatEnds") as HTMLInputElement | null;
+    const repeatEnds = tableData ? tableData.repeatEnds : (reElem ? reElem.value : "");
+    if (repeatEnds.length > 0) {
+      convertedUrl += "&RepeatEnds=" + repeatEnds;
+    }
+
+    const rendElem = document.getElementById("repeatEndings") as HTMLInputElement | null;
+    const repeatEndings = tableData ? tableData.repeatEndings : (rendElem ? rendElem.value : "");
+    if (repeatEndings.length > 0) {
+      convertedUrl += "&RepeatEndings=" + repeatEndings;
+    }
+
+    const mtElem = document.getElementById("measureText") as HTMLInputElement | null;
+    const measureText = tableData ? tableData.measureText : (mtElem ? mtElem.value : "");
+    if (measureText.length > 0) {
+      convertedUrl += "&MeasureText=" + encodeAfterLastColon(measureText, true);
+    }
+
+    if (rbElem) rbElem.value = repeatBegins;
+    if (reElem) reElem.value = repeatEnds;
+    if (rendElem) rendElem.value = repeatEndings;
+    if (mtElem) mtElem.value = measureText;
+
+    const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
+    if (convertedUrlElement) {
+      convertedUrlElement.value = convertedUrl;
+      if (selectUrl === true && typeof convertedUrlElement.select === "function") {
+        convertedUrlElement.select();
+      }
+    }
+
+    if (selectUrl === true) {
+      setEmbedStatus("Converted!");
+    }
+
+    if (refreshSheetMusic && !this.isConverting) {
+      this.isConverting = true;
+      try {
+        this.refresh_ABC();
+      } finally {
+        this.isConverting = false;
+      }
+    }
+  }
+
+  convertAndCopy(): void {
+    this.convert();
+    const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
+    if (convertedUrlElement && convertedUrlElement.value.length > 0) {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        navigator.clipboard.writeText(convertedUrlElement.value);
+      }
+      setEmbedStatus("Copied!");
+    }
+  }
+
+  openEmbedLink(): void {
+    const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
+    const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+    if (convertedUrl.length > 0 && typeof window !== "undefined") {
+      window.open(convertedUrl, '_blank');
+    }
+  }
+
+  populateEmbedFromUrl(urlOrQuery?: string): void {
+    let queryString = "";
+    if (typeof urlOrQuery === "string" && urlOrQuery.length > 0) {
+      queryString = urlOrQuery.includes("?") ? urlOrQuery.split("?")[1] : urlOrQuery;
+    } else {
+      const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
+      const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+      if (convertedUrl.length > 0) {
+        queryString = convertedUrl.includes("?") ? convertedUrl.split("?")[1] : convertedUrl;
+      } else if (typeof window !== "undefined" && window.location && window.location.search) {
+        queryString = window.location.search.startsWith("?") ? window.location.search.substring(1) : window.location.search;
+      }
+    }
+
+    const query = parseQuery(queryString);
+
+    const isTempo = (query.EmbedTempoTimeSig || query.embedTempoTimeSig || "") === "true" || (query.ShowTempo || query.showTempo || "") === "1";
+    if (this.data && (query.EmbedTempoTimeSig !== undefined || query.embedTempoTimeSig !== undefined || query.ShowTempo !== undefined || query.showTempo !== undefined)) {
+      this.data.showTempo = isTempo;
+    }
+    const stElem = document.getElementById("showTempo") as HTMLInputElement | null;
+    if (stElem && (query.EmbedTempoTimeSig !== undefined || query.embedTempoTimeSig !== undefined || query.ShowTempo !== undefined || query.showTempo !== undefined)) {
+      stElem.checked = isTempo;
+    }
+    const embedStElem = document.getElementById("embedShowTempo") as HTMLInputElement | null;
+    if (embedStElem && (query.EmbedTempoTimeSig !== undefined || query.embedTempoTimeSig !== undefined || query.ShowTempo !== undefined || query.showTempo !== undefined)) {
+      embedStElem.checked = isTempo;
+    }
+
+    const commentsVal = query.Comments !== undefined ? query.Comments : (query.comments !== undefined ? query.comments : (query.subText !== undefined ? query.subText : query.subtext));
+    if (commentsVal !== undefined) {
+      const decodedComments = decodeURIComponent((commentsVal || "").replace(/\+/g, ' '));
+      const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
+      if (commentsInput) {
+        commentsInput.value = decodedComments;
+      }
+      const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
+      if (subTextElem) {
+        subTextElem.value = decodedComments;
+      }
+      this.data.comments = decodedComments;
+    }
+
+    const rbVal = query.RepeatBegins !== undefined ? query.RepeatBegins : query.repeatBegins;
+    const reVal = query.RepeatEnds !== undefined ? query.RepeatEnds : query.repeatEnds;
+    const rendVal = query.RepeatEndings !== undefined ? query.RepeatEndings : query.repeatEndings;
+    const mtVal = query.MeasureText !== undefined ? query.MeasureText : query.measureText;
+
+    const rbInput = document.getElementById("repeatBegins") as HTMLInputElement | null;
+    if (rbInput && rbVal !== undefined) rbInput.value = rbVal || "";
+    const reInput = document.getElementById("repeatEnds") as HTMLInputElement | null;
+    if (reInput && reVal !== undefined) reInput.value = reVal || "";
+    const rendInput = document.getElementById("repeatEndings") as HTMLInputElement | null;
+    if (rendInput && rendVal !== undefined) rendInput.value = rendVal || "";
+    const mtInput = document.getElementById("measureText") as HTMLInputElement | null;
+    if (mtInput && mtVal !== undefined) mtInput.value = encodeAfterLastColon(mtVal || "", false);
+
+    this.setEmbedTableData({
+      repeatBegins: rbVal || (rbInput ? rbInput.value : ""),
+      repeatEnds: reVal || (reInput ? reInput.value : ""),
+      repeatEndings: rendVal || (rendInput ? rendInput.value : ""),
+      measureText: encodeAfterLastColon(mtVal || (mtInput ? mtInput.value : ""), false)
+    });
+
+    this.convert();
+  }
+
+  initEmbedToolEventListeners(): void {
+    if (typeof document === "undefined") return;
+
+    const tempoInput = document.getElementById("showTempo");
+    if (tempoInput) tempoInput.addEventListener("change", () => this.convert());
+    const embedTempoInput = document.getElementById("embedShowTempo");
+    if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("change", () => this.convert());
+    const commentsInput = document.getElementById("tuneComments");
+    if (commentsInput) {
+      commentsInput.addEventListener("input", () => this.convert());
+      commentsInput.addEventListener("change", () => this.convert());
+    }
+    const subTextInput = document.getElementById("subText");
+    if (subTextInput) {
+      subTextInput.addEventListener("input", () => this.convert());
+      subTextInput.addEventListener("change", () => this.convert());
+    }
+    const convertBtn = document.getElementById("convertBtn");
+    if (convertBtn) convertBtn.addEventListener("click", () => this.convert(true));
+    const copyBtn = document.getElementById("copyBtn");
+    if (copyBtn) copyBtn.addEventListener("click", () => this.convertAndCopy());
+    const openLinkBtn = document.getElementById("openLink");
+    if (openLinkBtn) openLinkBtn.addEventListener("click", () => this.openEmbedLink());
   }
 
   updateUrl(): void {
@@ -2557,21 +3000,30 @@ class GrooveWriter {
     });
   }
 
-  swapViewEditMode(dontUpdateURL?: boolean): void {
-    this.data.viewMode = !this.data.viewMode;
-    this.showHideCSS_ClassDisplay(".edit-block", true, !this.data.viewMode, "block");
+  setViewMode(viewMode: boolean, dontUpdateURL?: boolean): void {
+    this.data.viewMode = viewMode;
+    this.showHideCSS_ClassDisplay(".edit-block", true, !viewMode, "block");
+    const fields = document.getElementById("sheetMusicTextFields");
+    if (fields) {
+      fields.style.setProperty("display", viewMode ? "none" : "flex", "important");
+    }
     const view_edit_button = document.getElementById("view-edit-switch");
     if (view_edit_button) {
-      view_edit_button.innerHTML = this.data.viewMode ? "Switch to EDIT mode" : "Switch to VIEW mode";
+      view_edit_button.innerHTML = viewMode ? "Switch to EDIT mode" : "Switch to VIEW mode";
     }
     if (!dontUpdateURL) {
       this.updateCurrentURL();
     }
+  }
+
+  swapViewEditMode(dontUpdateURL?: boolean): void {
+    this.setViewMode(!this.data.viewMode, dontUpdateURL);
   };
 
   runsOnPageLoad(): void {
     this.setupWriterHotKeys();
     this.setTimeSigLabel();
+    this.initEmbedToolEventListeners();
 
     this.selectButton(document.getElementById("subdivision_" + this.data.notesPerMeasure + "ths"));
     this.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", this.data.subdivision.value, undefined);
@@ -2582,13 +3034,9 @@ class GrooveWriter {
     this.set_Default_notes(window.location.search);
     this.setupPermutationMenu();
     this.setMeasureContainerSelected(true);
+    this.renderEmbedMeasureTable(this.data.numberOfMeasures);
 
-    // The DOM defaults to view-mode CSS (to prevent flicker), so if the URL
-    // asks for edit mode we need to flip it.
-    if (!this.data.viewMode) {
-      this.data.viewMode = true;
-      this.swapViewEditMode(true);
-    }
+    this.setViewMode(this.data.viewMode, true);
 
     this.myGrooveUtils.midiEventCallbacks.loadMidiDataEvent = (playStarting) => {
       var midiURL;
@@ -2958,40 +3406,38 @@ class GrooveWriter {
       }
     }
 
-    if (typeof (window as any).getEmbedTableData === "function") {
-      const tableData = (window as any).getEmbedTableData();
-      if (tableData) {
-        this.data.repeatBegins = new Set(
-          tableData.repeatBegins ? tableData.repeatBegins.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
-        );
-        this.data.repeatEnds = new Set(
-          tableData.repeatEnds ? tableData.repeatEnds.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
-        );
-        const repeatEndings = new Map<number, string>();
-        if (tableData.repeatEndings) {
-          tableData.repeatEndings.split(";").filter(Boolean).forEach((part: string) => {
-            const [mStr, end] = part.split(":");
-            const m = parseInt(mStr, 10);
-            if (!isNaN(m) && end) repeatEndings.set(m, end);
-          });
-        }
-        this.data.repeatEndings = repeatEndings;
-        const measureText = new Map<number, MeasureTextEntry>();
-        if (tableData.measureText) {
-          tableData.measureText.split(";").filter(Boolean).forEach((part: string) => {
-            const [mStr, pos, ...rest] = part.split(":");
-            const m = parseInt(mStr, 10);
-            const txt = rest.join(":");
-            if (!isNaN(m) && txt) {
-              const entry = measureText.get(m) || {};
-              if (pos === "b") entry.begin = txt;
-              if (pos === "e") entry.end = txt;
-              measureText.set(m, entry);
-            }
-          });
-        }
-        this.data.measureText = measureText;
+    const tableData = this.getEmbedTableData();
+    if (tableData) {
+      this.data.repeatBegins = new Set(
+        tableData.repeatBegins ? tableData.repeatBegins.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+      );
+      this.data.repeatEnds = new Set(
+        tableData.repeatEnds ? tableData.repeatEnds.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+      );
+      const repeatEndings = new Map<number, string>();
+      if (tableData.repeatEndings) {
+        tableData.repeatEndings.split(";").filter(Boolean).forEach((part: string) => {
+          const [mStr, end] = part.split(":");
+          const m = parseInt(mStr, 10);
+          if (!isNaN(m) && end) repeatEndings.set(m, end);
+        });
       }
+      this.data.repeatEndings = repeatEndings;
+      const measureText = new Map<number, MeasureTextEntry>();
+      if (tableData.measureText) {
+        tableData.measureText.split(";").filter(Boolean).forEach((part: string) => {
+          const [mStr, pos, ...rest] = part.split(":");
+          const m = parseInt(mStr, 10);
+          const txt = rest.join(":");
+          if (!isNaN(m) && txt) {
+            const entry = measureText.get(m) || {};
+            if (pos === "b") entry.begin = txt;
+            if (pos === "e") entry.end = txt;
+            measureText.set(m, entry);
+          }
+        });
+      }
+      this.data.measureText = measureText;
     }
   }
 
@@ -3044,9 +3490,7 @@ class GrooveWriter {
     this.setMetronomeFrequency(this.data.metronomeFrequency);
     this.updateSheetMusic();
 
-    if (typeof (window as any).populateFromUrl === "function") {
-      (window as any).populateFromUrl(encodedURLData);
-    }
+    this.populateEmbedFromUrl(encodedURLData);
   }
 
   loadNewGroove(encodedURLData: string): void {
@@ -3172,9 +3616,7 @@ class GrooveWriter {
       this.selectedNoteIndex = Math.max(0, maxNotes - 1);
     }
     this.updateNavHighlights();
-    if (typeof (window as any).renderEmbedMeasureTable === "function") {
-      (window as any).renderEmbedMeasureTable(this.data.numberOfMeasures);
-    }
+    this.renderEmbedMeasureTable(this.data.numberOfMeasures);
   }
 
   HTMLforStaffContainer(baseindex: number, indexStartForNotes: number): string {
@@ -3578,3 +4020,66 @@ class GrooveWriter {
 (globalThis as any).kickPermutationTriplets = kickPermutationTriplets;
 (globalThis as any).shouldDisplayPermutation = shouldDisplayPermutation;
 (globalThis as any).PERMUTATION_SECTIONS = PERMUTATION_SECTIONS;
+
+// Global helper wrappers for backward compatibility
+const getGWInstance = (): any => {
+  if (typeof (window as any) !== "undefined" && (window as any).myGrooveWriter) return (window as any).myGrooveWriter;
+  if (typeof (globalThis as any) !== "undefined" && (globalThis as any).myGrooveWriter) return (globalThis as any).myGrooveWriter;
+  if (typeof (global as any) !== "undefined" && (global as any).myGrooveWriter) return (global as any).myGrooveWriter;
+  return undefined;
+};
+
+const renderEmbedMeasureTableGlobal = (num?: number | null) => getGWInstance()?.renderEmbedMeasureTable(num);
+const getEmbedTableDataGlobal = () => getGWInstance()?.getEmbedTableData();
+const setEmbedTableDataGlobal = (data: any) => getGWInstance()?.setEmbedTableData(data);
+const populateFromUrlGlobal = (url?: string) => getGWInstance()?.populateEmbedFromUrl(url);
+const convertGlobal = (selectUrl?: boolean, refresh?: boolean) => getGWInstance()?.convert(selectUrl, refresh);
+const convertAndCopyGlobal = () => getGWInstance()?.convertAndCopy();
+const openLinkGlobal = () => getGWInstance()?.openEmbedLink();
+const decodeConvertedUrlGlobal = (url?: string) => getGWInstance()?.populateEmbedFromUrl(url);
+
+if (typeof window !== "undefined") {
+  (window as any).renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
+  (window as any).getEmbedTableData = getEmbedTableDataGlobal;
+  (window as any).setEmbedTableData = setEmbedTableDataGlobal;
+  (window as any).populateFromUrl = populateFromUrlGlobal;
+  (window as any).convert = convertGlobal;
+  (window as any).convertAndCopy = convertAndCopyGlobal;
+  (window as any).openLink = openLinkGlobal;
+  (window as any).decodeConvertedUrl = decodeConvertedUrlGlobal;
+  (window as any).encodeAfterLastColon = encodeAfterLastColon;
+  (window as any).parseQuery = parseQuery;
+}
+
+if (typeof (globalThis as any) !== "undefined") {
+  (globalThis as any).renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
+  (globalThis as any).getEmbedTableData = getEmbedTableDataGlobal;
+  (globalThis as any).setEmbedTableData = setEmbedTableDataGlobal;
+  (globalThis as any).populateFromUrl = populateFromUrlGlobal;
+  (globalThis as any).convert = convertGlobal;
+  (globalThis as any).convertAndCopy = convertAndCopyGlobal;
+  (globalThis as any).openLink = openLinkGlobal;
+  (globalThis as any).decodeConvertedUrl = decodeConvertedUrlGlobal;
+  (globalThis as any).encodeAfterLastColon = encodeAfterLastColon;
+  (globalThis as any).parseQuery = parseQuery;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    GrooveWriter,
+    renderEmbedMeasureTable: renderEmbedMeasureTableGlobal,
+    getEmbedTableData: getEmbedTableDataGlobal,
+    setEmbedTableData: setEmbedTableDataGlobal,
+    populateFromUrl: populateFromUrlGlobal,
+    convert: convertGlobal,
+    convertAndCopy: convertAndCopyGlobal,
+    decodeConvertedUrl: decodeConvertedUrlGlobal,
+    encodeAfterLastColon,
+    parseQuery,
+    kickPermutationStrait,
+    kickPermutationMinusSomeStrait,
+    kickPermutationTriplets,
+    shouldDisplayPermutation,
+    PERMUTATION_SECTIONS
+  };
+}

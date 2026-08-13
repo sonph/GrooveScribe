@@ -1462,12 +1462,40 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(writer.data.showTempo).toBe(true);
     expect(document.getElementById('ABCsource').value).toContain('Q: 1/4=125\n');
   });
+
+  test('sheetMusicTextFields is displayed with flex in edit mode and contains title, author, comments, showTempo', () => {
+    document.body.innerHTML = `
+      <div id="sheetMusicTextFields" class="fullWidthEle edit-block">
+        <span class="sheetMusicTextField"><b>Title:</b> <input class="sheetMusicInputField" id="tuneTitle" type="text"></span>
+        <span class="sheetMusicTextField"><b>Author:</b> <input class="sheetMusicInputField" id="tuneAuthor" type="text"></span>
+        <span class="sheetMusicTextField"><b>Comment:</b> <input class="sheetMusicInputField" id="tuneComments" type="text"></span>
+        <span id='TempoButton'><input type="checkbox" class="hiddenCheckbox" id="showTempo"></span>
+      </div>
+      <div id="musicalInput" class="fullWidthEle edit-block">
+        <div id="measureContainer"></div>
+      </div>
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
+    `;
+    writer.displayNewSVG = jest.fn();
+    writer.set_Default_notes('Mode=edit&TimeSig=4/4&Div=8&Title=MySong&Author=Drummer&Comments=Practice&ShowTempo=1&H=|xxxxxxxx|');
+
+    const fields = document.getElementById('sheetMusicTextFields');
+    expect(fields).not.toBeNull();
+    expect(fields.style.display).not.toBe('none');
+    expect(document.getElementById('tuneTitle').value).toBe('MySong');
+    expect(document.getElementById('tuneAuthor').value).toBe('Drummer');
+    expect(document.getElementById('tuneComments').value).toBe('Practice');
+    expect(document.getElementById('showTempo').checked).toBe(true);
+  });
 });
+
 
 describe('Notion Embedding Options Measure Table', () => {
   let embed;
   beforeAll(() => {
-    embed = require('../js/notion-embed.js');
+    embed = require('../js/groove_writer.js');
   });
 
   beforeEach(() => {
@@ -1768,6 +1796,31 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(1);
     expect(document.getElementById('staff-container2')).toBeNull();
     expect(document.querySelector('tr[data-measure="1"] .embed-repeat-start').checked).toBe(true);
+  });
+
+  test('toggleEmbedTool populates 1 row when 1 measure exists on page load', () => {
+    document.body.innerHTML = `
+      <div id="embeddingOptionsButton"></div>
+      <div id="embedTool" style="display: none;">
+        <table id="embedMeasureTable">
+          <tbody id="embedMeasureTableBody"></tbody>
+        </table>
+      </div>
+      <div id="measureContainer"></div>
+    `;
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    expect(writer.data.numberOfMeasures).toBe(1);
+
+    // Toggle embed tool open
+    writer.toggleEmbedTool();
+    expect(document.getElementById('embedTool').style.display).toBe('block');
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(1);
+    expect(document.querySelector('#embedMeasureTableBody tr td').textContent).toContain('Measure 1');
+
+    // Add measure updates embed table to 2 rows
+    writer.addMeasureButtonClick();
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(2);
   });
 
   test('set_Default_notes populates default groove when loading URL with empty measures', () => {

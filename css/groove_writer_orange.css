@@ -984,7 +984,7 @@
 		padding: 8px 0px;
 		text-align: center;
 		display: -webkit-flex;
-		display: flex;
+		display: flex !important;
 		justify-content: space-around;
 		-webkit-justify-content: space-around;
 		background-color: #DDD;
