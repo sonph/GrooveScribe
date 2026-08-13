@@ -9,7 +9,6 @@ declare var ShareButton: any;
 
 var global_midiInitialized = false;
 
-// global constants
 var constant_MAX_MEASURES = 10;
 var constant_DEFAULT_TEMPO = 80;
 var constant_NUMBER_OF_TOMS = 4;
@@ -80,7 +79,7 @@ const constant_ABC_T4_Normal = "A";
 const constant_ABC_OFF = false;
 
 // MIDI note lookup for a hi-hat ABC token. Returns null for OFF/unknown.
-// midi_output_type "general_MIDI" collapses variants to the normal note + varied velocity;
+// "general_MIDI" collapses variants to the normal note + varied velocity;
 // "Custom" uses distinct sample IDs for accent/etc.
 function hihatMidiFor(abcVal, midi_output_type: string): { note: number; velocity: number } | null {
   switch (abcVal) {
@@ -136,7 +135,6 @@ function kickMidiFor(abcVal): { kick: number | null; splash: number | null } {
   }
 }
 
-// MIDI note lookup for a tom ABC token. Returns null for OFF/unknown.
 // Adjust a base note duration for swing feel. Swing groups notes in 4s
 // (1-e-&-a): the 1 and the & get longer, the e and the a get shorter, so
 // the pulse becomes 1--e&--a2--e&--a...
@@ -224,7 +222,6 @@ function tomMidiFor(abcVal): number | null {
   }
 }
 
-// make these global so that they are shared among all the GrooveUtils classes invoked
 var global_current_midi_start_time: any = 0;
 var global_last_midi_update_time: any = 0;
 var global_total_midi_play_time_msecs = 0;
@@ -237,8 +234,6 @@ function setOf<T>(...args: T[]): Set<T> {
 
 class DrumType {
   name: string;
-  // Alternates are other names that can be used to refer to this drum type.
-  // This is to support multiple drum types in existing notations.
   alternates: Set<string>;
 
   static NONE = new DrumType('None');
@@ -247,8 +242,6 @@ class DrumType {
   static SNARE = new DrumType('S');
   static KICK = new DrumType('K', setOf('B', 'BD'));
   static TOM1 = new DrumType('T1');
-  // static TOM2 = new DrumType('T2');
-  // static TOM3 = new DrumType('T3');
   static TOM4 = new DrumType('T4');
 
   static ALL = setOf(this.STICKINGS, this.HIHAT, this.SNARE, this.KICK, this.TOM1, this.TOM4);
@@ -276,42 +269,6 @@ class DrumType {
   }
 }
 
-
-// takes a character from tablature form and converts it to our ABC Notation form.
-// uses drum tab format adapted from wikipedia: http://en.wikipedia.org/wiki/Drum_tablature
-//
-//  Sticking support:
-//		R: right
-//    L: left
-//
-//  HiHat support:
-//		x: normal
-//		X: accent
-//		o: open
-//		+: close
-//		c: crash
-//		r: ride
-//		b: ride bell
-//		m: (more) cow bell
-//    s: stacker
-//    n: metroNome normal
-//    N: metroNome accent
-//		-: off
-//
-//   Snare support:
-//		o: normal
-//		O: accent
-//		g: ghost
-//		x: cross stick
-//		f: flam
-//		-: off
-//
-//   Kick support:
-//		o: normal
-//		x: hi hat splash with foot
-//		X: kick & hi hat splash with foot simultaneously
-//
-//  Kick can be notated either with a "K" or a "B"
 interface AbcNoteHtmlAttrs {
   html_id_prefix: string | Set<string>;
   iconClass?: string;
@@ -342,19 +299,14 @@ function getFirstElement<T>(v: Set<T> | T): T | null {
 
 class AbcNote {
   drumType: DrumType;
-  // ABC notation for the note.
   note: string;
-  // Set of tab characters that map to this note.
   tabChar: Set<string>;
-  // HTML attributes for the note used in rendering.
   htmlAttrs: AbcNoteHtmlAttrs;
-  // Optional modifier for the note, e.g. 'accent', 'open', etc.
   modifier: string | null;
   midiNote: number | null;
 
   static OFF = new AbcNote(DrumType.NONE, '', setOf('-'), null, noteAttrs(''), null);
 
-  // TODO: Maybe switch note false to ''
   static STICK_R = new AbcNote(DrumType.STICKINGS, '"R"x', setOf('R'), null, noteAttrs('sticking_right'));
   static STICK_L = new AbcNote(DrumType.STICKINGS, '"L"x', setOf('L'), null, noteAttrs('sticking_left'));
   static STICK_BOTH = new AbcNote(DrumType.STICKINGS, '"R/L"x', setOf('b', 'B'), null, noteAttrs('sticking_both'));
@@ -409,15 +361,13 @@ class AbcNote {
     this.SN_BUZZ,
     this.SN_FLAM,
     this.SN_DRAG
-  ]
+  ];
 
   static KI_SANDK = new AbcNote(DrumType.KICK, "[F^d,]", setOf('X'), null, noteAttrs(setOf('kick_circle', 'kick_splash')));
   static KI_SPLASH = new AbcNote(DrumType.KICK, "^d,", setOf('x'), null, noteAttrs('kick_splash', 'fa-times'), 36);
   static KI_NORMAL = new AbcNote(DrumType.KICK, "F", setOf('o'), null, noteAttrs('kick_circle'), 35);
 
   static T1_NORMAL = new AbcNote(DrumType.TOM1, "e", setOf('o'), null, noteAttrs('tom_circle1-'), 48);
-  // static T2_NORMAL = new AbcNote(DrumType.TOM2, "d", setOf('o'), null, noteAttrs('tom_circle2-'), 47);
-  // static T3_NORMAL = new AbcNote(DrumType.TOM3, "B", setOf('o'), null, noteAttrs('tom_circle3-'), 45);
   static T4_NORMAL = new AbcNote(DrumType.TOM4, "A", setOf('o'), null, noteAttrs('tom_circle4-'), 43);
 
   static ALL_NOTES = [
@@ -448,15 +398,10 @@ class AbcNote {
     this.KI_SPLASH,
     this.KI_NORMAL,
     this.T1_NORMAL,
-    // this.T2_NORMAL,
-    // this.T3_NORMAL,
     this.T4_NORMAL,
   ];
 
-  // Map of drumType to map of tab char to abc note.
   static ABC_NOTE_TO_TAB_CHAR = AbcNote.createAbcNoteToTabCharMap();
-
-  // Map of drumType to map of tab char to abc note.
   static TAB_CHAR_TO_ABC_NOTE = AbcNote.createTabCharToAbcNoteMap();
 
   constructor(drumType: DrumType, note: string, tabChar: Set<string>, modifier: string | null = null, htmlAttrs: AbcNoteHtmlAttrs | null = null, midiNote: number | null = null) {
@@ -1282,13 +1227,13 @@ class MidiEventCallback {
       icon.className = "midiPlayImage Stopped";
       icon.onclick = (event) => {
         this.grooveUtils.startOrStopMIDI_playback();
-      }; // enable play button
+      };
     }
-    this.grooveUtils.setupHotKeys(); // spacebar to play
+    this.grooveUtils.setupHotKeys();
   }
 }
 
-// callback class for abc generator library
+// Callback class for abc2svg generator library.
 // See https://chiselapp.com/user/moinejf/repository/abc2svg/wiki?name=interface-1.
 class SVGLibCallback {
   abc_obj: AbcObj;
@@ -1301,47 +1246,29 @@ class SVGLibCallback {
   abcNoteNumIndex: number;
 
   constructor() {
-    this.abc_obj = null; // will be set by the GrooveUtils constructor
+    this.abc_obj = null;
     this.abc_svg_output = "";
     this.abc_error_output = "";
     this.svg_highlight_y = 0;
     this.svg_highlight_h = 44;
-    // -- optional attributes
-    this.page_format = true; // define the non-page-breakable blocks
+    this.page_format = true;
     this.grooveUtilsUniqueIndex = 0;
     this.abcNoteNumIndex = 0;
   }
 
-  // include a file (%%abc-include)
   read_file(fn) {
     return "";
   };
-  // insert the errors
+
   errmsg(msg, l, c) {
     this.abc_error_output += msg + "<br/>\n";
   };
 
-  // for possible playback or linkage
-  get_abcmodel(tsfirst, voice_tb, music_types) {
+  get_abcmodel(tsfirst, voice_tb, music_types) { };
 
-    /*
-    console.log(tsfirst);
-    var next = tsfirst.next;
-
-    while(next) {
-    console.log(next);
-    next = next.next;
-    }
-     */
-  };
-
-  // annotations
   anno_start(type, start, stop, x, y, w, h) { };
   anno_stop(type, start, stop, x, y, w, h) {
-
-    // create a rectangle
     if (type == "bar") {
-      // use the bar as the default y & hack
       this.svg_highlight_y = y + 5;
       this.svg_highlight_h = h + 10;
     }
@@ -1352,30 +1279,25 @@ class SVGLibCallback {
       this.abc_obj.out_sxsy(x, '" y="', y);
       this.abc_obj.out_svg('" width="' + w.toFixed(2) + '" height="' + h.toFixed(2) + '"/>\n');
 
-      //console.log("Type:"+type+ "\t abcNoteNumIndex:"+this.abcNoteNumIndex+ "\t X:"+x+ "\t Y:"+y+ "\t W:"+w+ "\t H:"+h);
-
-      // don't increment on the grace note, since it is attached to the real note
+      // Grace note is attached to the primary note, so keep the same note index.
       if (type != "grace")
         this.abcNoteNumIndex++;
     }
   };
 
-  // image output
   img_out(str) {
-    this.abc_svg_output += str; // + '\n'
+    this.abc_svg_output += str;
   };
-
 }
 
 // https://chiselapp.com/user/moinejf/repository/abc2svg/wiki?name=interface-1
 interface AbcObj {
   new(callback: SVGLibCallback): AbcObj;
   tosvg(file_name: string, ABC_source: string, start_offset?: number, end_offset?: number): any;
-  out_svg(text: string): void; // Add text.
+  out_svg(text: string): void;
   out_sxsy(x_offset: number, separator: string, y_offset: number): void;
 }
 
-// GrooveUtils class.   The only one in this file.
 class GrooveUtils {
   data: GrooveData;
   grooveData: GrooveData;
@@ -1406,37 +1328,28 @@ class GrooveUtils {
     this.grooveUtilsUniqueIndex = 0;
     this.data = new GrooveData();
     this.grooveData = this.data;
-
-    // array that can be used to map notes to the SVG generated by abc2svg
     this.note_mapping_array = null;
-
-    // metronome options
     this.metronomeSolo = false;
     this.metronomeOffsetClickStart = "1";
-    // start with last in the rotation so the next rotation brings it to '1'
     this.metronomeOffsetClickStartRotation = 0;
-
-    // integration with third party components
-    this.noteCallback = null;  //function triggered when a note is played
-    this.playEventCallback = null;  //triggered when the play button is pressed
-    this.repeatCallback = null;  //triggered when a groove is going to be repeated
-    this.tempoChangeCallback = null;  //triggered when the tempo changes.  ARG1 is the new Tempo integer (needs to be very fast, it can get called a lot of times from the slider)
-
-    this.visible_context_menu = false; // a single context menu can be visible at a time.
+    this.noteCallback = null;
+    this.playEventCallback = null;
+    this.repeatCallback = null;
+    this.tempoChangeCallback = null;
+    this.visible_context_menu = false;
 
     if (!excludeAbcForTesting) {
-      this.abcToSVGCallback = new SVGLibCallback(); // singleton
+      this.abcToSVGCallback = new SVGLibCallback();
       this.abc_obj = new Abc(this.abcToSVGCallback);
       this.abcToSVGCallback.abc_obj = this.abc_obj;
     }
     this.abcNoteNumCurrentlyHighlighted = -1;
 
-    // midi state variables
     this.midiEventCallbacks = new MidiEventCallback(this);
     this.isMIDIPaused = false;
     this.shouldMIDIRepeat = true;
     this.swingIsEnabled = false;
-    this.midiBaseLocation = ""; // global
+    this.midiBaseLocation = "";
   }
 
   getQueryVariableFromString(variable: string, def_value: string, my_string: string) {
@@ -1451,18 +1364,14 @@ class GrooveUtils {
     return (def_value);
   };
 
-  // Get the "?query" values from the page URL
   getQueryVariableFromURL(variable, def_value) {
     return (this.getQueryVariableFromString(variable, def_value, window.location.search));
   };
 
-  // is the browser a touch device.   Usually this means no right click
   is_touch_device(): boolean {
     return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
   };
 
-  // every document click passes through here.
-  // close a popup if one is up and we click off of it.
   documentOnClickHanderCloseContextMenu = (event) => {
     if (this.visible_context_menu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
@@ -1471,16 +1380,14 @@ class GrooveUtils {
 
   showContextMenu(contextMenu) {
     if (!contextMenu) return;
-    // if there is another context menu open, close it
     if (this.visible_context_menu && this.visible_context_menu !== contextMenu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
     }
     contextMenu.style.display = "block";
     this.visible_context_menu = contextMenu;
 
-    // Check for screen visibility of the bottom of the menu
+    // Prevent context menu from clipping below viewport.
     if (contextMenu.offsetTop + contextMenu.clientHeight > document.documentElement.clientHeight) {
-      // the menu has gone off the bottom of the screen
       contextMenu.style.top = document.documentElement.clientHeight - contextMenu.clientHeight + 'px';
     }
     // Defer wiring the outside-click handler so the click that opened the
@@ -1493,7 +1400,7 @@ class GrooveUtils {
 
   hideContextMenu(contextMenu?: HTMLElement) {
     document.onclick = () => { };
-    document.body.style.cursor = "auto"; // make document.onclick work on iPad
+    document.body.style.cursor = "auto";
     const target = (contextMenu || this.visible_context_menu) as HTMLElement | false;
     if (target) {
       target.style.display = "none";
@@ -1501,13 +1408,10 @@ class GrooveUtils {
     this.visible_context_menu = false;
   };
 
-  // figure it out from the division  Division is number of notes per measure 4, 6, 8, 12, 16, 24, 32, etc...
-  // Triplets only support 4/4 and 2/4 time signatures for now
   isTripletDivision(subdivision: number): boolean {
-    return subdivision % 12 === 0  // we only support 12 & 24 & 48  1/8th, 1/16, & 1/32 note triplets
+    return subdivision % 12 === 0;
   }
 
-  // figure out if it is triplets from the number of notes (implied division)
   isTripletDivisionFromNotesPerMeasure(notesPerMeasure: number, timeSig: TimeSignature): boolean {
     return this.isTripletDivision((notesPerMeasure / timeSig.top) * timeSig.bottom.value);
   }
@@ -1532,9 +1436,6 @@ class GrooveUtils {
     this.metronomeOffsetClickStart = value;
   };
 
-  // if the Metronome offset click start is set to rotate this
-  // will advance the position of the rotation and return TRUE
-  // returns FALSE if rotation is OFF
   advanceMetronomeOptionsOffsetClickStartRotation() {
     if (this.getMetronomeOffsetClickStartIsRotating()) {
       this.metronomeOffsetClickStartRotation++;
@@ -1545,7 +1446,6 @@ class GrooveUtils {
 
   getMetronomeOptionsOffsetClickStartRotation(isTriplets) {
     if (this.getMetronomeOffsetClickStartIsRotating()) {
-      // constrain the rotation
       if (isTriplets && this.metronomeOffsetClickStartRotation > 2)
         this.metronomeOffsetClickStartRotation = 0;
       else if (this.metronomeOffsetClickStartRotation > 3)
@@ -1555,15 +1455,9 @@ class GrooveUtils {
         case 0:
           return '1';
         case 1:
-          if (isTriplets)
-            return 'TI';
-          else
-            return 'E';
+          return isTriplets ? 'TI' : 'E';
         case 2:
-          if (isTriplets)
-            return 'TA';
-          else
-            return 'AND';
+          return isTriplets ? 'TA' : 'AND';
         case 3:
           return 'A';
       }
@@ -1573,18 +1467,11 @@ class GrooveUtils {
   };
 
   resetMetronomeOptionsOffsetClickStartRotation(value?) {
-    // start with last in the rotation so the next rotation brings it to '1'
     return this.metronomeOffsetClickStartRotation = 0;
   };
 
-  // takes two drum tab lines and merges them.    "-" are blanks so they will get overwritten in a merge.
-  // if there are two non "-" positions to merge, the dominateLine takes priority.
-  //
-  //  Example    |----o-------o---|   (dominate)
-  //           + |x-------x---x---|   (subordinate)
-  //             |x---o---x---o---|   (result)
-  //
-  // this is useful to take an accent tab and an "others" tab and creating one tab out of it.
+  // Merges two drum tab lines. "-" are blanks overwritten by non-blank tokens.
+  // When both lines have notes at position i, dominateLine takes priority.
   mergeDrumTabLines(dominateLine, subordinateLine) {
     var newLine = "";
     for (var i = 0; i < Math.max(dominateLine.length, subordinateLine.length); i++) {
@@ -1601,9 +1488,7 @@ class GrooveUtils {
     return newLine;
   };
 
-
   setupHotKeys() {
-
     var isCtrl = false;
     document.onkeyup = function (e) {
       if (e.which == 17)
@@ -1613,27 +1498,16 @@ class GrooveUtils {
     document.onkeydown = (e) => {
       if (e.which == 17)
         isCtrl = true;
-      /*
-      if(e.which == 83 && isCtrl == true) {
-      alert('CTRL-S pressed');
-      return false;
-      }
-       */
-      // only accept the event if it not going to an INPUT field
-      // otherwise we can't use spacebar in text fields :(
+
       const target = e.target as HTMLInputElement;
       if (e.which == 32 && (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA"))) {
-
-        // spacebar
         this.startOrStopMIDI_playback();
         return false;
       }
       if (e.which == 179) {
-        // Play button
         this.startOrPauseMIDI_playback();
       }
       if (e.which == 178) {
-        // Stop button
         this.stopMIDI_playback();
       }
 
@@ -1641,11 +1515,9 @@ class GrooveUtils {
     };
   }
 
-  // looks for modifiers like !accent! or !plus! and moves them outside of the group abc array.
-  // Most modifiers (but not all) will not render correctly if they are inside the abc group.
-  // returns a string that should be added to the abc_notation if found.
+  // Looks for modifiers like !accent! or !plus! and moves them outside of the ABC chord group
+  // so abc2svg renders them correctly.
   moveAccentsOrOtherModifiersOutsideOfGroup(abcNoteStrings, modifier_to_look_for) {
-
     var found_modifier = false;
     var rindex = abcNoteStrings.notes1.lastIndexOf(modifier_to_look_for);
     if (rindex > -1) {
@@ -1665,69 +1537,42 @@ class GrooveUtils {
     if (found_modifier)
       return modifier_to_look_for;
 
-    return ""; // didn't find it so return nothing
+    return "";
   }
 
-  // take an array of arrays and use a for loop to test to see
-  // if all of the arrays are equal to the "test_value" for a given "test_index"
-  // returns "true" if they are all equal.
-  // returns "false" if any one of them fails
   testArrayOfArraysForEquality(array_of_arrays, test_index, test_value) {
-
     for (var i = 0; i < array_of_arrays.length; i++) {
       if (array_of_arrays[i][test_index] !== undefined && array_of_arrays[i][test_index] !== test_value)
         return false;
     }
-
     return true;
   }
 
-  // the note grouping size is how groups of notes within a measure group
-  // for 8ths and 16th we group with 4
-  // for triplets we group with 3
-  // This function is for laying out the HTML
-  // see abc_gen_note_grouping_size for the sheet music layout grouping size
   noteGroupingSize(notes_per_measure, timeSig) {
     var note_grouping;
     var usingTriplets = this.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig);
 
     if (usingTriplets) {
-      // triplets  ( we only support 2/4 here )
       if (timeSig.top != 2 && timeSig.bottom.value != 4)
         console.log("Triplets are only supported in 2/4 and 4/4 time");
       note_grouping = notes_per_measure / (timeSig.top * (4 / timeSig.bottom.value));
     } else if (timeSig.top == 3) {
-      // 3/4, 3/8, 3/16
-      // 3 groups
-      // not triplets
-      note_grouping = (notes_per_measure) / 3
+      note_grouping = (notes_per_measure) / 3;
     } else if (timeSig.top % 6 == 0 && timeSig.bottom.value % 8 == 0) {
-      // 6/8, 12/8
-      // 2 groups in 6/8 rather than 3 groups
-      // 4 groups in 12/8
-      // not triplets
-      note_grouping = notes_per_measure / (2 * timeSig.top / 6)
+      note_grouping = notes_per_measure / (2 * timeSig.top / 6);
     } else {
-      // figure it out from the time signature
-      // not triplets
       note_grouping = (notes_per_measure / timeSig.top) * (timeSig.bottom.value / 4);
     }
     return note_grouping;
   };
 
   notesPerMeasureInFullSizeArray(is_triplet_division, timeSig) {
-    // a full measure will be defined as 8 * timeSigTop.   (4 = 32, 5 = 40, 6 = 48, etc.)
-    // that implies 32nd notes in quarter note beats
-    // TODO: should we support triplets here?
     if (is_triplet_division) {
       return 48 * (timeSig.top / timeSig.bottom.value);
     }
-
     return 32 * (timeSig.top / timeSig.bottom.value);
   }
 
-  // since note values are 16ths or 12ths this corrects for that by multiplying note values
-  // timeSigTop is the top number in a time signature (4/4, 5/4, 6/8, 7/4, etc)
   getNoteScaler(notes_per_measure, timeSig) {
     if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36) {
       console.log("Error in getNoteScaler, out of range: " + timeSig.top);
@@ -1738,54 +1583,44 @@ class GrooveUtils {
     return Math.ceil(this.notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
   };
 
-  // take any size array and make it larger by padding it with rests in the spaces between
-  // For triplets, expands to 48 notes per measure
-  // For non Triplets, expands to 32 notes per measure
+  // Expand array to full resolution (48 per measure for triplets, 32 for straight)
+  // by padding non-active positions with false.
   scaleNoteArrayToFullSize(note_array, grooveData) {
     const num_measures = grooveData.numberOfMeasures;
     const notes_per_measure = grooveData.notesPerMeasure;
-    var scaler = this.getNoteScaler(grooveData.notesPerMeasure, grooveData.timeSig); // fill proportionally
+    var scaler = this.getNoteScaler(grooveData.notesPerMeasure, grooveData.timeSig);
     var retArray = [];
     var i;
 
     if (scaler == 1)
-      return note_array; // no need to expand
+      return note_array;
 
-    // preset to false (rest) all entries in the expanded array
     for (i = 0; i < num_measures * notes_per_measure * scaler; i++)
       retArray[i] = false;
 
-    // sparsely fill in the return array with data from passed in array
     for (i = 0; i < num_measures * notes_per_measure; i++) {
       var ret_array_index = (i) * scaler;
-
       retArray[ret_array_index] = note_array[i];
     }
 
     return retArray;
   }
 
-  // count the number of note positions that are not rests in all the arrays
-  // FFFxFFFxF  would be 2
   count_active_notes_in_arrays(array_of_arrays, start_index, how_far_to_measure) {
     var num_active_notes = 0;
-
     for (var i = start_index; i < start_index + how_far_to_measure; i++) {
       for (var which_array = 0; which_array < array_of_arrays.length; which_array++) {
         if (array_of_arrays[which_array][i] !== false) {
           num_active_notes++;
-          which_array = array_of_arrays.length;  // exit this inner for loop immediately
+          which_array = array_of_arrays.length;
         }
       }
     }
-
     return num_active_notes;
   }
 
-  // create an array that can be used for note mapping
-  // it is just an array of true/false that specifies weather a note can appear at that index
   create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes) {
-    var mapping_array = new Array(num_notes); // create large empty array
+    var mapping_array = new Array(num_notes);
 
     for (var i = 0; i < num_notes; i++) {
       var hasNote = false;
@@ -1812,49 +1647,29 @@ class GrooveUtils {
     return mapping_array;
   };
 
-  // function to return 1,e,&,a or 2,3,4,5,6, etc...
   figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number) {
-
-    // figure out the count state by looking at the id and the subdivision
     const note_index = index % notes_per_measure;
-    // 4/2 time changes the implied time from 4 up to 8, etc
-    // 6/8 time changes the implied time from 8 down to 4
     const implied_sub_division = sub_division * (4 / time_sig_bottom);
     switch (implied_sub_division) {
       case 4:
-        return note_index + 1;   // 1,2,3,4,5, etc.
+        return note_index + 1;
       case 8:
-        if (note_index % 2 === 0)
-          return Math.floor(note_index / 2) + 1;  // 1,2,3,4,5, etc.
-        else
-          return "&";
-      case 12:  // 8th triplets
-        if (note_index % 3 === 0)
-          return Math.floor(note_index / 3) + 1;  // 1,2,3,4,5, etc.
-        else if (note_index % 3 == 1)
-          return "&";
-        else
-          return "a";
-      case 24:  // 16th triplets
-        if (note_index % 3 === 0)
-          return Math.floor(note_index / 6) + 1;  // 1,2,3,4,5, etc.
-        else if (note_index % 3 == 1)
-          return "&";
-        else
-          return "a";
-      case 48:  // 32nd triplets
-        if (note_index % 3 === 0)
-          return Math.floor(note_index / 12) + 1;  // 1,2,3,4,5, etc.
-        else if (note_index % 3 == 1)
-          return "&";
-        else
-          return "a";
+        return (note_index % 2 === 0) ? Math.floor(note_index / 2) + 1 : "&";
+      case 12:
+        if (note_index % 3 === 0) return Math.floor(note_index / 3) + 1;
+        return (note_index % 3 == 1) ? "&" : "a";
+      case 24:
+        if (note_index % 3 === 0) return Math.floor(note_index / 6) + 1;
+        return (note_index % 3 == 1) ? "&" : "a";
+      case 48:
+        if (note_index % 3 === 0) return Math.floor(note_index / 12) + 1;
+        return (note_index % 3 == 1) ? "&" : "a";
       case 16:
-      case 32:  // fall through
+      case 32:
       default:
         var whole_note_interval = implied_sub_division / 4;
         if (note_index % 4 === 0)
-          return Math.floor(note_index / whole_note_interval) + 1;  // 1,1,2,2,3,3,4,4,5,5, etc.
+          return Math.floor(note_index / whole_note_interval) + 1;
         else if (note_index % 4 === 1)
           return "e";
         else if (note_index % 4 === 2)
@@ -1864,40 +1679,27 @@ class GrooveUtils {
     }
   };
 
-  // converts the symbol for a sticking count to an actual count based on the time signature
   convert_sticking_counts_to_actual_counts(sticking_array: Array<string>, time_division: number, timeSig: TimeSignature): void {
-
-    var cur_div_of_array = 32;
-    if (this.isTripletDivision(time_division))
-      cur_div_of_array = 48;
-
+    var cur_div_of_array = this.isTripletDivision(time_division) ? 48 : 32;
     var actual_notes_per_measure_in_this_array = this.notesPerMeasureInFullSizeArray(cur_div_of_array === 48, timeSig);
-
-    // Time division is 4, 8, 16, 32, 12, 24, or 48
     var notes_per_measure_in_time_division = ((time_division / 4) * timeSig.top) * (4 / timeSig.bottom.value);
 
     for (var i in sticking_array) {
       if (sticking_array[i] == '"count"x') {
-        // convert the COUNT into an actual letter or number
-        // convert the index into what it would have been if the array was "notes_per_measure" sized
         var adjusted_index = Math.floor(Number(i) / (actual_notes_per_measure_in_this_array / notes_per_measure_in_time_division));
         var new_count = this.figure_out_sticking_count_for_index(adjusted_index, notes_per_measure_in_time_division, time_division, timeSig.bottom.value);
-        var new_count_string = '"' + new_count + '"x';
-        sticking_array[i] = new_count_string;
+        sticking_array[i] = '"' + new_count + '"x';
       }
     }
   };
 
-  // converts incoming ABC notation source into an svg image.
-  // returns an object with two items.   "svg" and "error_html"
   renderABCtoSVG(abcString: string): { svg: string, error_html: string } {
     this.abcNoteNumIndex = 0;
     this.abcToSVGCallback.abcNoteNumIndex = 0;
     this.abcToSVGCallback.grooveUtilsUniqueIndex = this.grooveUtilsUniqueIndex;
-    this.abcToSVGCallback.abc_svg_output = ''; // clear
-    this.abcToSVGCallback.abc_error_output = ''; // clear
+    this.abcToSVGCallback.abc_svg_output = '';
+    this.abcToSVGCallback.abc_error_output = '';
 
-    // "SOURCE" is the file name, for error messagse only.
     this.abc_obj.tosvg("SOURCE", abcString);
     return {
       svg: this.abcToSVGCallback.abc_svg_output,
@@ -1907,17 +1709,15 @@ class GrooveUtils {
 
   isElementOnScreen(element) {
     var rect = element.getBoundingClientRect();
-
     return (
       rect.top >= 80 &&
       rect.left >= 0 &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && /*or $(window).height() */
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth) /*or $(window).width() */
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
     );
   };
 
   clearHighlightNoteInABCSVG() {
-
     if (this.abcNoteNumCurrentlyHighlighted > -1) {
       var myElements = document.querySelectorAll("#abcNoteNum_" + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumCurrentlyHighlighted);
       for (var i = 0; i < myElements.length; i++) {
@@ -1926,9 +1726,9 @@ class GrooveUtils {
         if (this.data && this.data.debugMode && i === 0) {
           if (!this.isElementOnScreen(myElements[i]) && typeof myElements[i].scrollIntoView === 'function') {
             if (this.abcNoteNumCurrentlyHighlighted === 0)
-              myElements[i].scrollIntoView({ block: "start", behavior: "smooth" });   // autoscroll if necessary
+              myElements[i].scrollIntoView({ block: "start", behavior: "smooth" });
             else
-              myElements[i].scrollIntoView({ block: "end", behavior: "smooth" });   // autoscroll if necessary
+              myElements[i].scrollIntoView({ block: "end", behavior: "smooth" });
           }
         }
       }
@@ -1936,9 +1736,7 @@ class GrooveUtils {
     }
   };
 
-  // set note to -1 to unhighlight all notes
   highlightNoteInABCSVGByIndex(noteToHighlight) {
-
     this.clearHighlightNoteInABCSVG();
 
     if (noteToHighlight < 0) {
@@ -1955,33 +1753,25 @@ class GrooveUtils {
     }
   };
 
-  // cross index the percent complete with the myGrooveData note arrays to find the nth note
-  // Then highlight the note
   highlightNoteInABCSVGFromPercentComplete(percentComplete) {
-
     if (this.note_mapping_array !== null && this.note_mapping_array.length > 0) {
-      // convert percentComplete to an index
       var curNoteIndex = Math.floor(percentComplete * this.note_mapping_array.length);
       if (curNoteIndex >= this.note_mapping_array.length) {
         curNoteIndex = this.note_mapping_array.length - 1;
       }
 
-      // now count through the array with the possible notes to find the note number as
-      // it correlates to the ABC
       var real_note_index = -1;
       for (var i = 0; i <= curNoteIndex && i < this.note_mapping_array.length; i++) {
         if (this.note_mapping_array[i])
           real_note_index++;
       }
 
-      // now the real_note_index should map to the correct abc note, highlight italics
       this.highlightNoteInABCSVGByIndex(real_note_index);
     }
   }
 
   tempoUpdate(tempo) {
     (document.getElementById('tempoTextField' + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + tempo;
-
     this.updateRangeSlider('tempoInput' + this.grooveUtilsUniqueIndex);
     this.midiNoteHasChanged();
 
@@ -1989,35 +1779,25 @@ class GrooveUtils {
       this.tempoChangeCallback(tempo);
   };
 
-  // Arrow function so `this` stays bound when passed to addEventListener.
   tempoUpdateFromTextField = (event) => {
     var newTempo = event.target.value;
-
     (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = newTempo;
     this.tempoUpdate(newTempo);
   };
 
-  // Arrow function so `this` stays bound when passed to addEventListener.
   tempoUpdateFromSlider = (event) => {
     this.tempoUpdate(event.target.value);
   };
 
-  // I love the pun here.  :)
-  // nudge the tempo up by 1
   upTempo() {
     var tempo = this.getTempo();
-
     tempo++;
-
     this.setTempo(tempo);
   };
 
-  // nudge the tempo down by 1
   downTempo() {
     var tempo = this.getTempo();
-
     tempo--;
-
     this.setTempo(tempo);
   };
 
@@ -2032,15 +1812,11 @@ class GrooveUtils {
     return this.getGrooveUtilsBaseLocation() + "images/";
   };
 
-  // set a URL for midi playback.
-  // useful for static content, so you don't have to override the loadMidiDataEvent callback
   setGrooveData(grooveData: GrooveData) {
     this.data = grooveData;
     this.grooveData = grooveData;
   };
 
-  // This is called so that the MIDI player will reload the groove
-  // at repeat time.   If not set then the midi player just repeats what is already loaded.
   midiNoteHasChanged() {
     this.midiEventCallbacks.noteHasChangedSinceLastDataLoad = true;
   };
@@ -2049,7 +1825,6 @@ class GrooveUtils {
   };
 
   MIDI_build_midi_url_count_in_track(timeSig: TimeSignature) {
-
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
     midiFile.addTrack(midiTrack);
@@ -2057,18 +1832,15 @@ class GrooveUtils {
     midiTrack.setTempo(this.getTempo());
     midiTrack.setInstrument(0, 0x13);
 
-    // start of midi track
-    // Some sort of bug in the midi player makes it skip the first note without a blank
-    // TODO: Find and fix midi bug
-    midiTrack.addNoteOff(9, 60, 1); // add a blank note for spacing
+    // Initial blank note avoids midi player skipping the first beat.
+    midiTrack.addNoteOff(9, 60, 1);
 
-    var noteDelay = 128;  // quarter notes over x/4 time
+    var noteDelay = 128;
     if (timeSig.bottom.value == 8)
-      noteDelay = 64;  // 8th notes over x/8 time
+      noteDelay = 64;
     else if (timeSig.bottom.value == 16)
-      noteDelay = 32;  // 16th notes over x/16 time
+      noteDelay = 32;
 
-    // add count in
     midiTrack.addNoteOn(9, MIDI_METRONOME_1, 0, MIDI_VELOCITY_NORMAL);
     midiTrack.addNoteOff(9, MIDI_METRONOME_1, noteDelay);
     for (var i = 1; i < timeSig.top; i++) {
@@ -2076,35 +1848,26 @@ class GrooveUtils {
       midiTrack.addNoteOff(9, MIDI_METRONOME_NORMAL, noteDelay);
     }
 
-    var midi_url = "data:audio/midi;base64," + btoa(midiFile.toBytes());
-
-    return midi_url;
+    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
   };
 
   /*
-   * midi_output_type:  "general_MIDI" or "Custom"
-   * num_notes: number of notes in the arrays  (currently expecting 32 notes per measure)
-   * metronome_frequency: 0, 4, 8, 16   None, quarter notes, 8th notes, 16ths
-   * num_notes_for_swing: how many notes are we using.   Since we need to know where the upstrokes are we need to know
-   *                      what the proper division is.   It can change when we are doing permutations, otherwise it is what is the
-   *                      class_notes_per_measure
-   *
-   * The arrays passed in contain the ABC notation for a given note value or false for a rest.
+   * midi_output_type: "general_MIDI" or "Custom"
+   * num_notes: number of notes in the arrays (32 or 48 per measure)
+   * metronome_frequency: 0, 4, 8, 16 (none, quarter notes, 8ths, 16ths)
+   * num_notes_for_swing: base division note count to determine upbeat swing positions
    */
   MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig) {
-    var prev_hh_note: any = 46;  // default to open hi-hat so that the first hi-hat note also mutes any previous hh open.
-    var midi_channel = 9;  // percussion
+    var prev_hh_note: any = 46; // default open hi-hat to mute previous open hats on first stroke
+    var midi_channel = 9; // standard MIDI percussion channel
 
     if (swing_percentage < 0 || swing_percentage > 0.99) {
       console.log("Swing percentage out of range in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
       swing_percentage = 0;
     }
 
-    // start of midi track
-    // Some sort of bug in the midi player makes it skip the first note without a blank
-    // TODO: Find and fix midi bug
     if (midiTrack.events.length < 4) {
-      midiTrack.addNoteOff(midi_channel, 60, 1); // add a blank note for spacing
+      midiTrack.addNoteOff(midi_channel, 60, 1);
     }
 
     var isTriplets = this.isTripletDivisionFromNotesPerMeasure(num_notes, timeSig);
@@ -2112,8 +1875,6 @@ class GrooveUtils {
     var delay_for_next_note = 0;
 
     for (var i = 0; i < num_notes; i++) {
-
-      // 16 ticks per 32nd note in straight, 10.666 per 48th in triplets.
       const baseDuration = isTriplets ? 10.666 : 16;
       const duration = swingAdjustedDuration(i, baseDuration, swing_percentage, num_notes, num_notes_for_swing);
 
@@ -2127,22 +1888,20 @@ class GrooveUtils {
         }
       }
 
-      if (!this.metronomeSolo) { // midiSolo means to play just the metronome
+      if (!this.metronomeSolo) {
         const hhLookup = hihatMidiFor(HH_Array[i], midi_output_type);
         const hh_note: any = hhLookup ? hhLookup.note : false;
         const hh_velocity = hhLookup ? hhLookup.velocity : MIDI_VELOCITY_NORMAL;
 
         if (hh_note !== false) {
-          // need to end hi-hat open notes else the hh open sounds horrible
           if (prev_hh_note !== false) {
             midiTrack.addNoteOff(midi_channel, prev_hh_note, delay_for_next_note);
             prev_hh_note = false;
-            delay_for_next_note = 0; // zero the delay
+            delay_for_next_note = 0;
           }
           midiTrack.addNoteOn(midi_channel, hh_note, delay_for_next_note, hh_velocity);
-          delay_for_next_note = 0; // zero the delay
+          delay_for_next_note = 0;
 
-          // this if means that only the open hi-hat will get stopped on the next note
           if (HH_Array[i] == constant_ABC_HH_Open)
             prev_hh_note = hh_note;
         }
@@ -2152,34 +1911,25 @@ class GrooveUtils {
         const snare_velocity = snLookup ? snLookup.velocity : MIDI_VELOCITY_NORMAL;
 
         if (snare_note !== false) {
-          //if(prev_snare_note != false)
-          //	midiTrack.addNoteOff(midi_channel, prev_snare_note, 0);
           midiTrack.addNoteOn(midi_channel, snare_note, delay_for_next_note, snare_velocity);
-          delay_for_next_note = 0; // zero the delay
-          //prev_snare_note = snare_note;
+          delay_for_next_note = 0;
         }
 
         const kickLookup = kickMidiFor(Kick_Array[i]);
         const kick_note: any = kickLookup.kick !== null ? kickLookup.kick : false;
         const kick_splash_note: any = kickLookup.splash !== null ? kickLookup.splash : false;
         if (kick_note !== false) {
-          //if(prev_kick_note != false)
-          //	midiTrack.addNoteOff(midi_channel, prev_kick_note, 0);
           midiTrack.addNoteOn(midi_channel, kick_note, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-          delay_for_next_note = 0; // zero the delay
-          //prev_kick_note = kick_note;
+          delay_for_next_note = 0;
         }
         if (kick_splash_note !== false) {
           if (prev_hh_note !== false) {
             midiTrack.addNoteOff(midi_channel, prev_hh_note, delay_for_next_note);
             prev_hh_note = false;
-            delay_for_next_note = 0; // zero the delay
+            delay_for_next_note = 0;
           }
-          //if(prev_kick_splash_note != false)
-          //	midiTrack.addNoteOff(midi_channel, prev_kick_splash_note, 0);
           midiTrack.addNoteOn(midi_channel, kick_splash_note, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-          delay_for_next_note = 0; // zero the delay
-          //prev_kick_splash_note = kick_splash_note;
+          delay_for_next_note = 0;
         }
 
         if (Toms_Array) {
@@ -2191,20 +1941,16 @@ class GrooveUtils {
             }
           }
         }
-
-      } // end metronomeSolo
+      }
 
       delay_for_next_note += duration;
     }
 
     if (delay_for_next_note)
-      midiTrack.addNoteOff(0, 60, delay_for_next_note - 1); // add a blank note for spacing
+      midiTrack.addNoteOff(0, 60, delay_for_next_note - 1);
+  };
 
-  }; // end of function
-
-  // returns a URL that is a MIDI track
   create_MIDIURLFromGrooveData(myGrooveData, MIDI_type) {
-
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
     midiFile.addTrack(midiTrack);
@@ -2214,17 +1960,12 @@ class GrooveUtils {
 
     var swing_percentage = myGrooveData.swingPercent / 100;
 
-    // the midi converter expects all the arrays to be 32 or 48 notes long.
-    // Expand them
     var FullNoteHHArray = this.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
     var FullNoteSnareArray = this.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
     var FullNoteKickArray = this.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
 
-    // the midi functions expect just one measure at a time to work correctly
-    // call once for each measure
     var measure_notes = FullNoteHHArray.length / myGrooveData.numberOfMeasures;
     for (var measureIndex = 0; measureIndex < myGrooveData.numberOfMeasures; measureIndex++) {
-
       var FullNoteTomsArray = [];
       for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
         var orig_measure_notes = myGrooveData.notesPerMeasure;
@@ -2436,37 +2177,26 @@ class GrooveUtils {
       this.lastMidiTimeUpdate = -1;
     }
     if (data.now == data.end) {
-
-      // at the end of a song
       this.midiEventCallbacks.notePlaying("complete", 1);
 
       if (this.shouldMIDIRepeat) {
-
         global_total_midi_repeats++;
 
-        // regenerate the MIDI if the data needs refreshing or the OffsetClick is rotating every time
-        // advanceMetronomeOptionsOffsetClickStartRotation will return false if not rotating
         if (this.advanceMetronomeOptionsOffsetClickStartRotation() || this.midiEventCallbacks.doesMidiDataNeedRefresh()) {
           MIDI.Player.stop();
           this.midiEventCallbacks.loadMidiDataEvent(false);
           MIDI.Player.start();
-          //  } else {
-          // let midi.loop handle the repeat for us
-          //MIDI.Player.stop();
-          //MIDI.Player.start();
         }
         if (this.repeatCallback) {
           this.repeatCallback();
         }
       } else {
-        // not repeating, so stopping
         MIDI.Player.stop();
         this.midiEventCallbacks.percentProgress(100);
         this.midiEventCallbacks.stopEvent();
       }
     }
 
-    // note on
     var note_type: any = false;
     if (data.message == 144) {
       if (data.note == MIDI_METRONOME_1 || data.note == MIDI_METRONOME_NORMAL) {
@@ -2496,32 +2226,6 @@ class GrooveUtils {
         }
       }
     }
-
-    // this used to work when we used note 60 as a spacer between chords
-    //if(data.note == 60)
-    //	class_midi_note_num++;
-    /*
-    if (0 && data.message == 144) {
-    debug_note_count++;
-    // my debugging code for midi
-    var newHTML = "";
-    if (data.note != 60)
-    newHTML += "<b>";
-
-    newHTML += note_type + " total notes: " + debug_note_count + " - count#: " + class_midi_note_num +
-    " now: " + data.now +
-    " note: " + data.note +
-    " message: " + data.message +
-    " channel: " + data.channel +
-    " velocity: " + data.velocity +
-    "<br>";
-
-    if (data.note != 60)
-    newHTML += "</b>";
-
-    document.getElementById("midiTextOutput").innerHTML += newHTML;
-    }
-     */
   }
 
   midiLoaderCallback() {
@@ -2541,13 +2245,10 @@ class GrooveUtils {
     return tempo;
   };
 
-  // we need code to make the range slider colors update properly
   updateRangeSlider(sliderID) {
-
     var slider = document.getElementById(sliderID) as HTMLInputElement;
     var programaticCSSRules = document.getElementById(sliderID + "CSSRules");
     if (!programaticCSSRules) {
-      // create a new one.
       programaticCSSRules = document.createElement('style');
       programaticCSSRules.id = sliderID + "CSSRules";
       document.body.appendChild(programaticCSSRules);
@@ -2558,17 +2259,13 @@ class GrooveUtils {
     var before_color = style_before.getPropertyValue('color');
     var after_color = style_after.getPropertyValue('color');
 
-    // change the before and after colors of the slider using a gradiant
     var percent = Math.ceil(((Number(slider.value) - Number(slider.min)) / (Number(slider.max) - Number(slider.min))) * 100);
 
     var new_style_str = '#' + sliderID + '::-moz-range-track' + '{ background: -moz-linear-gradient(left, ' + before_color + ' ' + percent + '%, ' + after_color + ' ' + percent + '%)}\n';
     new_style_str += '#' + sliderID + '::-webkit-slider-runnable-track' + '{ background: -webkit-linear-gradient(left, ' + before_color + ' ' + '0%, ' + before_color + ' ' + percent + '%, ' + after_color + ' ' + percent + '%)}\n';
     programaticCSSRules.textContent = new_style_str;
-
   }
 
-  // update the tempo string display
-  // called by the oninput handler everytime the range slider changes
   setSwingSlider(newSetting) {
     (document.getElementById("swingInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = newSetting;
     this.updateRangeSlider('swingInput' + this.grooveUtilsUniqueIndex);
@@ -2579,7 +2276,7 @@ class GrooveUtils {
     if (this.swingIsEnabled === false) {
       this.setSwing(0);
     } else {
-      this.swingUpdateText(this.getSwing()); // remove N/A label
+      this.swingUpdateText(this.getSwing());
     }
   };
 
@@ -2599,10 +2296,7 @@ class GrooveUtils {
     return (swing);
   };
 
-  // used to update the on screen swing display
-  // also the onClick handler for the swing slider
   swingUpdateText(swingAmount) {
-
     if (this.swingIsEnabled === false) {
       document.getElementById('swingOutput' + this.grooveUtilsUniqueIndex).innerHTML = "N/A";
     } else {
@@ -2610,17 +2304,15 @@ class GrooveUtils {
       this.swingPercent = swingAmount;
       this.midiNoteHasChanged();
     }
-
   };
 
   setSwing(swingAmount) {
     if (this.swingIsEnabled === false)
       swingAmount = 0;
     this.setSwingSlider(swingAmount);
-    this.swingUpdateText(swingAmount);  // update the output
+    this.swingUpdateText(swingAmount);
   };
 
-  // Arrow function so `this` stays bound when passed to addEventListener.
   swingUpdateEvent = (event) => {
     if (this.swingIsEnabled === false) {
       this.setSwingSlider(0);
@@ -2648,8 +2340,6 @@ class GrooveUtils {
     }
   };
 
-  // open a new tab with GrooveScribe with the current groove
-  // Arrow function so `this` stays bound when passed to addEventListener.
   loadFullScreenGrooveScribe = () => {
     var fullURL = (this as any).getUrlStringFromGrooveData(this.myGrooveData, 'fullGrooveScribe')
 
@@ -2657,9 +2347,6 @@ class GrooveUtils {
     win.focus();
   };
 
-
-  // turn the metronome on and off
-  // Arrow function so `this` stays bound when passed to addEventListener.
   metronomeMiniMenuClick = () => {
     if (this.myGrooveData.metronomeFrequency > 0)
       this.myGrooveData.metronomeFrequency = 0;
@@ -2671,7 +2358,6 @@ class GrooveUtils {
   };
 
   expandOrRetractMIDI_playback(force, expandElseContract) {
-
     var playerControlElement = document.getElementById('playerControl' + this.grooveUtilsUniqueIndex);
     var playerControlRowElement = document.getElementById('playerControlsRow' + this.grooveUtilsUniqueIndex);
     var tempoAndProgressElement = document.getElementById('tempoAndProgress' + this.grooveUtilsUniqueIndex);
@@ -2681,7 +2367,6 @@ class GrooveUtils {
     var midiPlayTime = document.getElementById('MIDIPlayTime' + this.grooveUtilsUniqueIndex);
 
     if (playerControlElement.className.indexOf("small") > -1 || (force && expandElseContract)) {
-      // make large
       playerControlElement.className = playerControlElement.className.replace(" small", "") + " large";
       playerControlRowElement.className = playerControlRowElement.className.replace(" small", "") + " large";
       tempoAndProgressElement.className = tempoAndProgressElement.className.replace(" small", "") + " large";
@@ -2690,7 +2375,6 @@ class GrooveUtils {
       midiExpandImageElement.className = midiExpandImageElement.className.replace(" small", "") + " large";
       midiPlayTime.className = midiPlayTime.className.replace(" small", "") + " large";
     } else {
-      // make small
       playerControlElement.className = playerControlElement.className.replace(" large", "") + " small";
       playerControlRowElement.className = playerControlRowElement.className.replace(" large", "") + " small";
       midiMetronomeMenuElement.className = midiMetronomeMenuElement.className.replace(" large", "") + " small";
@@ -2699,7 +2383,6 @@ class GrooveUtils {
       midiExpandImageElement.className = midiExpandImageElement.className.replace(" large", "") + " small";
       midiPlayTime.className = midiPlayTime.className.replace(" large", "") + " small";
     }
-
   };
 
   addInlineMetronomeSVG() {

@@ -642,38 +642,6 @@
 	.noteContextMenu>ul.list li:last-child {
 		border:none;
 	}
-	#grooveListWrapper {
-		display: none;
-		position: fixed;
-		z-index: 999;
-		top: 0px;
-		right: 0px;
-		width: 300px;
-		height: 300px;
-		overflow: auto;
-		background: #c6e1f7;
-		border: 1px solid #1765a7;
-	}
-	.grooveListUL {
-		margin:0; padding:0px; list-style:none;
-		background:#c6e1f7;
-		color: #000;
-	}
-	.grooveListHeaderLI {
-		padding:15px;
-		background: #009FFA;
-		font-size: 18px;
-		font-weight: bold;
-	}
-	.grooveListLI {
-		padding: 10px;
-		padding-left: 15px;
-		border-bottom: solid 1px #1765a7;
-	}
-	.grooveListLI:hover {
-		background: #004781;
-		color: #FFF;
-	}
 	hr {
 		width: 795px;
 		margin-left: 0px;

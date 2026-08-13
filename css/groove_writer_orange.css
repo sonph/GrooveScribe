@@ -900,37 +900,7 @@
 	.noteContextMenu>ul.list li:last-child {
 		border:none;
 	}
-	#grooveListWrapper {
-		display: none;
-		position: fixed;
-		z-index: 999;
-		top: 0px;
-		right: 0px;
-		width: 300px;
-		height: 300px;
-		overflow: auto;
-		background: #eeeeee;
-		border: 1px solid #393939;
-	}
-	.grooveListUL {
-		margin:0; padding:0px; list-style:none;
-		background:#eeeeee;
-		color: #000;
-	}
-	.grooveListHeaderLI {
-		padding:15px;
-		background: var(--highlight-color);
-		font-size: 18px;
-		font-weight: bold;
-	}
-	.grooveListLI {
-		padding: 10px;
-		padding-left: 15px;
-		border-bottom: solid 1px #393939;
-	}
-	.grooveListLI:hover {
-		background: #cccccc;
-	}
+	
 	hr {
 		width: 795px;
 		margin-left: 0px;

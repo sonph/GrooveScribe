@@ -321,7 +321,6 @@ class GrooveWriter {
     var class_undo_stack = [];
     var class_redo_stack = [];
 
-    // public class vars
     var class_metronome_auto_speed_up_active = false;
     var class_metronome_count_in_active = false;
     var class_metronome_count_in_is_playing = false;
@@ -333,30 +332,25 @@ class GrooveWriter {
 
     var have_shown_mixed_division_message = false;
 
-    // private vars in the scope of the class
     var class_app_title = "Groove Scribe";
     var class_permutation_type = "none";
     var class_advancedEditIsOn = false;
     var class_measure_for_note_label_click = 0;
-    var class_which_index_last_clicked = 0; // which note was last clicked for the context menu
+    var class_which_index_last_clicked = 0;
 
-    // local constants
     var constant_default_tempo = 80;
     var constant_note_stem_off_color = "transparent";
 
-    // Use .notes-row-container .note-on
-    var constant_note_on_color_hex = "#000000"; // black
-    var constant_note_on_color_rgb = 'rgb(0, 0, 0)'; // black
+    var constant_note_on_color_hex = "#000000";
+    var constant_note_on_color_rgb = 'rgb(0, 0, 0)';
 
-    // Use .notes-row-container .note-on
     var constant_note_off_color_hex = "#FFF";
-    var constant_note_off_color_rgb = 'rgb(255, 255, 255)'; // white
+    var constant_note_off_color_rgb = 'rgb(255, 255, 255)';
 
     var constant_note_border_color_hex = "#999";
     var constant_hihat_note_off_color_hex = "#CCC";
-    var constant_hihat_note_off_color_rgb = 'rgb(204, 204, 204)'; // grey
+    var constant_hihat_note_off_color_rgb = 'rgb(204, 204, 204)';
 
-    // Use .notes-row-container .note-hidden
     var constant_note_hidden_color_rgb = "transparent";
 
     var constant_sticking_right_on_color_rgb = "rgb(36, 132, 192)";
@@ -369,14 +363,10 @@ class GrooveWriter {
     var constant_snare_accent_on_color_rgb = "rgb(255, 255, 255)";
 
     var insertNoteContextMenu = null;
-
-    // called every time the tempo changes, which can be a lot of times due to the range slider
-    // update the main URL with the tempo, but only do it every third of a second at the most
     var global_tempoChangeCallbackTimeout = null;
     var class_metronome_frequency = 0;
   }
 
-  // is the division a triplet groove?   12, 24, or 48 notes
   usingTriplets() {
     return this.data.subdivision.isTriplet();
   }
@@ -447,12 +437,10 @@ class GrooveWriter {
   }
 
   selectButton(element: HTMLElement) {
-    // highlight the new div by adding selected css class
     this.addClass(element, "buttonSelected", true);
   }
 
   unselectButton(element: HTMLElement) {
-    // remove selected class if it exists
     this.addClass(element, "buttonSelected", false);
   }
 
@@ -468,7 +456,7 @@ class GrooveWriter {
     const id = idNum.toString();
     switch (drumType.name) {
       case DrumType.KICK.name:
-        // For kick, two notes maybe represented on the same line. Thus we need to handle this a little differently.
+        // Kick line can contain both bass drum and hi-hat foot splash simultaneously.
         const splashOn = this.isNoteOn(AbcNote.KI_SPLASH.getFirstHtmlIdPrefix() + id);
         const kickOn = this.isNoteOn(AbcNote.KI_NORMAL.getFirstHtmlIdPrefix() + id);
         if (splashOn && kickOn) {
@@ -513,8 +501,6 @@ class GrooveWriter {
     return null;
   }
 
-  // All notes belonging to a drum type (used to hide non-selected variants),
-  // paired with the note whose element renders the "off" placeholder icon.
   private static DRUM_TYPE_NOTES = {
     [DrumType.KICK.name]:      { all: [AbcNote.KI_NORMAL, AbcNote.KI_SPLASH],                       placeholder: AbcNote.KI_NORMAL },
     [DrumType.SNARE.name]:     { all: AbcNote.SN_ALL,                                               placeholder: AbcNote.SN_NORMAL },
@@ -524,12 +510,10 @@ class GrooveWriter {
     [DrumType.STICKINGS.name]: { all: [AbcNote.STICK_R, AbcNote.STICK_L, AbcNote.STICK_BOTH, AbcNote.STICK_COUNT], placeholder: AbcNote.STICK_R },
   };
 
-  // If note is AbcNote.OFF, drumType must be set.
   setDrumNote(id: number, note: AbcNote, makeSound: boolean = false, offDrumType: DrumType | null = null): void {
     const drumType = note.drumType === DrumType.NONE ? offDrumType : note.drumType;
     const { all: notes, placeholder } = GrooveWriter.DRUM_TYPE_NOTES[drumType.name];
 
-    // Hide all variants for this drum type.
     for (const n of notes) {
       for (const prefix of getAsSet(n.htmlAttrs.html_id_prefix)) {
         const element = document.getElementById(prefix + id);
@@ -543,7 +527,6 @@ class GrooveWriter {
       this.playSingleNote(note.midiNote);
     }
 
-    // Off state: show only the placeholder element as a faded outline/icon.
     const target = note.isOff() ? placeholder : note;
     const stateClass = note.isOff() ? "note-off" : "note-on";
     for (const prefix of getAsSet(target.htmlAttrs.html_id_prefix)) {
@@ -566,28 +549,13 @@ class GrooveWriter {
     this.setDrumNote(id, newState, true);
   }
 
-  // highlight the note, this is used to play along with the midi track
-  // only one note for each instrument can be highlighted at a time
-  // Also unhighlight other instruments if their index is not equal to the passed in index
-  // this means that only notes falling on the current beat will be highlighted.
-  // var class_cur_hh_highlight_id = false;
-  // var class_cur_tom1_highlight_id = false;
-  // var class_cur_tom4_highlight_id = false;
-  // var class_cur_snare_highlight_id = false;
-  // var class_cur_kick_highlight_id = false;
-  // var class_cur_all_notes_highlight_id = false;
-
   hilight_individual_note(instrument: string, id: number) {
-    var hilight_all_notes = true; // on by default
-
     id = Math.floor(id);
     if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
       return;
 
-    // turn this one on;
     document.getElementById(instrument + id).style.borderColor = "orange";
 
-    // turn off all the previously highlighted notes that are not on the same beat
     if (this.class_cur_hh_highlight_id !== -1 && this.class_cur_hh_highlight_id != id) {
       if (this.class_cur_hh_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
         document.getElementById("hi-hat" + this.class_cur_hh_highlight_id).style.borderColor = "transparent";
@@ -634,7 +602,6 @@ class GrooveWriter {
         console.log("bad case in hilight_note");
         break;
     }
-
   }
 
   hilight_all_notes_on_same_beat(instrument: string, id: number) {
@@ -643,17 +610,15 @@ class GrooveWriter {
       return;
 
     if (this.class_cur_all_notes_highlight_id === id)
-      return; // already highligted
+      return;
 
     if (this.class_cur_all_notes_highlight_id !== -1) {
-      // turn off old highlighting
-      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id)
+      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
       if (bg_ele) {
         bg_ele.style.background = "transparent";
       }
     }
 
-    // turn this one on;
     this.class_cur_all_notes_highlight_id = id;
     var new_bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
     if (new_bg_ele) {
@@ -667,25 +632,21 @@ class GrooveWriter {
       return;
     }
 
-    // if we are in a permutation, hightlight each measure as it goes
     if (this.class_permutation_type != "none")
       percent_complete = (percent_complete * this.get_numberOfActivePermutationSections()) % 1.0;
 
     var note_id_in_32 = Math.floor(percent_complete * this.myGrooveUtils.notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
     var real_note_id = (note_id_in_32 / this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
 
-    //hilight_individual_note(instrument, id);
     this.hilight_all_notes_on_same_beat(instrument, real_note_id);
   }
 
   clear_all_highlights(instrument: string): void {
-
     var clearBorder = function(id) {
       var el = document.getElementById(id);
       if (el) el.style.borderColor = "transparent";
     };
 
-    // now turn off  notes if necessary;
     if (this.class_cur_hh_highlight_id !== -1) {
       clearBorder("hi-hat" + this.class_cur_hh_highlight_id);
       this.class_cur_hh_highlight_id = -1;
@@ -708,8 +669,7 @@ class GrooveWriter {
     }
 
     if (this.class_cur_all_notes_highlight_id !== -1) {
-      // turn off old highlighting
-      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id)
+      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
       if (bg_ele) {
         bg_ele.style.background = "transparent";
       }
@@ -732,7 +692,6 @@ class GrooveWriter {
   }
 
   // Position a context menu below an anchor element (right-aligned via rightOffset)
-  // and show it. No-op if either element is missing.
   showMenuBelowAnchor(menuId: string, anchorId: string, rightOffset: number) {
     const menu = document.getElementById(menuId);
     if (!menu) return;
@@ -745,8 +704,7 @@ class GrooveWriter {
     this.myGrooveUtils.showContextMenu(menu);
   }
 
-  // Position a context menu at the event's click point (offset by dx/dy) and show it.
-  // No-op if the menu is missing or the event has no click coordinates.
+  // Position a context menu at the event's click point (offset by dx/dy)
   showMenuAtEvent(menuId: string, event, dx: number, dy: number) {
     const menu = document.getElementById(menuId);
     if (!menu) return;
@@ -759,15 +717,11 @@ class GrooveWriter {
   }
 
   tempoChangeCallback = (newTempo) => {
-
-    // if there is a timeout running clear it
     if (this.global_tempoChangeCallbackTimeout != null)
       window.clearTimeout(this.global_tempoChangeCallbackTimeout);
 
-    // Arrow function so `this` stays bound inside the timeout callback.
     this.global_tempoChangeCallbackTimeout = window.setTimeout(() => {
       this.global_tempoChangeCallbackTimeout = null;
-      // update the Main URL to show the new tempo
       this.updateCurrentURL();
     }, 300);
   }
@@ -785,25 +739,21 @@ class GrooveWriter {
         id = "metronome16ths";
         break;
       case 0:
-      /* falls through */
       default:
         id = "metronomeOff";
         if (this.myGrooveUtils.getMetronomeSolo()) {
-          // turn off solo if we are turning off the metronome
           this.metronomeOptionsMenuPopupClick("Solo");
         }
         break;
     }
 
-    // clear other buttons
     var myElements = document.querySelectorAll(".metronomeButton");
     for (var i = 0; i < myElements.length; i++) {
       var thisButton = myElements[i] as HTMLElement;
-      // remove active status
       this.unselectButton(thisButton);
     }
     this.selectButton(document.getElementById(id));
-    this.myGrooveUtils.midiNoteHasChanged(); // pretty likely the case
+    this.myGrooveUtils.midiNoteHasChanged();
   };
 
   getMetronomeFrequency() {
@@ -813,8 +763,6 @@ class GrooveWriter {
   setMetronomeFrequency(newFrequency) {
     this.class_metronome_frequency = newFrequency;
     this.setMetronomeButton(newFrequency);
-    // TODO
-    // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
     this.updateUrl();
   };
 
@@ -823,15 +771,10 @@ class GrooveWriter {
   };
 
   permutationAnchorClick = (event) => {
-    // permutations disabled except in 4/4 time
     if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       return;
     }
     this.showMenuBelowAnchor("permutationContextMenu", "permutationAnchor", 150);
-  };
-
-  groovesAnchorClick = (event) => {
-    this.showMenuBelowAnchor("grooveListWrapper", "groovesAnchor", 283);
   };
 
   helpAnchorClick = (event) => {
@@ -846,21 +789,17 @@ class GrooveWriter {
     this.showMenuAtEvent("downloadContextMenu", event, -150, -150);
   };
 
-  // figure out if the metronome options menu should be selected and change the UI
   metronomeOptionsMenuSetSelectedState() {
     if (this.myGrooveUtils.getMetronomeSolo() ||
       this.class_metronome_auto_speed_up_active ||
       this.myGrooveUtils.getMetronomeOffsetClickStart() != "1") {
-      // make menu look active
-      this.addClassById("metronomeOptionsAnchor", "selected", true)
+      this.addClassById("metronomeOptionsAnchor", "selected", true);
     } else {
-      // inactive
-      this.addClassById("metronomeOptionsAnchor", "selected", false)
+      this.addClassById("metronomeOptionsAnchor", "selected", false);
     }
   };
 
   metronomeOptionsMenuPopupClick(option_type: string) {
-
     switch (option_type) {
       case "Solo":
         var current = this.myGrooveUtils.getMetronomeSolo();
@@ -873,12 +812,11 @@ class GrooveWriter {
           this.myGrooveUtils.setMetronomeSolo(false);
           this.addClassById("metronomeOptionsContextMenuSolo", "menuChecked", false);
         }
-        this.myGrooveUtils.midiNoteHasChanged(); // if playing need to refresh
+        this.myGrooveUtils.midiNoteHasChanged();
         break;
 
       case "SpeedUp":
         if (this.class_metronome_auto_speed_up_active) {
-          // just turn it off if it is on, don't show the configurator
           this.class_metronome_auto_speed_up_active = false;
           this.addClassById("metronomeOptionsContextMenuSpeedUp", "menuChecked", false);
         } else {
@@ -890,7 +828,6 @@ class GrooveWriter {
 
       case "CountIn":
         if (this.class_metronome_count_in_active) {
-          // just turn it off if it is on, don't show the configurator
           this.class_metronome_count_in_active = false;
           this.addClassById("metronomeOptionsContextMenuCountIn", "menuChecked", false);
           this.myGrooveUtils.setMetronomeCountIn(false);
@@ -902,7 +839,6 @@ class GrooveWriter {
         break;
 
       case "OffTheOne":
-        // bring up the next menu to be clicked
         const offTheOneMenuId = this.data.subdivision.isTriplet()
           ? "metronomeOptionsOffsetClickForTripletsContextMenu"
           : "metronomeOptionsOffsetClickContextMenu";
@@ -921,19 +857,15 @@ class GrooveWriter {
   metronomeOptionsMenuOffsetClickPopupClick = (option_type) => {
     this.myGrooveUtils.setMetronomeOffsetClickStart(option_type);
 
-    // clear other and select
     var myElements = document.querySelectorAll(".metronomeOptionsOffsetClickContextMenuItem");
     for (var i = 0; i < myElements.length; i++) {
       var thisItem = myElements[i] as HTMLElement;
-      // remove active status
       this.addClass(thisItem, "menuChecked", false);
     }
 
-    // turn on the new one selected
     this.addClassById("metronomeOptionsOffsetClickContextMenuOnThe" + option_type, "menuChecked", true);
 
-    if (option_type != "1") { // 1 is the default state
-      // add a check to the menu
+    if (option_type != "1") {
       this.addClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", true);
     } else {
       this.addClassById("metronomeOptionsContextMenuOffTheOne", "menuChecked", false);
@@ -944,19 +876,14 @@ class GrooveWriter {
   };
 
   resetMetronomeOptionsMenuOffsetClick() {
-    // call with the default option
     this.metronomeOptionsMenuOffsetClickPopupClick("1");
   }
 
   setupPermutationMenu() {
     if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       this.addClassById("permutationAnchor", "enabled");
-    }
-
-    // permutations disabled except in 4/4 time
-    if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       this.addClassById("permutationAnchor", "enabled", false);
-      this.permutationPopupClick("none");  // make sure permutation is off
+      this.permutationPopupClick("none");
     }
   }
 
@@ -968,8 +895,8 @@ class GrooveWriter {
 
     switch (perm_type) {
       case "kick_16ths":
-        this.showHideCSS_ClassVisibility(".kick-container", true, false); // hide it
-        this.showHideCSS_ClassVisibility(".snare-container", true, true); // show it
+        this.showHideCSS_ClassVisibility(".kick-container", true, false);
+        this.showHideCSS_ClassVisibility(".snare-container", true, true);
         while (this.data.numberOfMeasures > 1) {
           this.closeMeasureButtonClick(2);
         }
@@ -979,8 +906,8 @@ class GrooveWriter {
         break;
 
       case "snare_16ths":
-        this.showHideCSS_ClassVisibility(".kick-container", true, true); // show it
-        this.showHideCSS_ClassVisibility(".snare-container", true, false); // hide it
+        this.showHideCSS_ClassVisibility(".kick-container", true, true);
+        this.showHideCSS_ClassVisibility(".snare-container", true, false);
         while (this.data.numberOfMeasures > 1) {
           this.closeMeasureButtonClick(2);
         }
@@ -990,10 +917,9 @@ class GrooveWriter {
         break;
 
       case "none":
-      /* falls through */
       default:
-        this.showHideCSS_ClassVisibility(".kick-container", true, true); // show it
-        this.showHideCSS_ClassVisibility(".snare-container", true, true); // show it
+        this.showHideCSS_ClassVisibility(".kick-container", true, true);
+        this.showHideCSS_ClassVisibility(".snare-container", true, true);
         this.class_permutation_type = "none";
 
         this.unselectButton(document.getElementById("permutationAnchor"));
@@ -1006,8 +932,7 @@ class GrooveWriter {
   };
 
   muteInstrument(instrument, measure, muteElseUnmute) {
-    // find unmuteHHButton1  or unmuteSnareButton2
-    var buttonName = "unmute" + instrument + "Button" + measure
+    var buttonName = "unmute" + instrument + "Button" + measure;
     var button = document.getElementById(buttonName);
     if (muteElseUnmute)
       button.style.display = "inline-block";
@@ -1018,8 +943,7 @@ class GrooveWriter {
   }
 
   isInstrumentMuted(instrument, measure) {
-    // find unmuteHHButton1  or unmuteSnareButton2
-    var buttonName = "unmute" + instrument + "Button" + measure
+    var buttonName = "unmute" + instrument + "Button" + measure;
     var button = document.getElementById(buttonName);
     if (button && button.style.display == "inline-block")
       return true;
@@ -1053,13 +977,10 @@ class GrooveWriter {
         console.log("bad case in helpMenuPopupClick()");
         break;
     }
-
   };
 
-  // user has clicked on the advanced edit button
   toggleAdvancedEdit() {
     if (this.class_advancedEditIsOn) {
-      // turn it off
       this.class_advancedEditIsOn = false;
       this.unselectButton(document.getElementById("advancedEditAnchor"));
     } else {
@@ -1068,12 +989,8 @@ class GrooveWriter {
     }
   };
 
-  // context menu for labels
   noteLabelClick(event, instrument, measure) {
     var contextMenu: HTMLElement | null = null;
-
-    // store this in a global, there can only ever be one context menu open at a time.
-    // Yes, I agree this sucks
     this.class_measure_for_note_label_click = measure;
 
     switch (instrument) {
@@ -1145,9 +1062,6 @@ class GrooveWriter {
       return false;
     }
 
-    // start at the first note of the measure we want to effect.   Only fill in the
-    // notes for that measure
-    // the last boolean in the setFunction should only be true on the first call (plays a sound)
     var startIndex = this.data.notesPerMeasure * (this.class_measure_for_note_label_click - 1);
     for (var i = startIndex; i - startIndex < this.data.notesPerMeasure; i++) {
       if (action == "all_off") {
@@ -1207,21 +1121,18 @@ class GrooveWriter {
         setFunction(i, "normal", i == startIndex);
 
       } else if (action == "cancel") {
-        continue; // do nothing.
+        continue;
 
       } else {
         console.log("Bad IF case in noteLabelPopupClick");
-
       }
     }
 
-    this.class_measure_for_note_label_click = 0; // reset
+    this.class_measure_for_note_label_click = 0;
     this.updateSheetMusic();
     return false;
   };
 
-  // returns true on error!
-  // returns false if working.  (this is because of the onContextMenu handler
   noteRightClick(event, type: string, id) {
     this.class_which_index_last_clicked = id;
 
@@ -1260,7 +1171,7 @@ class GrooveWriter {
       this.removeAllPopUpKeyEventListeners();
       this.registerPopUpKeyEventListeners();
     } else {
-      return true; //error
+      return true;
     }
     return false;
   }
@@ -1269,9 +1180,6 @@ class GrooveWriter {
     document.removeEventListener("keydown", this.handlePopUpKeyEventListeners);
   }
 
-  // Register or unregister the key event listeners for the given context menu.
-  // contextMenu: DOM element
-  // register: boolean indicating whether to register or unregister the listeners
   registerPopUpKeyEventListeners() {
     console.log("Adding listeners for " + this.insertNoteContextMenu.id);
     if (this.insertNoteContextMenu) {
@@ -1290,14 +1198,9 @@ class GrooveWriter {
   };
 
   noteLeftClick = (event, type, id) => {
-
-    // use a popup if advanced edit is on
     if (this.class_advancedEditIsOn === true) {
       this.noteRightClick(event, type, id);
-
     } else {
-
-      // this is a non advanced edit left click
       switch (type) {
         case "hh":
           this.set_hh_state(id, this.is_hh_on(id) ? "off" : "normal", true);
@@ -1344,8 +1247,6 @@ class GrooveWriter {
     this.updateSheetMusic();
   };
 
-  // Close the currently-open note context menu (if any) and detach its
-  // keyboard shortcut listener. Safe to call when no menu is open.
   closeNoteContextMenu() {
     if (this.insertNoteContextMenu) {
       this.myGrooveUtils.hideContextMenu(this.insertNoteContextMenu);
@@ -1354,8 +1255,6 @@ class GrooveWriter {
     this.insertNoteContextMenu = null;
   }
 
-  // called when we initially mouseOver a note.
-  // We can use it to sense left or right mouse or ctrl events
   noteOnMouseEnter(event, instrument: string, id: number) {
     var action = "";
     if (event.ctrlKey)
@@ -1378,7 +1277,7 @@ class GrooveWriter {
           console.log("Bad case in noteOnMouseEnter");
           break;
       }
-      this.updateSheetMusic(); // update music
+      this.updateSheetMusic();
     }
     return false;
   }
@@ -1511,8 +1410,6 @@ class GrooveWriter {
   }
 
   // 16th note permutation array expressed in 32nd notes
-  // some kicks are excluded at the beginning of the measure to make the groupings
-  // easier to play through continuously
   get_kick16th_minus_some_strait_permutation_array(section: number): Array<boolean | string> {
     return kickPermutationMinusSomeStrait(section);
   }
@@ -1525,7 +1422,6 @@ class GrooveWriter {
     return kickPermutationTriplets(section);
   }
 
-  // Returns full ABC notation string (modifier + note) for a note; matches constant_ABC_* values.
   _abcFor(note: AbcNote | null): string | false {
     if (!note) return false;
     return (note.modifier || '') + note.note;
@@ -1536,10 +1432,9 @@ class GrooveWriter {
     return !!el && el.classList.contains('note-on');
   }
 
-  // A note is on iff *all* of its html_id_prefixes are on. Variants that share
+  // A note is on iff all of its html_id_prefixes are on. Variants that share
   // a prefix (HH_OPEN/CLOSE/ACCENT/NORMAL all use hh_cross) are distinguished
-  // by a secondary prefix, so single-prefix matching would always resolve to
-  // the first variant in iteration order.
+  // by a secondary prefix.
   _isAbcNoteOn(note: AbcNote, id: number | string): boolean {
     const prefixes = getAsSet(note.htmlAttrs.html_id_prefix);
     if (prefixes.size === 0) return false;
@@ -1549,8 +1444,6 @@ class GrooveWriter {
     return true;
   }
 
-  // Finds the currently-on AbcNote at `id` for a drum, or null if none.
-  // Kick has bespoke logic: splash+normal both on -> KI_SANDK.
   private _getOnNote(drumType: DrumType, id: number | string): AbcNote | null {
     if (drumType === DrumType.KICK) {
       const splashOn = this._isAbcNoteOn(AbcNote.KI_SPLASH, id);
@@ -1572,8 +1465,6 @@ class GrooveWriter {
     return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
   }
 
-  // Read the currently-rendered note at `id` for a drum and return both
-  // representations. All the get_*_state helpers below are thin aliases.
   getDrumState(id: number | string, drumType: DrumType): { abc: string | false, url: string } {
     return this._stateFor(this._getOnNote(drumType, id));
   }
@@ -1598,7 +1489,6 @@ class GrooveWriter {
     return this.getDrumState(id, DrumType.STICKINGS);
   }
 
-  // Helpers: check if a drum is currently on (based on rendered UI state).
   is_hh_on(id: number | string): boolean {
     return this.get_hh_state(id).abc !== false;
   }
@@ -1612,7 +1502,6 @@ class GrooveWriter {
     return this.get_tom_state(id, tom_num).abc !== false;
   }
 
-  // Setters: mode-string based wrappers around setDrumNote.
   set_hh_state(id: number | string, mode: string, makeSound: boolean = false): void {
     this.setDrumNote(Number(id), modeToNote(DrumType.HIHAT, mode), makeSound, DrumType.HIHAT);
   }
@@ -1639,43 +1528,29 @@ class GrooveWriter {
     this.setDrumNote(Number(id), modeToNote(DrumType.STICKINGS, mode), makeSound, DrumType.STICKINGS);
   }
 
-  // create a new instance of an array with all the values prefilled with false
-  // the array size is 32nd notes for the current time signature
-  // 4/4 would be 32 notes
-  // 5/4 would be 40 notes
-  // 2/4 would be 16 notes
-  // 4/2 would be 32 notes
-  // Filled with `false` so unset positions match the `case false` arms in the
-  // MIDI array switches (get_*_state also returns `false` for empty cells).
+  // Creates an empty note array prefilled with false (32 notes for straight 4/4, 48 for triplets)
   get_empty_note_array_in_32nds(): Array<string | false> {
     const notesPer4Beats = this.usingTriplets() ? 48 : 32;
     const num_notes = (this.data.timeSig.top * notesPer4Beats) / this.data.timeSig.bottom.value;
     return new Array(num_notes).fill(false);
   }
 
-
   get_kick16th_permutation_array(section: number) {
     if (this.usingTriplets()) {
       return this.get_kick16th_triplets_permutation_array(section);
     }
-
     return this.get_kick16th_strait_permutation_array(section);
   }
 
   get_kick16th_permutation_array_minus_some(section) {
     if (this.usingTriplets()) {
-      // triplets never skip any: delegate
       return this.get_kick16th_permutation_array(section);
     }
-
     return this.get_kick16th_minus_some_strait_permutation_array(section);
   }
 
-  // snare permutation
   get_snare_permutation_array(section) {
-    // its the same as the 16th kick permutation, but with different notes
     var snare_array = this.get_kick16th_permutation_array(section);
-    // turn the kicks into snares
     for (var i = 0; i < snare_array.length; i++) {
       if (snare_array[i] !== false)
         snare_array[i] = AbcNote.SN_NORMAL.getFirstTabChar();
@@ -1683,35 +1558,31 @@ class GrooveWriter {
     return snare_array;
   }
 
-  // Snare permutation, with Accented permutation.   Snare hits every 16th note, accent moves
+  // Snare permutation where accent moves across 16th notes and other notes are ghosted
   get_snare_accent_permutation_array(section) {
-
-    // its the same as the 16th kick permutation, but with different notes
     var snare_array = this.get_kick16th_permutation_array(section);
 
-    if (section > 0) { // Don't convert notes for the first measure since it is the ostinado
+    if (section > 0) {
       for (var i = 0; i < snare_array.length; i++) {
         if (snare_array[i] !== false)
           snare_array[i] = AbcNote.SN_ACCENT.getFirstTabChar();
-        else if ((i % 2) === 0) // all other even notes are ghosted snares
+        else if ((i % 2) === 0)
           snare_array[i] = AbcNote.SN_GHOST.getFirstTabChar();
       }
     }
     return snare_array;
   }
 
-  // Snare permutation, with Accented and diddled permutation.   Accented notes are singles, non accents are diddled
+  // Snare permutation where accented notes are singles and non-accents are diddled
   get_snare_accent_with_diddle_permutation_array(section) {
-
-    // its the same as the 16th kick permutation, but with different notes
     var snare_array = this.get_kick16th_permutation_array(section);
 
-    if (section > 0) { // Don't convert notes for the first measure since it is the ostinado
+    if (section > 0) {
       for (var i = 0; i < snare_array.length; i++) {
         if (snare_array[i] !== false) {
           snare_array[i] = AbcNote.SN_BUZZ.getFirstTabChar();
-          i++; // the next one is not diddled  (leave it false)
-        } else { // all other even notes are diddled, which means 32nd notes
+          i++;
+        } else {
           snare_array[i] = AbcNote.SN_GHOST.getFirstTabChar();
         }
       }
@@ -1721,20 +1592,9 @@ class GrooveWriter {
   }
 
   get_numSectionsFor_permutation_array() {
-    var numSections = 16;
-
-    /*)
-    if(usingTriplets()) {
-    numSections = 8;
-    } else {
-    numSections = 16;
-    }
-     */
-
-    return numSections;
+    return 16;
   }
 
-  // use the Permutation options to figure out if we should display a particular section
   shouldDisplayPermutationForSection(sectionNum: number): boolean {
     const isChecked = (id: string) => {
       const el = document.getElementById(id) as HTMLInputElement | null;
@@ -1744,7 +1604,6 @@ class GrooveWriter {
     return shouldDisplayPermutation(sectionNum, isChecked, exists, this.usingTriplets());
   }
 
-  // use the permutation options to count the number of active permutation sections
   get_numberOfActivePermutationSections() {
     var max_num = this.get_numSectionsFor_permutation_array();
     var total_on = 0;
@@ -1757,21 +1616,13 @@ class GrooveWriter {
     return total_on;
   }
 
-  // query the clickable UI and generate a 32 element array representing the notes of one measure
-  // note: the ui may have fewer notes, but we scale them to fit into the 32 elements proportionally
-  // If using triplets returns 48 notes.   Otherwise always 32.
-  //
-  // (note: Only one measure, not all the notes on the page if multiple measures are present)
-  // Return value is the number of notes.
+  // Extracts note array of a single measure from the clickable UI and scales it to 32 (or 48) elements.
   get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI) {
+    var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
 
-    var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig); // fill proportionally
-
-    // fill in the arrays from the clickable UI
     for (var i = 0; i < this.data.notesPerMeasure; i++) {
       var array_index = (i) * scaler;
 
-      // only grab the stickings if they are visible
       if (this.isStickingsVisible())
         Sticking_Array[array_index] = this.get_sticking_state(i + startIndexForClickableUI).abc;
 
@@ -1783,16 +1634,12 @@ class GrooveWriter {
       }
 
       Snare_Array[array_index] = this.get_snare_state(i + startIndexForClickableUI).abc;
-
       Kick_Array[array_index] = this.get_kick_state(i + startIndexForClickableUI).abc;
     }
 
-    var num_notes = Snare_Array.length;
-    return num_notes;
+    return Snare_Array.length;
   }
 
-  // each of the instruments can be muted.   Check the UI and zero out the array if the instrument is marked as muted
-  // for a particular measure
   muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, measureIndex) {
     if (this.isInstrumentMuted("hh", measureIndex + 1))
       HH_Array.fill(false);
@@ -1820,17 +1667,10 @@ class GrooveWriter {
     return new_kick_array;
   }
 
-  // merge 2 kick arrays
-  //  4 possible states
-  //  false   (off)
-  //  constant_ABC_KI_Normal
-  //  constant_ABC_KI_SandK
-  //  constant_ABC_KI_Splash
   merge_kick_arrays(primary_kick_array, secondary_kick_array) {
     var new_kick_array = [];
 
     for (var i in primary_kick_array) {
-
       switch (primary_kick_array[i]) {
         case false:
           new_kick_array.push(secondary_kick_array[i]);
@@ -1879,7 +1719,6 @@ class GrooveWriter {
 
     var metronomeFrequency = this.getMetronomeFrequency();
 
-    // just the first measure
     var num_notes = this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
     this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, 0);
 
@@ -1894,14 +1733,11 @@ class GrooveWriter {
 
     this.myGrooveUtils.note_mapping_array = [];
 
-    // all of the permutations use just the first measure
     switch (this.class_permutation_type) {
       case "kick_16ths":
         var numSections = this.get_numSectionsFor_permutation_array();
 
-        // compute sections with different kick patterns
         for (i = 0; i < numSections; i++) {
-
           if (this.shouldDisplayPermutationForSection(i)) {
             var new_kick_array;
 
@@ -1910,7 +1746,6 @@ class GrooveWriter {
             else
               new_kick_array = this.get_kick16th_permutation_array(i);
 
-            // grab hi-hat foots from existing kick array and merge it in.
             Kick_Array = this.filter_kick_array_for_permutation(Kick_Array);
             new_kick_array = this.merge_kick_arrays(new_kick_array, Kick_Array);
 
@@ -1923,20 +1758,17 @@ class GrooveWriter {
         }
         break;
 
-      case "snare_16ths": // use the hh & snare from the user
+      case "snare_16ths":
         numSections = this.get_numSectionsFor_permutation_array();
 
-        //compute sections with different snare patterns
         for (i = 0; i < numSections; i++) {
           if (this.shouldDisplayPermutationForSection(i)) {
-
             if ((document.getElementById("PermuationOptionsAccentGridDiddled") && document.getElementById("PermuationOptionsAccentGridDiddled") as HTMLInputElement).checked)
               new_snare_array = this.get_snare_accent_with_diddle_permutation_array(i);
             else if ((document.getElementById("PermuationOptionsAccentGrid") && document.getElementById("PermuationOptionsAccentGrid") as HTMLInputElement).checked)
               new_snare_array = this.get_snare_accent_permutation_array(i);
             else
               new_snare_array = this.get_snare_permutation_array(i);
-
 
             this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
 
@@ -1948,7 +1780,6 @@ class GrooveWriter {
         break;
 
       case "none":
-      /* falls through */
       default:
         if (this.data.subdivision.value < 16)
           num_notes_for_swing = 8 * this.data.timeSig.top / this.data.timeSig.bottom.value;
@@ -1962,15 +1793,12 @@ class GrooveWriter {
         );
 
         for (i = 1; i < this.data.numberOfMeasures; i++) {
-          // reset arrays
           Sticking_Array = this.get_empty_note_array_in_32nds();
           HH_Array = this.get_empty_note_array_in_32nds();
           Snare_Array = this.get_empty_note_array_in_32nds();
           Kick_Array = this.get_empty_note_array_in_32nds();
           Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
 
-
-          // get another measure
           this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, this.data.notesPerMeasure * i);
           this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
 
@@ -1983,48 +1811,22 @@ class GrooveWriter {
         break;
     }
 
-    var midi_url = "data:audio/midi;base64," + btoa(midiFile.toBytes());
-
-    return midi_url;
+    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
   }
 
   MIDISaveAs() {
     var midi_url = this.createMidiUrlFromClickableUI("general_MIDI");
-    // save as
     document.location = midi_url;
   };
 
-  // called by the HTML when changes happen to forms that require the ABC to update
   refresh_ABC = () => {
     this.updateSheetMusic();
   }
 
-  // Want to create something like this:
-  //
-  // {{GrooveTab
-  // |HasTempo=90
-  // |HasSwingPercent=0
-  // |HasDivision=16
-  // |HasMeasures=2
-  // |HasNotesPerMeasure=32
-  // |HasTimeSignature=4/4
-  // |HasHiHatTab=x---o---+---x---x---o---+---x---x---o---+---x---x---o---+---x---
-  // |HasSnareAccentTab=--------O-------------------O-----------O---------------O-------
-  // |HasSnareOtherTab=--------------g-------------------g-----------g-----------------
-  // |HasKickTab=o---------------o---o---------------o-----------o---o---------o-
-  // |HasFootOtherTab=----------------------------------------------------------------
-  // |HasTom1Tab=--------------------------------------------------------o-------
-  // |HasTom4Tab=----------------o---------------------------------------o-------
-  // |HasEditData=?GDB_Author=1&TimeSig=4/4&Div=32&Tempo=80&Measures=2&H=|--x-----x---x-------------------|--x-----x---x-------------------|&S=|----g-----g-------------ooo-o-o-|----g-----g-----------------gggg|&K=|o-----x-------o-o---------------|o-----x-------o-o---------------|&T1=|--------------------------------|------------------------x-------|&T4=|----------------x---------------|------------------------x-------|
-  // }}
-  //
-
   undoCommand() {
     if (this.class_undo_stack.length > 1) {
       var undoURL = this.class_undo_stack.pop();
-      this.AddItemToUndoOrRedoStack(undoURL, this.class_redo_stack); // add to redo stack
-      // the one we want to load is behind the head, since all changes go on the undo stack immediately
-      // no need to pop, since it would just get added right back on anyways
+      this.AddItemToUndoOrRedoStack(undoURL, this.class_redo_stack);
       undoURL = this.class_undo_stack[this.class_undo_stack.length - 1];
       this.set_Default_notes(undoURL);
     }
@@ -2033,18 +1835,16 @@ class GrooveWriter {
   redoCommand() {
     if (this.class_redo_stack.length > 0) {
       var redoURL = this.class_redo_stack.pop();
-      this.AddItemToUndoOrRedoStack(redoURL, this.class_undo_stack); // add to undo stack
+      this.AddItemToUndoOrRedoStack(redoURL, this.class_undo_stack);
       this.set_Default_notes(redoURL);
     }
   };
 
-  // push the new URL on the undo or redo stack
-  // keep the stacks at a managable size
   AddItemToUndoOrRedoStack(newURL: string, ourStack: Array<string>, noClear: boolean = false): boolean {
     if (!ourStack)
       return false;
     if (newURL === this.class_undo_stack[this.class_undo_stack.length - 1]) {
-      return false; // no change, so don't push
+      return false;
     }
     ourStack.push(newURL);
     while (ourStack.length > UNDO_STACK_MAX_SIZE)
@@ -2056,14 +1856,11 @@ class GrooveWriter {
     var urlFragment;
     var searchData = fullURL.indexOf("?");
     urlFragment = fullURL.slice(searchData);
-    // clear redo array whenever we add a new valid element to the stack
-    // when we undo, we end up with a null push that returns false here
     if (this.AddItemToUndoOrRedoStack(urlFragment, this.class_undo_stack)) {
       this.class_redo_stack = [];
     }
   };
 
-  // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
   updateCurrentURL() {
     var newURL = this.get_FullURLForPage();
     var newTitle = "";
@@ -2195,9 +1992,7 @@ class GrooveWriter {
 
   SVGSaveAs() {
     this.downloadImages('svg');
-  }
-
-  ShowHideABCResults() {
+  }  ShowHideABCResults() {
     var ABCResults = document.getElementById("ABC_Results");
 
     if (ABCResults.style.display == "block")
@@ -2205,14 +2000,13 @@ class GrooveWriter {
     else
       ABCResults.style.display = "block";
 
-    return false; // don't follow the link
+    return false;
   }
 
   updateUrl() {
     this.updateCurrentURL();
   }
 
-  // Common UI refresh sequence after measures are added, removed, or scaled
   refreshMeasureGrid(wasStickingsVisible: boolean = false, wasTomsVisible: boolean = false) {
     this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
     this.renderMeasureContainer();
@@ -2225,7 +2019,6 @@ class GrooveWriter {
     this.updateSheetMusic();
   }
 
-  // Core method to add a measure (defaults to copying notes from the last measure)
   addMeasure(): Measure {
     this.syncUIToMeasures();
 
@@ -2240,7 +2033,6 @@ class GrooveWriter {
     return newMeasure;
   }
 
-  // Core method to remove a measure by 0-based index
   removeMeasure(measureIndex: number): boolean {
     if (this.data.numberOfMeasures <= 1 || measureIndex < 0 || measureIndex >= this.data.numberOfMeasures) {
       return false;
@@ -2257,16 +2049,13 @@ class GrooveWriter {
     return true;
   }
 
-  // Remove a measure from the page (measureNum is 1-indexed from UI buttons)
   closeMeasureButtonClick(measureNum: number) {
     this.removeMeasure(measureNum - 1);
   };
 
-  // Add a measure to the page button click handler
   addMeasureButtonClick = (event) => {
     this.addMeasure();
 
-    // reference the button and scroll it into view
     var add_measure_button = document.getElementById("addMeasureButton");
     if (add_measure_button && typeof add_measure_button.scrollIntoView === 'function')
       add_measure_button.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -2287,7 +2076,6 @@ class GrooveWriter {
       if (force) {
         newStateIsOn = showElseHide;
       } else {
-        // no-force means to swap on each call
         if (element.style.display == showState)
           newStateIsOn = false;
         else
@@ -2318,7 +2106,6 @@ class GrooveWriter {
           newStateIsOn = false;
         }
       } else {
-        // no-force means to swap on each call
         if (stickings.style.visibility == "visible") {
           stickings.style.visibility = "hidden";
           newStateIsOn = false;
@@ -2331,7 +2118,6 @@ class GrooveWriter {
     return newStateIsOn;
   }
 
-  // clear all the notes on all measures
   clearAllNotes() {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
       this.set_sticking_state(i, 'off');
@@ -2365,7 +2151,7 @@ class GrooveWriter {
     if (!dontRefreshScreen)
       this.updateSheetMusic();
 
-    return false; // don't follow the link
+    return false;
   };
 
   isStickingsVisible() {
@@ -2390,16 +2176,14 @@ class GrooveWriter {
       this.updateSheetMusic();
     }
 
-    return false; // don't follow the link
+    return false;
   };
 
-  // if stickings are shown, hide them and vice versa
   stickingsShowHideToggle() {
     var stickingsAreCurrentlyShown = this.isStickingsVisible();
     this.stickingsShowHide(true, !stickingsAreCurrentlyShown, false);
   }
 
-  // Swap Right and Left stickings if any are shown
   stickingsReverseRL() {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
       var cur_state = this.get_sticking_state(i).url;
@@ -2419,80 +2203,62 @@ class GrooveWriter {
     }
 
     if (oldMethod) {
-      // css media queries wiil hide all but the music
-      // force a print
-
       window.print();
-
     } else {
-      // open a new window just for printing   (new method)
       var win = window.open("", this.class_app_title + " Print");
       win.document.body.innerHTML = "<title>" + this.class_app_title + "</title>\n<center>\n";
       win.document.body.innerHTML += document.getElementById("svgTarget").innerHTML;
       win.document.body.innerHTML += "\n</center>";
       win.print();
     }
-
   };
 
   setupWriterHotKeys() {
     document.addEventListener("keydown", (e) => {
       const target = e.target as HTMLInputElement;
-      // only accept the event if it not going to an INPUT field   (allow for range types)
       if (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA")) {
         switch (e.which) {
-          case 90: // ctrl-z
+          case 90:
             if (e.ctrlKey) {
-              // ctrl-z
               this.undoCommand();
               return false;
             }
             break;
 
-          case 89: // ctrl-y
+          case 89:
             if (e.ctrlKey) {
-              // ctrl-y
               this.redoCommand();
               return false;
             }
             break;
 
-          case 37: // left arrow
-            // left arrow
+          case 37:
             this.myGrooveUtils.downTempo();
             return false;
-          //break;
 
-          case 39: // right arrow
-            // right arrow
+          case 39:
             this.myGrooveUtils.upTempo();
             return false;
-          //break;
 
           default:
-            /* DEBUG
-            else if(e.ctrlKey && e.which !=17 && e.target.type != "text") {
-            alert("Key is: " + e.which);
-            }
-             */
             break;
         }
       }
-      return true; // let the default handler deal with the keypress
+      return true;
     });
   }
 
   swapViewEditMode(dontUpdateURL) {
     var view_edit_button = document.getElementById("view-edit-switch");
     if (this.data.viewMode) {
-      this.showHideCSS_ClassDisplay(".edit-block", true, true, "block"); // show
+      this.showHideCSS_ClassDisplay(".edit-block", true, true, "block");
       if (view_edit_button)
         view_edit_button.innerHTML = "Switch to VIEW mode";
       this.data.viewMode = false;
       if (!dontUpdateURL)
         this.updateCurrentURL();
     } else {
-      this.showHideCSS_ClassDisplay(".edit-block", true, false, "block"); // hide
+      this.showHideCSS_ClassDisplay(".edit-block", true, false, "block");
       if (view_edit_button)
         view_edit_button.innerHTML = "Switch to EDIT mode";
       this.data.viewMode = true;
@@ -2501,34 +2267,21 @@ class GrooveWriter {
     }
   };
 
-  // public function.
-  // This function initializes the data for the groove Scribe web page
   runsOnPageLoad() {
-    this.setupWriterHotKeys(); // there are other hot keys in GrooveUtils for the midi player
+    this.setupWriterHotKeys();
     this.setTimeSigLabel();
 
-    // set the background and text color of the current subdivision
     this.selectButton(document.getElementById("subdivision_" + this.data.notesPerMeasure + "ths"));
-
-    // add html for the midi player
     this.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", this.data.subdivision.value, undefined);
 
-    const grooveListWrapper = document.getElementById("grooveListWrapper");
-    if (grooveListWrapper && (globalThis as any).grooves) {
-      grooveListWrapper.innerHTML = (globalThis as any).grooves.getGroovesAsHTML();
-    }
-
-    // Load the groove from the URL data if it was passed in. Must precede
-    // setupPermutationMenu because that path calls updateSheetMusic, which
-    // reads DOM state back into data.measures — running it against an empty
+    // Must precede setupPermutationMenu because that path calls updateSheetMusic,
+    // which reads DOM state back into data.measures — running it against an empty
     // DOM would wipe the not-yet-loaded notes.
     this.set_Default_notes(window.location.search);
     this.setupPermutationMenu();
 
     // The DOM defaults to view-mode CSS (to prevent flicker), so if the URL
-    // asks for edit mode we need to flip it. swapViewEditMode is a toggler
-    // keyed on data.viewMode, so temporarily set data to view so the toggle
-    // moves us to edit.
+    // asks for edit mode we need to flip it.
     if (!this.data.viewMode) {
       this.data.viewMode = true;
       this.swapViewEditMode(true);
@@ -2538,13 +2291,11 @@ class GrooveWriter {
       var midiURL;
 
       if (playStarting && this.class_metronome_count_in_active) {
-
         midiURL = this.myGrooveUtils.MIDI_build_midi_url_count_in_track(this.data.timeSig);
-        this.myGrooveUtils.midiNoteHasChanged(); // this track is temporary
+        this.myGrooveUtils.midiNoteHasChanged();
         this.class_metronome_count_in_is_playing = true;
       } else {
         if (this.class_metronome_count_in_is_playing) {
-          // we saved the state above so that we could reset the Offset click start, otherwise it starts on the 'e'
           this.class_metronome_count_in_is_playing = false;
           this.myGrooveUtils.resetMetronomeOptionsOffsetClickStartRotation();
         }
@@ -2552,12 +2303,10 @@ class GrooveWriter {
         this.myGrooveUtils.midiResetNoteHasChanged();
       }
       this.myGrooveUtils.loadMIDIFromURL(midiURL);
-      // this.updateGrooveDBSource();
     };
 
     this.myGrooveUtils.midiEventCallbacks.notePlaying = (note_type, percent_complete) => {
       if (note_type == "complete" && this.class_metronome_auto_speed_up_active) {
-        // reload with new tempo
         this.myGrooveUtils.midiNoteHasChanged();
         this.metronomeAutoSpeedUpTempoUpdate();
       }
@@ -2566,8 +2315,6 @@ class GrooveWriter {
     };
 
     this.myGrooveUtils.oneTimeInitializeMidi();
-
-    // enable or disable swing
     this.myGrooveUtils.swingEnabled(this.myGrooveUtils.doesDivisionSupportSwing(this.data.notesPerMeasure));
 
     window.onresize = this.refresh_ABC;
@@ -2595,21 +2342,17 @@ class GrooveWriter {
       }, 1000);
     }
 
-    // get updates when the tempo changes
-    this.myGrooveUtils.tempoChangeCallback = this.tempoChangeCallback
+    this.myGrooveUtils.tempoChangeCallback = this.tempoChangeCallback;
   };
 
-  // called right before the midi reloads for the next replay
-  // set the new tempo based on the delta required for the time interval
   metronomeAutoSpeedUpTempoUpdate() {
-
     var totalTempoIncreaseAmount = 1;
     if (document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount"))
       totalTempoIncreaseAmount = parseInt((document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount") as HTMLInputElement).value, 10);
     var tempoIncreaseInterval = 60;
     if (document.getElementById("metronomeAutoSpeedupTempoIncreaseInterval")) {
       tempoIncreaseInterval = parseInt((document.getElementById("metronomeAutoSpeedupTempoIncreaseInterval") as HTMLInputElement).value, 10);
-      tempoIncreaseInterval = tempoIncreaseInterval * 60; // turn mins to secs
+      tempoIncreaseInterval = tempoIncreaseInterval * 60;
     }
 
     var keepIncreasingForever = false;
@@ -2627,15 +2370,14 @@ class GrooveWriter {
 
     } else if (!keepIncreasingForever) {
       if (curTempo >= this.class_our_midi_start_tempo + totalTempoIncreaseAmount) {
-        return; // don't increase any more after we have gone up the total amount
+        return;
       }
     }
     var totalMidiPlayTime = this.myGrooveUtils.getMidiPlayTime();
     var timeDiffMilliseconds = totalMidiPlayTime.getTime() - this.class_our_last_midi_tempo_increase_time.getTime();
     var tempoDiffFloat = (totalTempoIncreaseAmount) * (timeDiffMilliseconds / (tempoIncreaseInterval * 1000));
 
-    // round the number down, but keep track of the remainder so we carry it forward.   Otherwise
-    // rounding errors cause us to be way off.
+    // Carry forward fractional BPM to avoid rounding-induced drift over time.
     tempoDiffFloat += this.class_our_last_midi_tempo_increase_remainder;
     var tempoDiffInt = Math.floor(tempoDiffFloat);
     this.class_our_last_midi_tempo_increase_remainder = tempoDiffFloat - tempoDiffInt;
@@ -2644,7 +2386,6 @@ class GrooveWriter {
 
     if (!keepIncreasingForever) {
       if (curTempo + tempoDiffInt > this.class_our_midi_start_tempo + totalTempoIncreaseAmount) {
-        // increase to the total max amount, then we are done
         tempoDiffInt = (this.class_our_midi_start_tempo + totalTempoIncreaseAmount) - curTempo;
       }
     }
@@ -2653,9 +2394,6 @@ class GrooveWriter {
       this.myGrooveUtils.setTempo(this.myGrooveUtils.getTempo() + tempoDiffInt);
   };
 
-  // get a really long URL that encodes all of the notes and the rest of the state of the page.
-  // this will allow us to bookmark or reference a groove and handle undo/redo.
-  //
   get_FullURLForPage(url_destination?) {
     return this.data.toUrl();
   }
@@ -2684,10 +2422,7 @@ class GrooveWriter {
       popup.style.display = "block";
   }
 
-  // turns on or off triplet 1/4 and 1/8 note selection based on the current time sig setting
   setTimeDivisionSelectionOnOrOff() {
-
-    // check for incompatible odd time signature division  9/16 and 1/8 notes for instance
     if ((8 * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 != 0) {
       this.addClassById("subdivision_8ths", "disabled", true);
     } else {
@@ -2695,12 +2430,9 @@ class GrooveWriter {
     }
 
     if (this.data.timeSig.bottom.value !== 4) {
-      // triplets are too complicated right now outside of x/4 time.
-      // disable them
       this.addClassById("subdivision_12ths", "disabled", true);
       this.addClassById("subdivision_24ths", "disabled", true);
       this.addClassById("subdivision_48ths", "disabled", true);
-
     } else {
       this.addClassById("subdivision_12ths", "disabled", false);
       this.addClassById("subdivision_24ths", "disabled", false);
@@ -2708,10 +2440,7 @@ class GrooveWriter {
     }
   };
 
-
   setTimeSigLabel() {
-    // turn on/off special features that are only available in 4/4 time
-    // set the label
     document.getElementById("timeSigLabel").innerHTML = '<sup>' + this.data.timeSig.top + "</sup>/<sub>" + this.data.timeSig.bottom.value + "</sub>";
   }
 
@@ -2721,23 +2450,16 @@ class GrooveWriter {
     if (popup)
       popup.style.display = "none";
 
-    // ignore type "cancel"
     if (type == "ok") {
       var newTimeSigTop = parseInt((document.getElementById("timeSigPopupTimeSigTop") as HTMLInputElement).value);
       var newTimeSigBottom = parseInt((document.getElementById("timeSigPopupTimeSigBottom") as HTMLInputElement).value);
 
       if (this.usingTriplets() && newTimeSigBottom != 4) {
-        this.changeDivision(Subdivision.SIXTEENTH);  // switch to a non triplet division since they are not supported in this time signature
+        this.changeDivision(Subdivision.SIXTEENTH);
       }
 
       this.data.timeSig = new TimeSignature(newTimeSigTop, Subdivision.of(newTimeSigBottom));
-      var new_notes_per_measure = this.data.notesPerMeasure;
-      // If new_notes_per_measure is greater it will cause the changeDivision code to error
-      // as it tries to read the notes from the UI.   Setting it lower will allow the code to truncate
-      // the groove properly to something smaller rather than interpolating the groove into something weird
-      // if (new_notes_per_measure < this.data.notesPerMeasure)
-      //   this.data.notesPerMeasure = new_notes_per_measure;
-      this.changeDivision(this.data.subdivision);   // use this function because it will relayout everything
+      this.changeDivision(this.data.subdivision);
     }
     if (callback) {
       callback();
@@ -2753,8 +2475,8 @@ class GrooveWriter {
   };
 
   fillInFullURLInFullURLPopup() {
-    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;  // uncheck embedCodeCheckbox
-    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // uncheck shortenerCheckbox
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;
+    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;
 
     var popup = document.getElementById("fullURLPopup");
     if (popup) {
@@ -2763,8 +2485,6 @@ class GrooveWriter {
       textField.value = fullURL;
 
       popup.style.display = "block";
-
-      // select the URL for copy/paste
       textField.focus();
       textField.select();
     }
@@ -2775,10 +2495,10 @@ class GrooveWriter {
 
     var ShareBut = new ShareButton({
       ui: {
-        flyout: 'bottom center', // change the flyout direction of the shares. chose from `top left`, `top center`, `top right`, `bottom left`, `bottom right`, `bottom center`, `middle left`, or `middle right` [Default: `top center`]
-        button_font: false, // include the Lato font set from the Google Fonts API. [Default: `true`]
-        buttonText: 'SHARE', // change the text of the button, [Default: `Share`]
-        icon_font: false,   // include the minified Entypo font set. [Default: `true`]
+        flyout: 'bottom center',
+        button_font: false,
+        buttonText: 'SHARE',
+        icon_font: false,
       },
       networks: {
         facebook: {
@@ -2786,9 +2506,7 @@ class GrooveWriter {
             this.url = (document.getElementById("fullURLPopupTextField") as HTMLInputElement).value;
             this.description = "Check out this groove.";
           },
-          //app_id : "839699029418014"    // staging id
-          // app_id : "1499163983742002"   // MLDC id, lou created
-          appId: "445510575651140",   // MLDC id, brad created
+          appId: "445510575651140",
           loadSdk: true
         },
         googlePlus: {
@@ -2824,31 +2542,25 @@ class GrooveWriter {
       }
     });
 
-    // open the popup with full url and try to load short in the background
     this.fillInFullURLInFullURLPopup();
-    // default is to use shortened url
     this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
   };
 
   copyShareURLToClipboard() {
     var copyText = document.getElementById("fullURLPopupTextField") as HTMLInputElement;
-
     copyText.select();
-    // hack fix for mobile
     copyText.setSelectionRange(0, 99999);
-
     document.execCommand("copy");
   }
 
   close_FullURLPopup() {
     var popup = document.getElementById("fullURLPopup");
-
     if (popup)
       popup.style.display = "none";
   };
 
   fillInShortenedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
-    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;  // uncheck embedCodeCheckbox, because it is not compatible
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;
 
     var params = {
       "dynamicLinkInfo": {
@@ -2862,34 +2574,27 @@ class GrooveWriter {
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       if (xhr.status === 200) {
-        // success
         var response = JSON.parse(xhr.responseText);
         var textField = document.getElementById(cssIdOfTextFieldToFill) as HTMLInputElement;
         textField.value = response.shortLink;
-        // select the URL for copy/paste
         textField.focus();
         textField.select();
-        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = true;  // this is now true if isn't already
+        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = true;
       } else {
-        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // request failed
+        (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;
       }
     };
     xhr.send(JSON.stringify(params));
-
   }
 
-  // embed looks something like this:
-  // <iframe width="100%" height="240" src="https://hosting.com/path/GrooveDisplay.html?Div=16&Title=Example..." frameborder="0" ></iframe>
   fillInEmbedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
-    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;  // uncheck shortenerCheckbox, because it is not compatible
-    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = true;  // this will be true if isn't already
+    (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;
+    (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = true;
 
     var embedText = '<iframe width="100%" height="240" src="' + fullURL + '" frameborder="0" ></iframe>	';
 
     var textField = document.getElementById(cssIdOfTextFieldToFill) as HTMLInputElement;
     textField.value = embedText;
-
-    // select the URL for copy/paste
     textField.focus();
     textField.select();
   }
@@ -2910,9 +2615,8 @@ class GrooveWriter {
     }
   };
 
-  // Inverse of applyMeasuresToUI: reads DOM click state and writes tab
-  // strings back into this.data.measures so ABC/SVG generation reflects
-  // interactive edits (single clicks and context-menu selections).
+  // Reads DOM click state and writes tab strings back into this.data.measures
+  // so ABC/SVG generation reflects interactive edits.
   syncUIToMeasures() {
     const npm = this.data.notesPerMeasure;
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
@@ -2929,9 +2633,7 @@ class GrooveWriter {
     }
   }
 
-  // Propagate parsed measure data onto the clickable UI. get_*_state reads
-  // note-on classes off these DOM elements, so without this call MIDI
-  // generation sees an empty grid and produces a silent track.
+  // Propagates parsed measure data onto the clickable UI note-on/off classes.
   applyMeasuresToUI() {
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
       const measure = this.data.measures[m];
@@ -2977,34 +2679,24 @@ class GrooveWriter {
 
   getABCDataWithLineEndings() {
     var myABC = (document.getElementById("ABCsource") as HTMLInputElement).value;
-
-    // add proper line endings for windows
     myABC = myABC.replace(/\r?\n/g, "\r\n");
-
     return myABC;
   }
 
   saveABCtoFile() {
     var myABC = this.getABCDataWithLineEndings();
-
     var myURL = 'data:text/plain;charset=utf-8;base64,' + btoa(myABC);
-
     console.log("Use \"Save As\" to save the new page to a local file");
     window.open(myURL);
-
   };
 
   expandAuthoringViewWhenNecessary(numNotesPerMeasure, numberOfMeasures) {
-
-    // set the size of the musicalInput authoring element based on the number of notes
     if (numNotesPerMeasure > 16 ||
       (numNotesPerMeasure > 4 && this.data.numberOfMeasures > 1) ||
       (this.data.numberOfMeasures > 2)) {
       this.addClassById("musicalInput", "expanded", true);
-
     } else {
       this.addClassById("musicalInput", "expanded", false);
-
     }
   };
 
@@ -3016,7 +2708,6 @@ class GrooveWriter {
     const newSubdivision = Subdivision.of(newDivValue);
     const isNewDivisionTriplets = newSubdivision.isTriplet();
 
-    // Validate division fits time signature.
     if ((newDivValue * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 !== 0) {
       alert(`1/${newDivValue} notes are disabled in ${this.data.timeSig.top}/${this.data.timeSig.bottom.value} time. This combination would result in a half note.`);
       return;
@@ -3035,13 +2726,10 @@ class GrooveWriter {
     const wasTomsVisible = this.isTomsVisible();
     const sameTripletness = this.usingTriplets() === isNewDivisionTriplets;
 
-    // Capture the current UI state before we rebuild the note grid.
     if (sameTripletness) {
       this.syncUIToMeasures();
     }
 
-    // Move to the new subdivision, replacing measures with fresh ones sized
-    // to the new notesPerMeasure. Copy scaled notes over when compatible.
     const oldMeasures = this.data.measures;
     this.data.subdivision = newSubdivision;
     this.data.measures = [];
@@ -3054,7 +2742,6 @@ class GrooveWriter {
     }
 
     if (!sameTripletness) {
-      // Triplets don't scale cleanly; also reset the metronome click options.
       this.resetMetronomeOptionsMenuOffsetClick();
     }
 
@@ -3096,7 +2783,6 @@ class GrooveWriter {
     }
   }
 
-  // Render all measures into #measureContainer.
   renderMeasureContainer() {
     const container = document.getElementById("measureContainer");
     if (!container) return;
@@ -3107,10 +2793,6 @@ class GrooveWriter {
     container.innerHTML = html;
   }
 
-  // public function
-  // function to create HTML for the music staff and notes.   We usually want more than one of these
-  // baseIndex is the index for the css labels "staff-container1, staff-container2"
-  // indexStartForNotes is the index for the note ids.
   HTMLforStaffContainer(baseindex: number, indexStartForNotes: number): string {
     var newHTML = ('\
 						<div class="staff-container" id="staff-container' + baseindex + '">\
@@ -3136,7 +2818,6 @@ class GrooveWriter {
 														</div>\n\
 													');
 
-      // add space between notes, exept on the last note
       if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div>\n');
       }
@@ -3166,7 +2847,6 @@ class GrooveWriter {
 									<div class="staff-line-4"></div>\
 									<div class="staff-line-5"></div>\n');
 
-    // backgrounds for highlighting.  Evenly spaced cols of space
     newHTML += ('\
 										<div class="background-highlight-container">\
 											<div class="opening_note_space"> </div>');
@@ -3180,7 +2860,6 @@ class GrooveWriter {
     }
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
-    // Hi-hats
     newHTML += ('\
 										<div class="hi-hat-container">\
 											<div class="opening_note_space"> </div>');
@@ -3209,7 +2888,6 @@ class GrooveWriter {
     newHTML += '<div class="unmuteHHButton" id="unmutehhButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("hh", ' + baseindex + ', false)\'><span class="fa-stack unmuteHHStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></div>';
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
-    // Toms 1
     newHTML += ('\
 										<div class="toms-container" id="tom1-container">\
 											<div class="opening_note_space"> </div>');
@@ -3227,7 +2905,6 @@ class GrooveWriter {
     newHTML += '<span class="unmuteTom1Button" id="unmutetom1Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("tom1", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
-    // Snare stuff
     newHTML += ('\
 										<div class="snare-container">\
 											<div class="opening_note_space"> </div> ');
@@ -3275,7 +2952,6 @@ class GrooveWriter {
         '		<path class="drag_stroke" d="m60.10 53.34v-15.00"></path>' +
         '		<use x="58.50" y="53.34" xlink:href="#drag_ghd"></use>' +
         '		<path class="drag_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#drag_hd"></use>' +
-
         '	</g>' +
         '</svg>' +
         '</i></div>' +
@@ -3284,8 +2960,6 @@ class GrooveWriter {
         '</div>' +
         '</div> \n');
 
-
-
       if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
@@ -3293,7 +2967,6 @@ class GrooveWriter {
     newHTML += '<span class="unmuteSnareButton" id="unmutesnareButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("snare", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
-    // Toms 4
     newHTML += ('\
 										<div class="toms-container" id="tom4-container">\
 											<div class="opening_note_space"> </div>');
@@ -3311,8 +2984,6 @@ class GrooveWriter {
     newHTML += '<span class="unmuteTom4Button" id="unmutetom4Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("tom4", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
     newHTML += ('<div class="end_note_space"></div>\n</div>\n');
 
-
-    // Kick stuff
     newHTML += ('\
 										<div class="kick-container">\
 											<div class="opening_note_space"> </div> ');
@@ -3341,8 +3012,7 @@ class GrooveWriter {
     else
       newHTML += '<span class="closeMeasureButton"><i class="fa">&nbsp;&nbsp;&nbsp;</i></span>';
 
-
-    if (baseindex == this.data.numberOfMeasures) // add new measure button
+    if (baseindex == this.data.numberOfMeasures)
       newHTML += '<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>';
 
     newHTML += ('</div>');
@@ -3350,16 +3020,13 @@ class GrooveWriter {
     return newHTML;
   }
 
-  // a click on a permutation option checkbox
   permutationOptionClick(event) {
-
     var optionId = event.target.id;
     var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
     for (var i = 1; i < 5; i++) {
       var subOption = optionId + "_sub" + i;
-
       checkbox = document.getElementById(subOption) as HTMLInputElement;
       if (checkbox)
         checkbox.checked = OnElseOff;
@@ -3368,32 +3035,22 @@ class GrooveWriter {
     this.refresh_ABC();
   };
 
-  // a click on a permutation sub option checkbox
   permutationSubOptionClick(event) {
-
     var optionId = event.target.id;
     var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
-    if (OnElseOff) { // only do this if turning a sub option on
-      // remove the "_sub" and the number on the end (the last char)
+    if (OnElseOff) {
       var mainOption = optionId.replace("_sub", "").slice(0, -1);
-
       checkbox = document.getElementById(mainOption) as HTMLInputElement;
       if (checkbox)
         checkbox.checked = true;
-
     }
 
     this.refresh_ABC();
   };
 
-  // public function
-  // function to create HTML for the music staff and notes.   We usually want more than one of these
-  // baseIndex is the index for the css labels "staff-container1, staff-container2"
-  // indexStartForNotes is the index for the note ids.
   HTMLforPermutationOptions() {
-
     if (this.class_permutation_type == "none")
       return "";
 
@@ -3424,14 +3081,10 @@ class GrooveWriter {
     }
     ];
 
-    // change and add other options for non triplet based ostinatos
-    // Most of the types have 4 sub options
-    // add up beats and down beats
-    // add quads
     if (!this.usingTriplets()) {
-      optionTypeArray[1].SubOptions = ["1", "e", "&", "a"]; // singles
-      optionTypeArray[2].SubOptions = ["1", "e", "&", "a"]; // doubles
-      optionTypeArray[3].SubOptions = ["1", "e", "&", "a"]; // triples
+      optionTypeArray[1].SubOptions = ["1", "e", "&", "a"];
+      optionTypeArray[2].SubOptions = ["1", "e", "&", "a"];
+      optionTypeArray[3].SubOptions = ["1", "e", "&", "a"];
       optionTypeArray.splice(3, 0, {
         id: "PermuationOptionsUpsDowns",
         subid: "PermuationOptionsUpsDowns_sub",
@@ -3474,11 +3127,9 @@ class GrooveWriter {
     }
 
     var newHTML = '<span id="PermutationOptionsHeader">Permutation Options</span>\n';
-
     newHTML += '<span class="PermutationOptionWrapper">';
 
     for (var optionType in optionTypeArray) {
-
       newHTML += '' +
         '<div class="PermutationOptionGroup" id="' + optionTypeArray[optionType].id + 'Group">\n' +
         '<div class="PermutationOption">\n' +
@@ -3505,7 +3156,7 @@ class GrooveWriter {
     newHTML += '</span>\n';
     return newHTML;
   };
-} // end of class
+}
 
 (globalThis as any).GrooveWriter = GrooveWriter;
 (globalThis as any).kickPermutationStrait = kickPermutationStrait;

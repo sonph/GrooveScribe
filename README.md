@@ -34,9 +34,7 @@ npm run serve
 ```
 Or use any static web server (such as `python3 -m http.server 8001` or `npx serve .`).
 
-Then open:
-- Main app: [http://localhost:8001/](http://localhost:8001/)
-- Groove DB view: [http://localhost:8001/GrooveDBCreateGroove.html](http://localhost:8001/GrooveDBCreateGroove.html)
+Then open [http://localhost:8001/](http://localhost:8001/) in your browser.
 
 ### Running Tests
 The project utilizes Jest for unit testing of core algorithms, URL codecs, MIDI mappings, ABC notation generation, and UI state transformations:
@@ -64,7 +62,6 @@ Groove Scribe runs entirely in the browser with no backend dependencies. The log
 - Handles audio fallback using `Midi.js` for MIDI compilation and standard playback.
 - **Key Files**:
   - `src/groove_utils.ts` (Core timing, rendering, and playback functions/utilities)
-  - `js/grooves.js` (Static data dictionaries for groove presets)
   - `js/groove_display.js` (Initialization logic for embedding displays)
 
 ***
