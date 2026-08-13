@@ -279,24 +279,35 @@
               Notion</a> Embedding Options</h3>
           <br>
           <div>
-            <form>
+            <form id="embedForm">
               <label for="embedShowTempo">Show Tempo</label>
               <input type="checkbox" id="embedShowTempo" name="showTempo" onchange="const st = document.getElementById('showTempo'); if (st) { st.checked = this.checked; } myGrooveWriter.refresh_ABC();"><br><br>
 
               <label for="subText">Sub Text:</label>
               <input type="text" id="subText" name="subText" placeholder="Chorus (can also be lyric hints)"><br><br>
 
-              <label for="repeatBegins">Begin repeat at measures (separated by ;):</label>
-              <input type="text" id="repeatBegins" name="repeatBegins" placeholder="1;3"><br><br>
+              <div class="embedTableContainer">
+                <table id="embedMeasureTable" class="embedMeasureTable">
+                  <thead>
+                    <tr>
+                      <th>Measure</th>
+                      <th>Repeat Start</th>
+                      <th>Repeat End</th>
+                      <th>Alternate Ending</th>
+                      <th>Text Begin</th>
+                      <th>Text End</th>
+                    </tr>
+                  </thead>
+                  <tbody id="embedMeasureTableBody">
+                  </tbody>
+                </table>
+              </div>
+              <br>
 
-              <label for="repeatEnds">End repeat at measures (separated by ;):</label>
-              <input type="text" id="repeatEnds" name="repeatEnds" placeholder="2;4"><br><br>
-
-              <label for="repeatEndings">Alternate endings at measures (separated by ;):</label>
-              <input type="text" id="repeatEndings" name="repeatEndings" placeholder="2:1;3:2"><br><br>
-
-              <label for="measureText">Text at begin or end of specific measures (separated by ;):</label>
-              <input type="text" id="measureText" name="measureText" placeholder="1:b:start here;2:e:end here"><br><br>
+              <input type="hidden" id="repeatBegins" name="repeatBegins">
+              <input type="hidden" id="repeatEnds" name="repeatEnds">
+              <input type="hidden" id="repeatEndings" name="repeatEndings">
+              <input type="hidden" id="measureText" name="measureText">
 
               <label for="convertedUrl">Embeddable link:</label>
               <input type="text" id="convertedUrl" name="convertedUrl"><br><br>

@@ -393,7 +393,10 @@ class GrooveWriter {
   constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
     this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
     this.data = this.myGrooveUtils.data;
-    this.data.fromUrl(window.location.search);
+    if (typeof window !== "undefined" && window.location) {
+      this.data.fromUrl(window.location.search);
+      (window as any).myGrooveWriter = this;
+    }
   }
 
   usingTriplets(): boolean {
@@ -437,7 +440,7 @@ class GrooveWriter {
   setNoteState(elementId: string, state: "on" | "off" | "hidden"): void {
     const element = document.getElementById(elementId);
     if (!element) {
-      throw new Error("setNoteState: element not found for id: " + elementId);
+      return;
     }
     element.classList.remove("note-on");
     element.classList.remove("note-off");
@@ -446,13 +449,15 @@ class GrooveWriter {
   }
 
   isNoteOn(id: string): boolean {
-    return this.getNoteState(id) === "on";
+    const element = document.getElementById(id);
+    if (!element) return false;
+    return element.classList.contains("note-on");
   }
 
   getNoteState(id: string): "on" | "off" | "hidden" {
     const element = document.getElementById(id);
     if (!element) {
-      throw new Error("getNoteState: element not found for id: " + id);
+      return "off";
     }
     if (element.classList.contains("note-on")) {
       return "on";
@@ -1812,6 +1817,9 @@ class GrooveWriter {
       if (isCurrentlyHidden) {
         embedTool.style.display = "block";
         if (btn) btn.classList.add("buttonSelected");
+        if (typeof (window as any).renderEmbedMeasureTable === "function") {
+          (window as any).renderEmbedMeasureTable(this.data.numberOfMeasures);
+        }
         if (typeof embedTool.scrollIntoView === "function") {
           embedTool.scrollIntoView({ behavior: "smooth" });
         }
@@ -1877,7 +1885,7 @@ class GrooveWriter {
     this.removeMeasure(measureNum - 1);
   };
 
-  addMeasureButtonClick = (event: MouseEvent): void => {
+  addMeasureButtonClick = (event?: MouseEvent): void => {
     this.addMeasure();
 
     var add_measure_button = document.getElementById("addMeasureButton");
@@ -3033,6 +3041,9 @@ class GrooveWriter {
       this.selectedNoteIndex = Math.max(0, maxNotes - 1);
     }
     this.updateNavHighlights();
+    if (typeof (window as any).renderEmbedMeasureTable === "function") {
+      (window as any).renderEmbedMeasureTable(this.data.numberOfMeasures);
+    }
   }
 
   HTMLforStaffContainer(baseindex: number, indexStartForNotes: number): string {

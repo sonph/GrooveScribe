@@ -1463,3 +1463,202 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(document.getElementById('ABCsource').value).toContain('Q: 1/4=125\n');
   });
 });
+
+describe('Notion Embedding Options Measure Table', () => {
+  let embed;
+  beforeAll(() => {
+    embed = require('../js/notion-embed.js');
+  });
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="embedTool">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="subText" value="" />
+        <div class="embedTableContainer">
+          <table id="embedMeasureTable">
+            <tbody id="embedMeasureTableBody"></tbody>
+          </table>
+        </div>
+        <input type="hidden" id="repeatBegins" />
+        <input type="hidden" id="repeatEnds" />
+        <input type="hidden" id="repeatEndings" />
+        <input type="hidden" id="measureText" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+    `;
+  });
+
+  test('renderEmbedMeasureTable creates expected table rows with checkboxes, dropdowns, and inputs', () => {
+    embed.renderEmbedMeasureTable(3);
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(3);
+
+    rows.forEach((row, i) => {
+      const m = i + 1;
+      expect(row.getAttribute('data-measure')).toBe(String(m));
+      expect(row.querySelector('td:first-child').textContent).toBe(`Measure ${m}`);
+
+      const startCb = row.querySelector('.embed-repeat-start');
+      expect(startCb).not.toBeNull();
+      expect(startCb.type).toBe('checkbox');
+
+      const endCb = row.querySelector('.embed-repeat-end');
+      expect(endCb).not.toBeNull();
+      expect(endCb.type).toBe('checkbox');
+
+      const altSel = row.querySelector('.embed-alt-ending');
+      expect(altSel).not.toBeNull();
+      const options = Array.from(altSel.options).map(o => o.value);
+      expect(options).toEqual(['', '1', '2', '3', '4']);
+
+      const txtBegin = row.querySelector('.embed-text-begin');
+      expect(txtBegin).not.toBeNull();
+
+      const txtEnd = row.querySelector('.embed-text-end');
+      expect(txtEnd).not.toBeNull();
+    });
+  });
+
+  test('convert generates backward-compatible URL parameters from table data', () => {
+    embed.renderEmbedMeasureTable(3);
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    // Row 1: Repeat Start, Text Begin = "Intro"
+    rows[0].querySelector('.embed-repeat-start').checked = true;
+    rows[0].querySelector('.embed-text-begin').value = 'Intro';
+
+    // Row 2: Repeat End, Alternate Ending = "1"
+    rows[1].querySelector('.embed-repeat-end').checked = true;
+    rows[1].querySelector('.embed-alt-ending').value = '1';
+
+    // Row 3: Repeat End, Alternate Ending = "2", Text End = "Fill"
+    rows[2].querySelector('.embed-repeat-end').checked = true;
+    rows[2].querySelector('.embed-alt-ending').value = '2';
+    rows[2].querySelector('.embed-text-end').value = 'Fill';
+
+    document.getElementById('subText').value = 'Main Verse';
+    document.getElementById('showTempo').checked = true;
+
+    embed.convert();
+
+    const convertedUrl = document.getElementById('convertedUrl').value;
+    expect(convertedUrl).toContain('EmbedTempoTimeSig=true');
+    expect(convertedUrl).toContain('subText=Main%20Verse');
+    expect(convertedUrl).toContain('&RepeatBegins=1');
+    expect(convertedUrl).toContain('&RepeatEnds=2;3');
+    expect(convertedUrl).toContain('&RepeatEndings=2:1;3:2');
+    expect(convertedUrl).toContain('&MeasureText=1:b:Intro;3:e:Fill');
+  });
+
+  test('decodeConvertedUrl restores table state from embed URL', () => {
+    const testUrl = 'https://sonpham.me/notion-drum-sheet/render.html?TimeSig=4/4&EmbedTempoTimeSig=true&subText=Chorus&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Start;4:e:Outro';
+    document.getElementById('convertedUrl').value = testUrl;
+
+    embed.decodeConvertedUrl();
+
+    expect(document.getElementById('showTempo').checked).toBe(true);
+    expect(document.getElementById('subText').value).toBe('Chorus');
+
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(4);
+
+    // Measure 1
+    expect(rows[0].querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(rows[0].querySelector('.embed-repeat-end').checked).toBe(false);
+    expect(rows[0].querySelector('.embed-alt-ending').value).toBe('');
+    expect(rows[0].querySelector('.embed-text-begin').value).toBe('Start');
+    expect(rows[0].querySelector('.embed-text-end').value).toBe('');
+
+    // Measure 2
+    expect(rows[1].querySelector('.embed-repeat-start').checked).toBe(false);
+    expect(rows[1].querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(rows[1].querySelector('.embed-alt-ending').value).toBe('1');
+
+    // Measure 3
+    expect(rows[2].querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(rows[2].querySelector('.embed-repeat-end').checked).toBe(false);
+
+    // Measure 4
+    expect(rows[3].querySelector('.embed-repeat-start').checked).toBe(false);
+    expect(rows[3].querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(rows[3].querySelector('.embed-alt-ending').value).toBe('2');
+    expect(rows[3].querySelector('.embed-text-end').value).toBe('Outro');
+  });
+
+  test('addMeasureButtonClick and closeMeasureButtonClick update measures and embed table rows', () => {
+    document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <div id="tuneTitle"></div>
+      <div id="tuneAuthor"></div>
+      <div id="tuneComments"></div>
+      <input id="ABCsource" type="text" value="" />
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+      <div id="embedTool">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="subText" value="" />
+        <div class="embedTableContainer">
+          <table id="embedMeasureTable">
+            <tbody id="embedMeasureTableBody"></tbody>
+          </table>
+        </div>
+        <input type="hidden" id="repeatBegins" />
+        <input type="hidden" id="repeatEnds" />
+        <input type="hidden" id="repeatEndings" />
+        <input type="hidden" id="measureText" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+    `;
+
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    writer.displayNewSVG = jest.fn();
+
+    // Initial state: 1 measure
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(1);
+
+    // Click "Add measure"
+    writer.addMeasureButtonClick();
+
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.getElementById('staff-container1')).not.toBeNull();
+    expect(document.getElementById('staff-container2')).not.toBeNull();
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(2);
+
+    // Set some options in Measure 1 table row
+    const tbody = document.getElementById('embedMeasureTableBody');
+    tbody.querySelector('tr[data-measure="1"] .embed-repeat-start').checked = true;
+    tbody.querySelector('tr[data-measure="1"] .embed-text-begin').value = 'Verse';
+
+    // Add another measure -> 3 measures
+    writer.addMeasureButtonClick();
+    expect(writer.data.numberOfMeasures).toBe(3);
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(3);
+    // Measure 1 row content preserved
+    expect(document.querySelector('tr[data-measure="1"] .embed-repeat-start').checked).toBe(true);
+    expect(document.querySelector('tr[data-measure="1"] .embed-text-begin').value).toBe('Verse');
+
+    // Remove measure 3 -> 2 measures
+    writer.closeMeasureButtonClick(3);
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(2);
+    expect(document.getElementById('staff-container3')).toBeNull();
+    expect(document.querySelector('tr[data-measure="3"]')).toBeNull();
+
+    // Remove measure 2 -> 1 measure
+    writer.closeMeasureButtonClick(2);
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(document.querySelectorAll('#embedMeasureTableBody tr').length).toBe(1);
+    expect(document.getElementById('staff-container2')).toBeNull();
+    expect(document.querySelector('tr[data-measure="1"] .embed-repeat-start').checked).toBe(true);
+  });
+});

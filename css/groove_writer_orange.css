@@ -1206,10 +1206,74 @@
 		padding: 2em;
 	}
     #embedTool input#convertedUrl,
-    #embedTool input#subText,
-    #embedTool input#measureText {
+    #embedTool input#subText {
       width: 60%;
     }
+	.embedTableContainer {
+		overflow-x: auto;
+		margin: 12px 0 16px 0;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		background: #fff;
+		max-width: 100%;
+	}
+	.embedMeasureTable {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 14px;
+		text-align: center;
+	}
+	.embedMeasureTable th {
+		background: #f4f6f8;
+		color: #333;
+		padding: 10px 12px;
+		font-weight: 600;
+		border-bottom: 2px solid #e1e4e8;
+		white-space: nowrap;
+	}
+	.embedMeasureTable td {
+		padding: 8px 10px;
+		border-bottom: 1px solid #e1e4e8;
+		vertical-align: middle;
+	}
+	.embedMeasureTable tr:hover {
+		background: #f9fbfd;
+	}
+	.embedMeasureTable td:first-child {
+		font-weight: bold;
+		color: #444;
+		white-space: nowrap;
+		width: 100px;
+	}
+	.embedMeasureTable input[type="checkbox"] {
+		cursor: pointer;
+		width: 16px;
+		height: 16px;
+		margin: 0;
+		vertical-align: middle;
+	}
+	.embedMeasureTable select {
+		padding: 4px 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		background: #fff;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	.embedMeasureTable input[type="text"] {
+		width: 95%;
+		padding: 5px 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 13px;
+		box-sizing: border-box;
+	}
+	.embedMeasureTable input[type="text"]:focus,
+	.embedMeasureTable select:focus {
+		border-color: #f7941d;
+		outline: none;
+		box-shadow: 0 0 3px rgba(247, 148, 29, 0.4);
+	}
 	.pageBottomButton {
 		display: inline-block;
 		margin: 0px 20px;
