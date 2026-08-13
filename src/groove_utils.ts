@@ -137,6 +137,83 @@ function kickMidiFor(abcVal): { kick: number | null; splash: number | null } {
 }
 
 // MIDI note lookup for a tom ABC token. Returns null for OFF/unknown.
+// Adjust a base note duration for swing feel. Swing groups notes in 4s
+// (1-e-&-a): the 1 and the & get longer, the e and the a get shorter, so
+// the pulse becomes 1--e&--a2--e&--a...
+function swingAdjustedDuration(
+  i: number,
+  baseDuration: number,
+  swingPercentage: number,
+  numNotes: number,
+  numNotesForSwing: number,
+): number {
+  if (swingPercentage === 0) return baseDuration;
+  const scaler = numNotes / numNotesForSwing;
+  const val = i % (4 * scaler);
+  // Positions 0 (the "1") and 2 (the "&") get lengthened; 1 (the "e") and 3
+  // (the "a") get shortened by the same amount.
+  const lengthen = val < scaler || (val >= scaler * 2 && val < scaler * 3);
+  return baseDuration + (lengthen ? 1 : -1) * baseDuration * swingPercentage;
+}
+
+// Return the number of notes to subtract from the metronome index so that
+// the click lands on the requested subdivision. '1' means no shift.
+function metronomeOffsetShift(
+  offsetClickStartBeat: string,
+  isTriplets: boolean,
+  sixteenthNoteFrequency: number,
+): number {
+  const straightOnly = offsetClickStartBeat === 'E' || offsetClickStartBeat === 'AND' || offsetClickStartBeat === 'A';
+  const tripletOnly = offsetClickStartBeat === 'TI' || offsetClickStartBeat === 'TA';
+  if (isTriplets && straightOnly) {
+    console.log(`OffsetClickStart error: straight offset '${offsetClickStartBeat}' in triplet context`);
+  }
+  if (!isTriplets && tripletOnly) {
+    console.log(`OffsetClickStart error: triplet offset '${offsetClickStartBeat}' in straight context`);
+  }
+  switch (offsetClickStartBeat) {
+    case '1':   return 0;
+    case 'E':   return sixteenthNoteFrequency;
+    case 'AND': return 2 * sixteenthNoteFrequency;
+    case 'A':   return 3 * sixteenthNoteFrequency;
+    case 'TI':  return sixteenthNoteFrequency * 2;
+    case 'TA':  return 2 * (sixteenthNoteFrequency * 2);
+    default:
+      console.log(`bad case in metronomeOffsetShift: ${offsetClickStartBeat}`);
+      return 0;
+  }
+}
+
+// Return which metronome sound (if any) should fire at this note index.
+// Downbeat 1 is loudest, other beats are normal-volume clicks; extra
+// subdivisions (8ths / 16ths) fire only when metronome_frequency asks for them.
+function metronomeNoteAt(
+  specificIndex: number,
+  metronomeFrequency: number,
+  isTriplets: boolean,
+  timeSig: TimeSignature,
+): { note: number; velocity: number } | null {
+  if (specificIndex < 0) return null;
+  const quarterNoteFrequency = isTriplets ? 12 : 8;
+  const eighthNoteFrequency = isTriplets ? 6 : 4;
+  const sixteenthNoteFrequency = 2;
+  const measureFrequency = quarterNoteFrequency * timeSig.top * (4 / timeSig.bottom.value);
+
+  if (specificIndex === 0 || specificIndex % measureFrequency === 0) {
+    return { note: MIDI_METRONOME_1, velocity: MIDI_VELOCITY_ACCENT };
+  }
+  if (specificIndex % quarterNoteFrequency === 0) {
+    return { note: MIDI_METRONOME_NORMAL, velocity: MIDI_VELOCITY_ACCENT };
+  }
+  if (metronomeFrequency === 8 && specificIndex % eighthNoteFrequency === 0) {
+    return { note: MIDI_METRONOME_NORMAL, velocity: MIDI_VELOCITY_ACCENT };
+  }
+  if (metronomeFrequency === 16 && specificIndex % sixteenthNoteFrequency === 0) {
+    return { note: MIDI_METRONOME_NORMAL, velocity: 25 };
+  }
+  return null;
+}
+
 function tomMidiFor(abcVal): number | null {
   switch (abcVal) {
     case constant_ABC_T1_Normal: return MIDI_TOM1_NORMAL;
@@ -2008,115 +2085,17 @@ class GrooveUtils {
 
     for (var i = 0; i < num_notes; i++) {
 
-      var duration = 0;
+      // 16 ticks per 32nd note in straight, 10.666 per 48th in triplets.
+      const baseDuration = isTriplets ? 10.666 : 16;
+      const duration = swingAdjustedDuration(i, baseDuration, swing_percentage, num_notes, num_notes_for_swing);
 
-      if (isTriplets) {
-        duration = 10.666; // "ticks"   16 for 32nd notes.  10.66 for 48th triplets
-      } else {
-        duration = 16;
-      }
-
-      if (swing_percentage !== 0) {
-        // swing effects the note placement of the e and the a.  (1e&a)
-        // swing increases the distance between the 1 and the e ad shortens the distance between the e and the &
-        // likewise the distance between the & and the a is increased and the a and the 1 is shortened
-        //  So it sounds like this:   1-e&-a2-e&-a3-e&-a4-e&-a
-        var scaler = num_notes / num_notes_for_swing;
-        var val = i % (4 * scaler);
-
-        if (val < scaler) {
-          // this is the 1, increase the distance between this note and the e
-          duration += (duration * swing_percentage);
-        } else if (val < scaler * 2) {
-          // this is the e, shorten the distance between this note and the &
-          duration -= (duration * swing_percentage);
-        } else if (val < scaler * 3) {
-          // this is the &, increase the distance between this note and the a
-          duration += (duration * swing_percentage);
-        } else if (val < scaler * 4) {
-          // this is the a, shorten the distance between this note and the 2
-          duration -= (duration * swing_percentage);
-        }
-      }
-
-      // Metronome sounds.
-      var metronome_note: number | false = false;
-      var metronome_velocity = MIDI_VELOCITY_ACCENT;
       if (metronome_frequency > 0) {
-        var quarterNoteFrequency = (isTriplets ? 12 : 8);
-        var eighthNoteFrequency = (isTriplets ? 6 : 4);
-        var sixteenthNoteFrequency = (isTriplets ? 2 : 2);
-
-        var metronome_specific_index = i;
-        switch (offsetClickStartBeat) {
-          case "1":
-            // default do nothing
-            break;
-          case "E":
-            if (isTriplets)
-              console.log("OffsetClickStart error in MIDI_from_HH_Snare_Kick_Arrays");
-            // shift by one sixteenth note
-            metronome_specific_index -= sixteenthNoteFrequency;
-            break;
-          case "AND":
-            if (isTriplets)
-              console.log("OffsetClickStart error in MIDI_from_HH_Snare_Kick_Arrays");
-            // shift by two sixteenth notes
-            metronome_specific_index -= (2 * sixteenthNoteFrequency);
-            break;
-          case "A":
-            if (isTriplets)
-              console.log("OffsetClickStart error in MIDI_from_HH_Snare_Kick_Arrays");
-            // shift by three sixteenth notes
-            metronome_specific_index -= (3 * sixteenthNoteFrequency);
-            break;
-          case "TI":
-            if (!isTriplets)
-              console.log("OffsetClickStart error in MIDI_from_HH_Snare_Kick_Arrays");
-            // shift by one sixteenth note
-            metronome_specific_index -= sixteenthNoteFrequency * 2;
-            break;
-          case "TA":
-            if (!isTriplets)
-              console.log("OffsetClickStart error in MIDI_from_HH_Snare_Kick_Arrays");
-            // shift by two sixteenth notes
-            metronome_specific_index -= (2 * (sixteenthNoteFrequency * 2));
-            break;
-          default:
-            console.log("bad case in MIDI_from_HH_Snare_Kick_Arrays");
-            break;
-        }
-
-        if (metronome_specific_index >= 0) { // can go negative due to MetronomeOffsetClickStart shift above
-          // Special sound on the one
-          if (metronome_specific_index === 0 || (metronome_specific_index % (quarterNoteFrequency * timeSig.top * (4 / timeSig.bottom.value))) === 0) {
-            metronome_note = MIDI_METRONOME_1; // 1 count
-
-          } else if ((metronome_specific_index % quarterNoteFrequency) === 0) {
-            metronome_note = MIDI_METRONOME_NORMAL; // standard metronome click
-          }
-
-          if (!metronome_note && metronome_frequency == 8) { // 8th notes requested
-            if ((metronome_specific_index % eighthNoteFrequency) === 0) {
-              // click every 8th note
-              metronome_note = MIDI_METRONOME_NORMAL; // standard metronome click
-            }
-
-          } else if (!metronome_note && metronome_frequency == 16) { // 16th notes requested
-            if ((metronome_specific_index % sixteenthNoteFrequency) === 0) {
-              // click every 16th note
-              metronome_note = MIDI_METRONOME_NORMAL; // standard metronome click
-              metronome_velocity = 25; // not as loud as the normal click
-            }
-          }
-        }
-
-        if (metronome_note !== false) {
-          //if(prev_metronome_note != false)
-          //	midiTrack.addNoteOff(midi_channel, prev_metronome_note, 0);
-          midiTrack.addNoteOn(midi_channel, metronome_note, delay_for_next_note, metronome_velocity);
-          delay_for_next_note = 0; // zero the delay
-          //prev_metronome_note = metronome_note;
+        const sixteenthNoteFrequency = 2;
+        const metronome_specific_index = i - metronomeOffsetShift(offsetClickStartBeat, isTriplets, sixteenthNoteFrequency);
+        const metronomeHit = metronomeNoteAt(metronome_specific_index, metronome_frequency, isTriplets, timeSig);
+        if (metronomeHit !== null) {
+          midiTrack.addNoteOn(midi_channel, metronomeHit.note, delay_for_next_note, metronomeHit.velocity);
+          delay_for_next_note = 0;
         }
       }
 
@@ -2898,6 +2877,9 @@ globalThis.tabCharToAbcNote = tabCharToAbcNote;
 (globalThis as any).snareMidiFor = snareMidiFor;
 (globalThis as any).kickMidiFor = kickMidiFor;
 (globalThis as any).tomMidiFor = tomMidiFor;
+(globalThis as any).swingAdjustedDuration = swingAdjustedDuration;
+(globalThis as any).metronomeOffsetShift = metronomeOffsetShift;
+(globalThis as any).metronomeNoteAt = metronomeNoteAt;
 (globalThis as any).decodeGrooveUrl = decodeGrooveUrl;
 (globalThis as any).encodeGrooveQueryString = encodeGrooveQueryString;
 (globalThis as any).buildMeasuresFromTabs = buildMeasuresFromTabs;

@@ -424,3 +424,108 @@ describe('MIDI note lookups', () => {
     });
   });
 });
+
+describe('swingAdjustedDuration', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  test('no swing returns base duration', () => {
+    for (let i = 0; i < 16; i++) {
+      expect(swingAdjustedDuration(i, 16, 0, 32, 8)).toEqual(16);
+    }
+  });
+
+  test('50% swing lengthens 1 & &, shortens e & a', () => {
+    // 16 sixteenths, num_notes_for_swing=8 → scaler=2, so pattern is 2-long per cell.
+    // Groups of 4*scaler=8: positions 0,1 = "1" (long), 2,3 = "e" (short),
+    // 4,5 = "&" (long), 6,7 = "a" (short).
+    expect(swingAdjustedDuration(0, 16, 0.5, 16, 8)).toEqual(24);
+    expect(swingAdjustedDuration(2, 16, 0.5, 16, 8)).toEqual(8);
+    expect(swingAdjustedDuration(4, 16, 0.5, 16, 8)).toEqual(24);
+    expect(swingAdjustedDuration(6, 16, 0.5, 16, 8)).toEqual(8);
+    // pattern repeats
+    expect(swingAdjustedDuration(8, 16, 0.5, 16, 8)).toEqual(24);
+  });
+
+  test('lengthening and shortening cancel across a full 1e&a group', () => {
+    const total = [0, 1, 2, 3].reduce((sum, i) => sum + swingAdjustedDuration(i, 16, 0.4, 4, 4), 0);
+    expect(total).toBeCloseTo(64, 5);
+  });
+});
+
+describe('metronomeOffsetShift', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  test('1 (downbeat) returns 0', () => {
+    expect(metronomeOffsetShift('1', false, 2)).toEqual(0);
+    expect(metronomeOffsetShift('1', true, 2)).toEqual(0);
+  });
+
+  test('straight subdivisions', () => {
+    expect(metronomeOffsetShift('E', false, 2)).toEqual(2);
+    expect(metronomeOffsetShift('AND', false, 2)).toEqual(4);
+    expect(metronomeOffsetShift('A', false, 2)).toEqual(6);
+  });
+
+  test('triplet subdivisions', () => {
+    expect(metronomeOffsetShift('TI', true, 2)).toEqual(4);
+    expect(metronomeOffsetShift('TA', true, 2)).toEqual(8);
+  });
+
+  test('unknown offset returns 0 (defensive default)', () => {
+    expect(metronomeOffsetShift('WAT', false, 2)).toEqual(0);
+  });
+});
+
+describe('metronomeNoteAt', () => {
+  let ts44;
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    ts44 = new TimeSignature(4, Subdivision.QUARTER);
+  });
+
+  test('negative index returns null (offset shift went before start)', () => {
+    expect(metronomeNoteAt(-1, 4, false, ts44)).toBeNull();
+  });
+
+  test('downbeat 1 gets MIDI_METRONOME_1 (loud)', () => {
+    const hit = metronomeNoteAt(0, 4, false, ts44);
+    expect(hit).toEqual({ note: 76, velocity: 120 });
+  });
+
+  test('beats 2/3/4 in 4/4 straight get MIDI_METRONOME_NORMAL', () => {
+    // quarterNoteFrequency=8 → beats fire at 8, 16, 24
+    expect(metronomeNoteAt(8, 4, false, ts44)).toEqual({ note: 77, velocity: 120 });
+    expect(metronomeNoteAt(16, 4, false, ts44)).toEqual({ note: 77, velocity: 120 });
+    expect(metronomeNoteAt(24, 4, false, ts44)).toEqual({ note: 77, velocity: 120 });
+  });
+
+  test('off-beat positions fire only when frequency requests it', () => {
+    // index 4 is the "&" of beat 1 in straight 16ths (eighthNoteFrequency=4)
+    expect(metronomeNoteAt(4, 4, false, ts44)).toBeNull();
+    expect(metronomeNoteAt(4, 8, false, ts44)).toEqual({ note: 77, velocity: 120 });
+    // Note: on frequency=16, even 8th-note positions get the quieter velocity.
+    // The legacy code doesn't carve out 8ths within the 16ths pass.
+    expect(metronomeNoteAt(4, 16, false, ts44)).toEqual({ note: 77, velocity: 25 });
+  });
+
+  test('16th-note clicks are quieter (velocity 25)', () => {
+    // index 2 is the "e" of beat 1 — only fires on 16th frequency
+    expect(metronomeNoteAt(2, 16, false, ts44)).toEqual({ note: 77, velocity: 25 });
+    expect(metronomeNoteAt(2, 8, false, ts44)).toBeNull();
+  });
+
+  test('measure boundary in 4/4 loops back to MIDI_METRONOME_1', () => {
+    // measureFrequency = 8 * 4 * 1 = 32 → next downbeat at index 32
+    expect(metronomeNoteAt(32, 4, false, ts44)).toEqual({ note: 76, velocity: 120 });
+  });
+
+  test('triplets: beats fire every 12 notes', () => {
+    expect(metronomeNoteAt(12, 4, true, ts44)).toEqual({ note: 77, velocity: 120 });
+    expect(metronomeNoteAt(6, 4, true, ts44)).toBeNull();
+    expect(metronomeNoteAt(6, 8, true, ts44)).toEqual({ note: 77, velocity: 120 });
+  });
+});
