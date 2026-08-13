@@ -1824,6 +1824,10 @@ describe('Notion Embedding Options Measure Table', () => {
   });
 
   test('set_Default_notes populates default groove when loading URL with empty measures', () => {
+    document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+    `;
     const emptyMultiMeasureUrl = 'Mode=edit&TimeSig=4/4&Div=8&Comments=comments&Tempo=86&ShowTempo=1&RepeatBegins=1&RepeatEnds=1;2&RepeatEndings=2:1&MeasureText=1:e:end&H=|--------|--------|--------|&S=|--------|--------|--------|&K=|--------|--------|--------|';
     writer.set_Default_notes(emptyMultiMeasureUrl);
     expect(writer.data.numberOfMeasures).toBe(3);
@@ -1964,6 +1968,22 @@ describe('Notion Embedding Options Measure Table', () => {
       expect(reloadedWriter.get_hh2_state(0).url).toBe('r');
       expect(reloadedWriter.is_hh2_on(1)).toBe(false);
       expect(reloadedWriter.get_FullURLForPage()).toContain('H2=|r-------|');
+    });
+
+    test('convert() encodes H2 into embeddable link', () => {
+      document.body.innerHTML = `
+        <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+        <div id="musicalInput"></div>
+        <input type="text" id="convertedUrl" />
+        <div id="status"></div>
+      `;
+      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+      writer.set_hh2_state(0, 'crash', false);
+      writer.convert(false, false);
+
+      const convertedUrlElem = document.getElementById('convertedUrl');
+      expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
+      expect(convertedUrlElem.value).toContain('H2=|c-------|');
     });
   });
 });

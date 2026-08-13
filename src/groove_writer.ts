@@ -478,6 +478,7 @@ class GrooveWriter {
   selectedNoteIndex: number = 0;
   selectedInstrument: string = "snare";
   isConverting: boolean = false;
+  isInitializing: boolean = false;
 
   constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
     this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
@@ -2176,58 +2177,47 @@ class GrooveWriter {
   }
 
   convert(selectUrl: boolean = false, refreshSheetMusic: boolean = true): void {
+    if (document.getElementById("hi-hat0")) {
+      this.syncUIToMeasures();
+    }
     this.syncTableToGrooveWriter();
 
-    const args = typeof window !== "undefined" && window.location ? window.location.search : "";
-    var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
-
-    const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
-    const showTempo = showTempoElem ? showTempoElem.checked : (this.data ? this.data.showTempo : false);
-    if (this.data) {
-      this.data.showTempo = showTempo;
+    const tuneTitle = document.getElementById("tuneTitle") as HTMLInputElement | null;
+    if (tuneTitle && typeof tuneTitle.value === "string") {
+      this.data.title = tuneTitle.value.trim();
     }
-    if (showTempo) {
-      convertedUrl = convertedUrl + "&ShowTempo=1";
+    const tuneAuthor = document.getElementById("tuneAuthor") as HTMLInputElement | null;
+    if (tuneAuthor && typeof tuneAuthor.value === "string") {
+      this.data.author = tuneAuthor.value.trim();
     }
-
     const tuneComments = document.getElementById("tuneComments") as HTMLInputElement | null;
     const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
     const comments = (tuneComments && typeof tuneComments.value === "string" && tuneComments.value.trim().length > 0)
       ? tuneComments.value.trim()
       : (subTextElem && typeof subTextElem.value === "string" ? subTextElem.value.trim() : "");
     if (comments.length > 0) {
-      convertedUrl += "&Comments=" + encodeURIComponent(comments);
+      this.data.comments = comments;
+      this.data.subText = comments;
+    }
+
+    const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
+    const showTempo = showTempoElem ? showTempoElem.checked : (this.data ? this.data.showTempo : false);
+    if (this.data) {
+      this.data.showTempo = showTempo;
     }
 
     const tableData = this.getEmbedTableData();
     const rbElem = document.getElementById("repeatBegins") as HTMLInputElement | null;
-    const repeatBegins = tableData ? tableData.repeatBegins : (rbElem ? rbElem.value : "");
-    if (repeatBegins.length > 0) {
-      convertedUrl += "&RepeatBegins=" + repeatBegins;
-    }
-
     const reElem = document.getElementById("repeatEnds") as HTMLInputElement | null;
-    const repeatEnds = tableData ? tableData.repeatEnds : (reElem ? reElem.value : "");
-    if (repeatEnds.length > 0) {
-      convertedUrl += "&RepeatEnds=" + repeatEnds;
-    }
-
     const rendElem = document.getElementById("repeatEndings") as HTMLInputElement | null;
-    const repeatEndings = tableData ? tableData.repeatEndings : (rendElem ? rendElem.value : "");
-    if (repeatEndings.length > 0) {
-      convertedUrl += "&RepeatEndings=" + repeatEndings;
-    }
-
     const mtElem = document.getElementById("measureText") as HTMLInputElement | null;
-    const measureText = tableData ? tableData.measureText : (mtElem ? mtElem.value : "");
-    if (measureText.length > 0) {
-      convertedUrl += "&MeasureText=" + encodeAfterLastColon(measureText, true);
-    }
 
-    if (rbElem) rbElem.value = repeatBegins;
-    if (reElem) reElem.value = repeatEnds;
-    if (rendElem) rendElem.value = repeatEndings;
-    if (mtElem) mtElem.value = measureText;
+    if (rbElem && tableData) rbElem.value = tableData.repeatBegins;
+    if (reElem && tableData) reElem.value = tableData.repeatEnds;
+    if (rendElem && tableData) rendElem.value = tableData.repeatEndings;
+    if (mtElem && tableData) mtElem.value = tableData.measureText;
+
+    const convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + this.data.toQueryString();
 
     const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
     if (convertedUrlElement) {
@@ -3393,16 +3383,19 @@ class GrooveWriter {
     if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
 
     const npm = this.data.notesPerMeasure;
-    for (let m = 0; m < this.data.numberOfMeasures; m++) {
-      const measure = this.data.measures[m];
-      if (!measure) continue;
-      const start = m * npm;
-      for (const drum of DrumType.ALL) {
-        const chars: string[] = [];
-        for (let i = 0; i < npm; i++) {
-          chars.push(this.getDrumState(start + i, drum).url || '-');
+    const hasStaffInDOM = !!document.querySelector(".staff-container");
+    if (hasStaffInDOM) {
+      for (let m = 0; m < this.data.numberOfMeasures; m++) {
+        const measure = this.data.measures[m];
+        if (!measure) continue;
+        const start = m * npm;
+        for (const drum of DrumType.ALL) {
+          const chars: string[] = [];
+          for (let i = 0; i < npm; i++) {
+            chars.push(this.getDrumState(start + i, drum).url || '-');
+          }
+          measure.setDataFromString(drum, chars.join(''));
         }
-        measure.setDataFromString(drum, chars.join(''));
       }
     }
 
@@ -3462,35 +3455,40 @@ class GrooveWriter {
   }
 
   set_Default_notes(encodedURLData: string): void {
-    this.data.fromUrl(encodedURLData);
-    this.renderMeasureContainer();
-    this.applyMeasuresToUI();
+    this.isInitializing = true;
+    try {
+      this.data.fromUrl(encodedURLData);
+      this.renderMeasureContainer();
+      this.applyMeasuresToUI();
 
-    if (this.data.showToms)
-      this.showHideToms(true, true, true);
+      if (this.data.showToms)
+        this.showHideToms(true, true, true);
 
-    if (this.data.showStickings)
-      this.stickingsShowHide(true, true, true);
+      if (this.data.showStickings)
+        this.stickingsShowHide(true, true, true);
 
-    const titleInput = document.getElementById("tuneTitle") as HTMLInputElement | null;
-    if (titleInput) titleInput.value = this.data.title;
-    const authorInput = document.getElementById("tuneAuthor") as HTMLInputElement | null;
-    if (authorInput) authorInput.value = this.data.author;
-    const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
-    if (commentsInput) commentsInput.value = this.data.comments;
-    const showLegendCheckbox = document.getElementById("showLegend") as HTMLInputElement | null;
-    if (showLegendCheckbox) showLegendCheckbox.checked = this.data.showLegend;
-    const showTempoCheckbox = document.getElementById("showTempo") as HTMLInputElement | null;
-    if (showTempoCheckbox) showTempoCheckbox.checked = this.data.showTempo;
-    const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
-    if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
-    this.myGrooveUtils.isLegendVisible = this.data.showLegend;
-    this.myGrooveUtils.setTempo(this.data.tempo);
-    this.myGrooveUtils.setSwing(this.data.swingPercent);
-    this.setMetronomeFrequency(this.data.metronomeFrequency);
-    this.updateSheetMusic();
+      const titleInput = document.getElementById("tuneTitle") as HTMLInputElement | null;
+      if (titleInput) titleInput.value = this.data.title;
+      const authorInput = document.getElementById("tuneAuthor") as HTMLInputElement | null;
+      if (authorInput) authorInput.value = this.data.author;
+      const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
+      if (commentsInput) commentsInput.value = this.data.comments;
+      const showLegendCheckbox = document.getElementById("showLegend") as HTMLInputElement | null;
+      if (showLegendCheckbox) showLegendCheckbox.checked = this.data.showLegend;
+      const showTempoCheckbox = document.getElementById("showTempo") as HTMLInputElement | null;
+      if (showTempoCheckbox) showTempoCheckbox.checked = this.data.showTempo;
+      const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
+      if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
+      this.myGrooveUtils.isLegendVisible = this.data.showLegend;
+      this.myGrooveUtils.setTempo(this.data.tempo);
+      this.myGrooveUtils.setSwing(this.data.swingPercent);
+      this.setMetronomeFrequency(this.data.metronomeFrequency);
+      this.updateSheetMusic();
 
-    this.populateEmbedFromUrl(encodedURLData);
+      this.populateEmbedFromUrl(encodedURLData);
+    } finally {
+      this.isInitializing = false;
+    }
   }
 
   loadNewGroove(encodedURLData: string): void {
