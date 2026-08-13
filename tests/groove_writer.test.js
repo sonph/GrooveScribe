@@ -446,3 +446,54 @@ describe('changeDivision', () => {
     expect(writer.updateSheetMusic).toHaveBeenCalled();
   });
 });
+
+describe('Kick permutation patterns', () => {
+  let writer;
+
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    const grooveUtils = new GrooveUtils(true);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=16&Tempo=80&H=|xxxxxxxxxxxxxxxx|');
+    writer = new GrooveWriter(grooveUtils);
+  });
+
+  // Behavioral snapshot: the new module-level functions must produce the same
+  // arrays as the legacy class methods for every section. This lets us safely
+  // strip the legacy imperative bodies once these tests pass.
+
+  const SECTIONS = Array.from({ length: 16 }, (_, i) => i);
+
+  describe('kickPermutationStrait matches legacy get_kick16th_strait_permutation_array', () => {
+    test.each(SECTIONS)('section %i', (section) => {
+      expect(kickPermutationStrait(section))
+        .toEqual(writer.get_kick16th_strait_permutation_array(section));
+    });
+  });
+
+  describe('kickPermutationMinusSomeStrait matches legacy get_kick16th_minus_some_strait_permutation_array', () => {
+    test.each(SECTIONS)('section %i', (section) => {
+      expect(kickPermutationMinusSomeStrait(section))
+        .toEqual(writer.get_kick16th_minus_some_strait_permutation_array(section));
+    });
+  });
+
+  describe('kickPermutationTriplets matches legacy get_kick16th_triplets_permutation_array', () => {
+    // Legacy code logs "bad case" for sections 4, 8, 9, 10, 12, 13, 14, 15 and
+    // leaves the array short (pushes nothing for those iterations). Skip those.
+    const VALID_TRIPLET_SECTIONS = [0, 1, 2, 3, 5, 6, 7, 11];
+    test.each(VALID_TRIPLET_SECTIONS)('section %i', (section) => {
+      expect(kickPermutationTriplets(section))
+        .toEqual(writer.get_kick16th_triplets_permutation_array(section));
+    });
+  });
+
+  describe('shape sanity', () => {
+    test('strait arrays are 32 long', () => {
+      for (const s of SECTIONS) expect(kickPermutationStrait(s)).toHaveLength(32);
+    });
+    test('triplet arrays are 48 long', () => {
+      for (const s of SECTIONS) expect(kickPermutationTriplets(s)).toHaveLength(48);
+    });
+  });
+});

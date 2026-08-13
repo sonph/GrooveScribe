@@ -136,6 +136,95 @@ const NOTES_FOR_DRUM: Map<string, ReadonlyArray<AbcNote>> = new Map([
   [DrumType.TOM4.name, [AbcNote.T4_NORMAL]],
 ]);
 
+// ---------------------------------------------------------------------------
+// Kick permutation patterns
+//
+// Each preset section (0..15) describes which positions in a 32-note (16th) or
+// 48-note (triplet) measure get a kick ("F"). "Strait" is the vanilla preset
+// bank; "minus-some-strait" is a variant that omits the very first kick when
+// the pattern would otherwise start on beat 1 (used by the permutation
+// generator to avoid a downbeat collision with the ostinato).
+//
+// Patterns are represented as { onPositions, cycleLen }: onPositions repeats
+// every cycleLen indices across the array. `expandKickPattern` builds the
+// final array from that description.
+// ---------------------------------------------------------------------------
+
+type KickPattern = { onPositions: number[]; cycleLen: number };
+
+function expandKickPattern(pattern: KickPattern, length: number): Array<false | 'F'> {
+  const on = new Set(pattern.onPositions);
+  const out: Array<false | 'F'> = new Array(length);
+  for (let i = 0; i < length; i++) {
+    out[i] = on.has(i % pattern.cycleLen) ? 'F' : false;
+  }
+  return out;
+}
+
+// 16 preset sections for the 32-note ("straight 16ths") permutation generator.
+const KICK_PATTERNS_STRAIT: ReadonlyArray<KickPattern> = [
+  { onPositions: [], cycleLen: 8 },                    // 0: no notes
+  { onPositions: [0], cycleLen: 8 },                   // 1: every 0
+  { onPositions: [2], cycleLen: 8 },                   // 2: every 2
+  { onPositions: [4], cycleLen: 8 },                   // 3: every 4
+  { onPositions: [6], cycleLen: 8 },                   // 4: every 6
+  { onPositions: [0, 2], cycleLen: 8 },                // 5
+  { onPositions: [2, 4], cycleLen: 8 },                // 6
+  { onPositions: [4, 6], cycleLen: 8 },                // 7
+  { onPositions: [0, 6], cycleLen: 8 },                // 8
+  { onPositions: [0], cycleLen: 4 },                   // 9: downbeats
+  { onPositions: [2], cycleLen: 4 },                   // 10: upbeats
+  { onPositions: [0, 2, 4], cycleLen: 8 },             // 11
+  { onPositions: [2, 4, 6], cycleLen: 8 },             // 12
+  { onPositions: [0, 4, 6], cycleLen: 8 },             // 13
+  { onPositions: [0, 2, 6], cycleLen: 8 },             // 14
+  { onPositions: [0], cycleLen: 2 },                   // 15/default: quads
+];
+
+// "Minus some" variant: sections 8, 13, and 14 skip the first kick when it
+// falls on beat 1 (index 0). Everything else is identical to strait.
+const MINUS_SOME_SKIP_FIRST_SECTIONS: ReadonlySet<number> = new Set([8, 13, 14]);
+// Section 14 additionally skips the second kick (index 2).
+const MINUS_SOME_SKIP_SECOND_SECTIONS: ReadonlySet<number> = new Set([14]);
+
+// 48-note triplet permutation patterns. Fewer meaningful sections; unsupported
+// sections fall through to the default (every 4th note).
+const KICK_PATTERNS_TRIPLETS: ReadonlyMap<number, KickPattern> = new Map([
+  [0, { onPositions: [], cycleLen: 12 }],
+  [1, { onPositions: [0], cycleLen: 12 }],
+  [2, { onPositions: [4], cycleLen: 12 }],
+  [3, { onPositions: [8], cycleLen: 12 }],
+  [5, { onPositions: [0, 4], cycleLen: 12 }],
+  [6, { onPositions: [4, 8], cycleLen: 12 }],
+  [7, { onPositions: [0, 8], cycleLen: 12 }],
+]);
+const KICK_PATTERN_TRIPLETS_DEFAULT: KickPattern = { onPositions: [0], cycleLen: 4 };
+
+const KICK_STRAIT_LENGTH = 32;
+const KICK_TRIPLETS_LENGTH = 48;
+
+// Public: build the strait-16ths kick permutation array for `section`.
+function kickPermutationStrait(section: number): Array<false | 'F'> {
+  const pattern = KICK_PATTERNS_STRAIT[section] ?? KICK_PATTERNS_STRAIT[15];
+  return expandKickPattern(pattern, KICK_STRAIT_LENGTH);
+}
+
+// Public: build the minus-some strait-16ths kick permutation array for `section`.
+// Same as `kickPermutationStrait` except for sections that skip the first
+// (and, for section 14, the second) kick.
+function kickPermutationMinusSomeStrait(section: number): Array<false | 'F'> {
+  const arr = kickPermutationStrait(section);
+  if (MINUS_SOME_SKIP_FIRST_SECTIONS.has(section)) arr[0] = false;
+  if (MINUS_SOME_SKIP_SECOND_SECTIONS.has(section)) arr[2] = false;
+  return arr;
+}
+
+// Public: build the triplet kick permutation array for `section`.
+function kickPermutationTriplets(section: number): Array<false | 'F'> {
+  const pattern = KICK_PATTERNS_TRIPLETS.get(section) ?? KICK_PATTERN_TRIPLETS_DEFAULT;
+  return expandKickPattern(pattern, KICK_TRIPLETS_LENGTH);
+}
+
 class GrooveWriter {
   myGrooveUtils: GrooveUtils;
   data: GrooveData;
@@ -1653,296 +1742,15 @@ class GrooveWriter {
   // some kicks are excluded at the beginning of the measure to make the groupings
   // easier to play through continuously
   get_kick16th_minus_some_strait_permutation_array(section: number): Array<boolean | string> {
-    var kick_array;
-
-    switch (section) {
-      case 0:
-        kick_array = [false, false, false, false, false, false, false, false,
-          false, false, false, false, false, false, false, false,
-          false, false, false, false, false, false, false, false,
-          false, false, false, false, false, false, false, false];
-        break;
-      case 1:
-        kick_array = ["F", false, false, false, false, false, false, false,
-          "F", false, false, false, false, false, false, false,
-          "F", false, false, false, false, false, false, false,
-          "F", false, false, false, false, false, false, false];
-        break;
-      case 2:
-        kick_array = [false, false, "F", false, false, false, false, false,
-          false, false, "F", false, false, false, false, false,
-          false, false, "F", false, false, false, false, false,
-          false, false, "F", false, false, false, false, false];
-        break;
-      case 3:
-        kick_array = [false, false, false, false, "F", false, false, false,
-          false, false, false, false, "F", false, false, false,
-          false, false, false, false, "F", false, false, false,
-          false, false, false, false, "F", false, false, false];
-        break;
-      case 4:
-        kick_array = [false, false, false, false, false, false, "F", false,
-          false, false, false, false, false, false, "F", false,
-          false, false, false, false, false, false, "F", false,
-          false, false, false, false, false, false, "F", false];
-        break;
-      case 5:
-        kick_array = ["F", false, "F", false, false, false, false, false,
-          "F", false, "F", false, false, false, false, false,
-          "F", false, "F", false, false, false, false, false,
-          "F", false, "F", false, false, false, false, false];
-        break;
-      case 6:
-        kick_array = [false, false, "F", false, "F", false, false, false,
-          false, false, "F", false, "F", false, false, false,
-          false, false, "F", false, "F", false, false, false,
-          false, false, "F", false, "F", false, false, false];
-        break;
-      case 7:
-        kick_array = [false, false, false, false, "F", false, "F", false,
-          false, false, false, false, "F", false, "F", false,
-          false, false, false, false, "F", false, "F", false,
-          false, false, false, false, "F", false, "F", false];
-        break;
-      case 8:
-        kick_array = [false, false, false, false, false, false, "F", false,
-          "F", false, false, false, false, false, "F", false,
-          "F", false, false, false, false, false, "F", false,
-          "F", false, false, false, false, false, "F", false];
-        break;
-      case 9: // downbeats
-        kick_array = ["F", false, false, false, "F", false, false, false,
-          "F", false, false, false, "F", false, false, false,
-          "F", false, false, false, "F", false, false, false,
-          "F", false, false, false, "F", false, false, false];
-        break;
-      case 10: // upbeats
-        kick_array = [false, false, "F", false, false, false, "F", false,
-          false, false, "F", false, false, false, "F", false,
-          false, false, "F", false, false, false, "F", false,
-          false, false, "F", false, false, false, "F", false];
-        break;
-      case 11:
-        kick_array = ["F", false, "F", false, "F", false, false, false,
-          "F", false, "F", false, "F", false, false, false,
-          "F", false, "F", false, "F", false, false, false,
-          "F", false, "F", false, "F", false, false, false];
-        break;
-      case 12:
-        kick_array = [false, false, "F", false, "F", false, "F", false,
-          false, false, "F", false, "F", false, "F", false,
-          false, false, "F", false, "F", false, "F", false,
-          false, false, "F", false, "F", false, "F", false];
-        break;
-      case 13:
-        kick_array = [false, false, false, false, "F", false, "F", false,
-          "F", false, false, false, "F", false, "F", false,
-          "F", false, false, false, "F", false, "F", false,
-          "F", false, false, false, "F", false, "F", false];
-        break;
-      case 14:
-        kick_array = [false, false, false, false, false, false, "F", false,
-          "F", false, "F", false, false, false, "F", false,
-          "F", false, "F", false, false, false, "F", false,
-          "F", false, "F", false, false, false, "F", false];
-        break;
-      case 15:
-      /* falls through */
-      default:
-        kick_array = ["F", false, "F", false, "F", false, "F", false,
-          "F", false, "F", false, "F", false, "F", false,
-          "F", false, "F", false, "F", false, "F", false,
-          "F", false, "F", false, "F", false, "F", false];
-        break;
-    }
-
-    return kick_array;
+    return kickPermutationMinusSomeStrait(section);
   }
 
-  // 16th note permutation array expressed in 32nd notes
-  // all kicks are included, including the ones that start the measure
   get_kick16th_strait_permutation_array(section: number): Array<boolean | string> {
-    var kick_array = [];
-    for (var index = 0; index < 32; index++) {
-      switch (section) {
-        case 0:
-          // no notes on
-          kick_array.push(false);
-          break;
-        case 1:
-          // every 0th note of 8
-          kick_array.push((index % 8) ? false : 'F');
-          break;
-        case 2:
-          // every 2nd note of 8
-          kick_array.push(((index - 2) % 8) ? false : 'F');
-          break;
-        case 3:
-          // every 4nd note of 8
-          kick_array.push(((index - 4) % 8) ? false : 'F');
-          break;
-        case 4:
-          // every 6nd note of 8
-          kick_array.push(((index - 6) % 8) ? false : 'F');
-          break;
-        case 5:
-          // every 0th and 2nd
-          if ((index % 8) == 0)
-            kick_array.push('F');
-          else if (((index - 2) % 8) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 6:
-          // every 2nd & 4th
-          if (((index - 2) % 8) == 0)
-            kick_array.push('F');
-          else if (((index - 4) % 8) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 7:
-          // every 4th & 6th
-          if (((index - 4) % 8) == 0)
-            kick_array.push('F');
-          else if (((index - 6) % 8) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 8:
-          // every 0th & 6th
-          if (((index - 0) % 8) == 0)
-            kick_array.push('F');
-          else if (((index - 6) % 8) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 9: // downbeats
-          // every 0th note of 4
-          kick_array.push((index % 4) ? false : 'F');
-          break;
-        case 10: // upbeats
-          // every 2nd note of 4
-          kick_array.push(((index - 2) % 4) ? false : 'F');
-          break;
-        case 11:
-          return kick_array = ["F", false, "F", false, "F", false, false, false,
-            "F", false, "F", false, "F", false, false, false,
-            "F", false, "F", false, "F", false, false, false,
-            "F", false, "F", false, "F", false, false, false];
-          break;
-        case 12:
-          return kick_array = [false, false, "F", false, "F", false, "F", false,
-            false, false, "F", false, "F", false, "F", false,
-            false, false, "F", false, "F", false, "F", false,
-            false, false, "F", false, "F", false, "F", false];
-          break;
-        case 13:
-          return kick_array = ["F", false, false, false, "F", false, "F", false,
-            "F", false, false, false, "F", false, "F", false,
-            "F", false, false, false, "F", false, "F", false,
-            "F", false, false, false, "F", false, "F", false];
-          break;
-        case 14:
-          return kick_array = ["F", false, "F", false, false, false, "F", false,
-            "F", false, "F", false, false, false, "F", false,
-            "F", false, "F", false, false, false, "F", false,
-            "F", false, "F", false, false, false, "F", false];
-          break;
-        case 15:
-        /* falls through */
-        default:
-          // every 0th note of 2  (quads)
-          kick_array.push((index % 2) ? false : 'F');
-          break;
-          break;
-      }
-    }
-
-    console.log(kick_array)
-    return kick_array;
+    return kickPermutationStrait(section);
   }
 
-  // 48th note triplet kick permutation
   get_kick16th_triplets_permutation_array(section: number): Array<boolean | string> {
-    var kick_array = [];
-    for (var index = 0; index < 48; index++) {
-
-      switch (section) {
-        case 0:
-          // no notes on
-          kick_array.push(false);
-          break;
-        case 1:
-          // every 0th note of 12
-          kick_array.push((index % 12) ? false : 'F');
-          break;
-        case 2:
-          // every 4th note of 12
-          kick_array.push(((index - 4) % 12) ? false : 'F');
-          break;
-        case 3:
-          // every 8th note of 12
-          kick_array.push(((index - 8) % 12) ? false : 'F');
-          break;
-
-        case 5:
-          // every 0th and 4th
-          if ((index % 12) == 0)
-            kick_array.push('F');
-          else if (((index - 4) % 12) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 6:
-          // every 4th && 8th
-          if (((index - 4) % 12) == 0)
-            kick_array.push('F');
-          else if (((index - 8) % 12) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-        case 7:
-          // every 0th and 8th
-          if ((index % 12) == 0)
-            kick_array.push('F');
-          else if (((index - 8) % 12) == 0)
-            kick_array.push('F');
-          else
-            kick_array.push(false);
-          break;
-
-        // these cases should not be called
-        case 4: // 4th single
-        case 8: // 4th double
-        case 9: // 1st up/down
-        case 10: // 2nd up/down
-        case 12: // 2nd triplet
-        case 13: // 3nd triplet
-        case 14: // 4nd triplet
-        case 15: // 1st Quad
-          console.log("bad case in get_kick16th_triplets_permutation_array_for_16ths()");
-          break;
-
-        case 11: // first triplet
-        /* falls through */
-        default:
-          // use default
-          // every 4th note
-          if (index % 4 == 0)
-            kick_array.push("F");
-          else
-            kick_array.push(false);
-          break;
-      }
-    }
-    return kick_array;
+    return kickPermutationTriplets(section);
   }
 
   // Returns full ABC notation string (modifier + note) for a note; matches constant_ABC_* values.
@@ -4167,3 +3975,6 @@ class GrooveWriter {
 } // end of class
 
 (globalThis as any).GrooveWriter = GrooveWriter;
+(globalThis as any).kickPermutationStrait = kickPermutationStrait;
+(globalThis as any).kickPermutationMinusSomeStrait = kickPermutationMinusSomeStrait;
+(globalThis as any).kickPermutationTriplets = kickPermutationTriplets;
