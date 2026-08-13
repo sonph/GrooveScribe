@@ -82,14 +82,32 @@ describe('State setters and getters', () => {
     expect(writer.is_kick_on(0)).toBe(false);
   });
 
-  test('set_tom1_state("normal") turns tom1 on', () => {
+  test('set_tom1_state("normal") turns tom1 on and set_tom1_state("off") turns tom1 off', () => {
     writer.set_tom1_state(0, 'normal');
     expect(writer.is_tom_on(0, 1)).toBe(true);
+    writer.set_tom1_state(0, 'off');
+    expect(writer.is_tom_on(0, 1)).toBe(false);
   });
 
-  test('set_tom4_state("normal") turns tom4 on', () => {
+  test('set_tom4_state("normal") turns tom4 on and set_tom4_state("off") turns tom4 off', () => {
     writer.set_tom4_state(0, 'normal');
     expect(writer.is_tom_on(0, 4)).toBe(true);
+    writer.set_tom4_state(0, 'off');
+    expect(writer.is_tom_on(0, 4)).toBe(false);
+  });
+
+  test('set_hh2_state correctly updates state and UI and turns off', () => {
+    expect(writer.is_hh2_on(0)).toBe(false);
+
+    writer.set_hh2_state(0, 'ride_bell');
+    expect(writer.is_hh2_on(0)).toBe(true);
+    expect(writer.get_hh2_state(0).url).toBe('b');
+
+    writer.set_hh2_state(0, 'crash');
+    expect(writer.get_hh2_state(0).url).toBe('c');
+
+    writer.set_hh2_state(0, 'off');
+    expect(writer.is_hh2_on(0)).toBe(false);
   });
 
   test('set_sticking_state("right") sets sticking to R', () => {
@@ -218,19 +236,25 @@ describe('All drum modes round-trip through set/get state', () => {
     expect(state.url).toBe('o');
   });
 
-  test.each(['hh', 'snare', 'kick', 'sticking'])(
+  test.each(['hh', 'hh2', 'snare', 'kick', 'sticking', 'tom1', 'tom4'])(
     '%s unknown mode falls back to off', (drum) => {
     const setters = {
       hh: () => writer.set_hh_state(0, 'nonsense'),
+      hh2: () => writer.set_hh2_state(0, 'nonsense'),
       snare: () => writer.set_snare_state(0, 'nonsense'),
       kick: () => writer.set_kick_state(0, 'nonsense'),
       sticking: () => writer.set_sticking_state(0, 'nonsense'),
+      tom1: () => writer.set_tom1_state(0, 'nonsense'),
+      tom4: () => writer.set_tom4_state(0, 'nonsense'),
     };
     const getters = {
       hh: () => writer.get_hh_state(0),
+      hh2: () => writer.get_hh2_state(0),
       snare: () => writer.get_snare_state(0),
       kick: () => writer.get_kick_state(0),
       sticking: () => writer.get_sticking_state(0),
+      tom1: () => writer.get_tom_state(0, 1),
+      tom4: () => writer.get_tom_state(0, 4),
     };
     setters[drum]();
     expect(getters[drum]().abc).toBe(false);
@@ -256,12 +280,23 @@ describe('All drum modes round-trip through set/get state', () => {
 
     writer.set_snare_state(0, 'accent');
     expect(writer.getDrumState(0, DrumType.SNARE)).toEqual({ abc: '!accent!c', url: 'O' });
+
+    writer.set_hh2_state(0, 'crash');
+    expect(writer.getDrumState(0, DrumType.HIHAT2)).toEqual({ abc: "^c'", url: 'c' });
+
+    writer.set_tom1_state(0, 'normal');
+    expect(writer.getDrumState(0, DrumType.TOM1)).toEqual({ abc: 'e', url: 'o' });
+
+    writer.set_tom4_state(0, 'normal');
+    expect(writer.getDrumState(0, DrumType.TOM4)).toEqual({ abc: 'A', url: 'o' });
   });
 
   test('empty state returns abc=false, url=-', () => {
     // Fresh cell — nothing set.
     expect(writer.get_hh_state(0).abc).toBe(false);
     expect(writer.get_hh_state(0).url).toBe('-');
+    expect(writer.get_hh2_state(0).abc).toBe(false);
+    expect(writer.get_hh2_state(0).url).toBe('-');
     expect(writer.get_snare_state(0).abc).toBe(false);
     expect(writer.get_kick_state(0).abc).toBe(false);
     expect(writer.get_tom_state(0, 1).abc).toBe(false);
@@ -270,10 +305,10 @@ describe('All drum modes round-trip through set/get state', () => {
   });
 });
 
-describe('Note context menu lifecycle', () => {
+describe('Note context menu and interactive editing lifecycle', () => {
   let grooveUtils, writer;
 
-  const CONTEXT_MENU_IDS = ['hhContextMenu', 'snareContextMenu', 'kickContextMenu',
+  const CONTEXT_MENU_IDS = ['hhContextMenu', 'hh2ContextMenu', 'snareContextMenu', 'kickContextMenu',
     'stickingContextMenu', 'tom1ContextMenu', 'tom4ContextMenu'];
 
   const menuMarkup = CONTEXT_MENU_IDS.map(id => `<div id="${id}"></div>`).join('');
@@ -298,6 +333,7 @@ describe('Note context menu lifecycle', () => {
 
   test.each([
     ['hh', 'hhContextMenu'],
+    ['hh2', 'hh2ContextMenu'],
     ['snare', 'snareContextMenu'],
     ['kick', 'kickContextMenu'],
     ['sticking', 'stickingContextMenu'],
@@ -355,6 +391,62 @@ describe('Note context menu lifecycle', () => {
   test('closeNoteContextMenu is safe when no menu is open', () => {
     expect(() => writer.closeNoteContextMenu()).not.toThrow();
     expect(writer.insertNoteContextMenu).toBeNull();
+  });
+
+  test('noteLeftClick toggles note on and off across drum types', () => {
+    ['hh', 'hh2', 'snare', 'kick', 'tom1', 'tom4'].forEach(drum => {
+      const isNoteOn = (drum === 'hh2') ? () => writer.is_hh2_on(2) :
+                       (drum === 'tom1') ? () => writer.is_tom_on(2, 1) :
+                       (drum === 'tom4') ? () => writer.is_tom_on(2, 4) :
+                       (drum === 'snare') ? () => writer.is_snare_on(2) :
+                       (drum === 'kick') ? () => writer.is_kick_on(2) :
+                       () => writer.is_hh_on(2);
+
+      expect(isNoteOn()).toBe(false);
+      writer.noteLeftClick({ preventDefault: () => {} }, drum, 2);
+      expect(isNoteOn()).toBe(true);
+      writer.noteLeftClick({ preventDefault: () => {} }, drum, 2);
+      expect(isNoteOn()).toBe(false);
+    });
+  });
+
+  test('noteLabelPopupClick batch operations on instruments', () => {
+    // hh2 batch operations
+    writer.noteLabelPopupClick('hh2', 'all_on', 1);
+    for (let i = 0; i < 8; i++) {
+      expect(writer.is_hh2_on(i)).toBe(true);
+    }
+
+    writer.noteLabelPopupClick('hh2', 'all_off', 1);
+    for (let i = 0; i < 8; i++) {
+      expect(writer.is_hh2_on(i)).toBe(false);
+    }
+
+    writer.noteLabelPopupClick('hh2', 'downbeats', 1);
+    expect(writer.is_hh2_on(0)).toBe(true);
+    expect(writer.is_hh2_on(1)).toBe(false);
+    expect(writer.is_hh2_on(2)).toBe(true);
+    expect(writer.is_hh2_on(3)).toBe(false);
+
+    writer.noteLabelPopupClick('hh2', 'upbeats', 1);
+    expect(writer.is_hh2_on(0)).toBe(false);
+    expect(writer.is_hh2_on(1)).toBe(true);
+    expect(writer.is_hh2_on(2)).toBe(false);
+    expect(writer.is_hh2_on(3)).toBe(true);
+  });
+
+  test('muteInstrument toggles mute button and audio state', () => {
+    document.body.innerHTML = `
+      <div id="unmutehh2Button1" style="display: none;"></div>
+      <div id="unmutesnareButton1" style="display: none;"></div>
+    `;
+    writer.muteInstrument('hh2', 1, true);
+    expect(document.getElementById('unmutehh2Button1').style.display).toBe('inline-block');
+    expect(writer.isInstrumentMuted('hh2', 1)).toBe(true);
+
+    writer.muteInstrument('hh2', 1, false);
+    expect(document.getElementById('unmutehh2Button1').style.display).toBe('none');
+    expect(writer.isInstrumentMuted('hh2', 1)).toBe(false);
   });
 });
 
@@ -592,6 +684,30 @@ describe('MIDI and Note Mapping in GrooveWriter', () => {
     expect(grooveUtils.note_mapping_array.length).toBeGreaterThan(0);
     // Position 0 has kick and hi-hat -> should be true
     expect(grooveUtils.note_mapping_array[0]).toBe(true);
+  });
+
+  test('get32NoteArrayFromClickableUI extracts note arrays for all instruments including HH2 and toms', () => {
+    writer.showHideToms(true, true, true);
+    writer.set_hh2_state(0, 'ride_bell', false);
+    writer.set_tom1_state(0, 'normal', false);
+    writer.set_tom4_state(0, 'normal', false);
+
+    const sticking = writer.get_empty_note_array_in_32nds();
+    const hh = writer.get_empty_note_array_in_32nds();
+    const snare = writer.get_empty_note_array_in_32nds();
+    const kick = writer.get_empty_note_array_in_32nds();
+    const toms = [
+      writer.get_empty_note_array_in_32nds(),
+      writer.get_empty_note_array_in_32nds(),
+      writer.get_empty_note_array_in_32nds(),
+      writer.get_empty_note_array_in_32nds()
+    ];
+    const hh2 = writer.get_empty_note_array_in_32nds();
+
+    writer.get32NoteArrayFromClickableUI(sticking, hh, snare, kick, toms, 0, hh2);
+    expect(hh2[0]).toBe(constant_ABC_HH_Ride_Bell);
+    expect(toms[0][0]).toBe(constant_ABC_T1_Normal);
+    expect(toms[3][0]).toBe(constant_ABC_T4_Normal);
   });
 });
 
@@ -1265,7 +1381,7 @@ describe('LeftHandNav and Embedding Options', () => {
   });
 
   test('Undo restores notes after clearAllNotes', () => {
-    const url = 'TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|';
+    const url = 'TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&H2=|r-r-r-r-|&T1=|--o-----|&T4=|------o-|&S=|--o---o-|&K=|o---o---|';
     grooveUtils.data.fromUrl(url);
     document.body.innerHTML = `
       <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
@@ -1285,6 +1401,9 @@ describe('LeftHandNav and Embedding Options', () => {
 
     // Initial state: notes are present
     expect(writer.is_hh_on(0)).toBe(true);
+    expect(writer.is_hh2_on(0)).toBe(true);
+    expect(writer.is_tom_on(2, 1)).toBe(true);
+    expect(writer.is_tom_on(6, 4)).toBe(true);
     expect(writer.is_snare_on(2)).toBe(true);
     expect(writer.is_kick_on(0)).toBe(true);
 
@@ -1293,6 +1412,9 @@ describe('LeftHandNav and Embedding Options', () => {
 
     // All notes should be off
     expect(writer.is_hh_on(0)).toBe(false);
+    expect(writer.is_hh2_on(0)).toBe(false);
+    expect(writer.is_tom_on(2, 1)).toBe(false);
+    expect(writer.is_tom_on(6, 4)).toBe(false);
     expect(writer.is_snare_on(2)).toBe(false);
     expect(writer.is_kick_on(0)).toBe(false);
 
@@ -1301,6 +1423,9 @@ describe('LeftHandNav and Embedding Options', () => {
 
     // Notes should be restored
     expect(writer.is_hh_on(0)).toBe(true);
+    expect(writer.is_hh2_on(0)).toBe(true);
+    expect(writer.is_tom_on(2, 1)).toBe(true);
+    expect(writer.is_tom_on(6, 4)).toBe(true);
     expect(writer.is_snare_on(2)).toBe(true);
     expect(writer.is_kick_on(0)).toBe(true);
   });
@@ -1489,6 +1614,26 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(document.getElementById('tuneComments').value).toBe('Practice');
     expect(document.getElementById('showTempo').checked).toBe(true);
   });
+
+  test('set_Default_notes loads H2 and Tom notes and preserves them in URL round-trip', () => {
+    document.body.innerHTML = '<div id="measureContainer">' + writer.HTMLforStaffContainer(1, 0) + '</div>';
+    writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&H2=|r-------|&T1=|--o-----|&T4=|------o-|&S=|--o---o-|&K=|o---o---|');
+    expect(writer.is_hh2_on(0)).toBe(true);
+    expect(writer.get_hh2_state(0).url).toBe('r');
+    expect(writer.is_tom_on(2, 1)).toBe(true);
+    expect(writer.is_tom_on(6, 4)).toBe(true);
+    expect(writer.get_FullURLForPage()).toContain('H2=|r-------|');
+    expect(writer.get_FullURLForPage()).toContain('T1=|--o-----|');
+    expect(writer.get_FullURLForPage()).toContain('T4=|------o-|');
+
+    // Simulate page reload
+    const reloadedWriter = new GrooveWriter(new GrooveUtils(true));
+    reloadedWriter.set_Default_notes(writer.get_FullURLForPage());
+    expect(reloadedWriter.is_hh2_on(0)).toBe(true);
+    expect(reloadedWriter.get_hh2_state(0).url).toBe('r');
+    expect(reloadedWriter.is_tom_on(2, 1)).toBe(true);
+    expect(reloadedWriter.is_tom_on(6, 4)).toBe(true);
+  });
 });
 
 
@@ -1566,6 +1711,14 @@ describe('Notion Embedding Options Measure Table', () => {
   });
 
   test('embed link generates backward-compatible URL parameters from table data', () => {
+    document.getElementById('measureContainer').innerHTML = writer.HTMLforStaffContainer(1, 0);
+    writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    writer.showHideToms(true, true, true);
+    writer.set_hh2_state(0, 'crash', false);
+    writer.set_tom_state(2, 1, 'normal', false);
+    writer.set_tom_state(6, 4, 'normal', false);
+    writer.syncUIToMeasures();
+
     embed.renderEmbedMeasureTable(3);
     const tbody = document.getElementById('embedMeasureTableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -1598,6 +1751,9 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(convertedUrl).toContain('&RepeatEnds=2;3');
     expect(convertedUrl).toContain('&RepeatEndings=2:1;3:2');
     expect(convertedUrl).toContain('&MeasureText=1:b:Intro;3:e:Fill');
+    expect(convertedUrl).toContain('H2=|c-------|');
+    expect(convertedUrl).toContain('T1=|--o-----|');
+    expect(convertedUrl).toContain('T4=|------o-|');
   });
 
   test('table changes update myGrooveWriter ABC and sheet music', () => {
@@ -1819,175 +1975,5 @@ describe('Notion Embedding Options Measure Table', () => {
       expect(writer.data.measures[m].toString(DrumType.KICK)).toBe('o---o---');
       expect(writer.data.measures[m].toString(DrumType.SNARE)).toBe('--O---O-');
     }
-  });
-
-  describe('Cymbal 2 (HH2) interactive editing and state management', () => {
-    beforeEach(() => {
-      writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
-      document.body.innerHTML = `
-        <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
-        <div id="musicalInput"></div>
-        <div class="noteContextMenu">
-          <ul id="hh2ContextMenu" class="list"></ul>
-          <ul id="hh2LabelContextMenu" class="list"></ul>
-        </div>
-      `;
-      writer.applyMeasuresToUI();
-      writer.updateSheetMusic = jest.fn();
-      writer.playSingleNote = jest.fn();
-    });
-
-    test('get_hh2_state and set_hh2_state correctly update UI and data model', () => {
-      expect(writer.is_hh2_on(0)).toBe(false);
-
-      // Set to ride bell
-      writer.set_hh2_state(0, 'ride_bell', false);
-      expect(writer.is_hh2_on(0)).toBe(true);
-      expect(writer.get_hh2_state(0).url).toBe('b');
-
-      // Set to crash
-      writer.set_hh2_state(0, 'crash', false);
-      expect(writer.get_hh2_state(0).url).toBe('c');
-
-      // Set to off
-      writer.set_hh2_state(0, 'off', false);
-      expect(writer.is_hh2_on(0)).toBe(false);
-    });
-
-    test('noteLeftClick on hh2 toggles on and off', () => {
-      expect(writer.is_hh2_on(2)).toBe(false);
-
-      // Toggle on
-      writer.noteLeftClick({ preventDefault: () => {} }, 'hh2', 2);
-      expect(writer.is_hh2_on(2)).toBe(true);
-
-      // Toggle off
-      writer.noteLeftClick({ preventDefault: () => {} }, 'hh2', 2);
-      expect(writer.is_hh2_on(2)).toBe(false);
-    });
-
-    test('noteLabelPopupClick batch operations on hh2', () => {
-      // all_on
-      writer.noteLabelPopupClick('hh2', 'all_on', 1);
-      for (let i = 0; i < 8; i++) {
-        expect(writer.is_hh2_on(i)).toBe(true);
-      }
-
-      // all_off
-      writer.noteLabelPopupClick('hh2', 'all_off', 1);
-      for (let i = 0; i < 8; i++) {
-        expect(writer.is_hh2_on(i)).toBe(false);
-      }
-
-      // downbeats (0, 2, 4, 6 in 8th notes)
-      writer.noteLabelPopupClick('hh2', 'downbeats', 1);
-      expect(writer.is_hh2_on(0)).toBe(true);
-      expect(writer.is_hh2_on(1)).toBe(false);
-      expect(writer.is_hh2_on(2)).toBe(true);
-      expect(writer.is_hh2_on(3)).toBe(false);
-
-      // upbeats (1, 3, 5, 7 in 8th notes)
-      writer.noteLabelPopupClick('hh2', 'upbeats', 1);
-      expect(writer.is_hh2_on(0)).toBe(false);
-      expect(writer.is_hh2_on(1)).toBe(true);
-      expect(writer.is_hh2_on(2)).toBe(false);
-      expect(writer.is_hh2_on(3)).toBe(true);
-    });
-
-    test('muteInstrument on hh2 toggles mute button and audio state', () => {
-      writer.muteInstrument('hh2', 1, true);
-      const unmuteBtn = document.getElementById('unmutehh2Button1');
-      expect(unmuteBtn.style.display).toBe('inline-block');
-
-      writer.muteInstrument('hh2', 1, false);
-      expect(unmuteBtn.style.display).toBe('none');
-    });
-
-    test('clearAllNotes clears hh2 notes', () => {
-      writer.set_hh2_state(0, 'ride', false);
-      writer.set_hh2_state(1, 'crash', false);
-      expect(writer.is_hh2_on(0)).toBe(true);
-
-      writer.clearAllNotes();
-      expect(writer.is_hh2_on(0)).toBe(false);
-      expect(writer.is_hh2_on(1)).toBe(false);
-    });
-
-    test('get32NoteArrayFromClickableUI returns HH2 notes correctly', () => {
-      writer.set_hh2_state(0, 'ride_bell', false);
-      const sticking = writer.get_empty_note_array_in_32nds();
-      const hh = writer.get_empty_note_array_in_32nds();
-      const snare = writer.get_empty_note_array_in_32nds();
-      const kick = writer.get_empty_note_array_in_32nds();
-      const toms = [writer.get_empty_note_array_in_32nds(), writer.get_empty_note_array_in_32nds(), writer.get_empty_note_array_in_32nds(), writer.get_empty_note_array_in_32nds()];
-      const hh2 = writer.get_empty_note_array_in_32nds();
-
-      writer.get32NoteArrayFromClickableUI(sticking, hh, snare, kick, toms, 0, hh2);
-      expect(hh2[0]).toBe(constant_ABC_HH_Ride_Bell);
-    });
-
-    test('set_Default_notes loads H2 notes into UI correctly and preserves them in URL', () => {
-      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&H2=|x-x-x-x-|');
-      expect(writer.is_hh2_on(0)).toBe(true);
-      expect(writer.is_hh2_on(1)).toBe(false);
-      expect(writer.is_hh2_on(2)).toBe(true);
-      expect(writer.is_hh2_on(3)).toBe(false);
-      expect(writer.get_FullURLForPage()).toContain('H2=|x-x-x-x-|');
-    });
-
-    test('editing HH2 updates URL and reloads accurately on page refresh simulation', () => {
-      document.body.innerHTML = '<div id="measureContainer">' + writer.HTMLforStaffContainer(1, 0) + '</div>';
-      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
-      writer.set_hh2_state(0, 'ride', false);
-      writer.syncUIToMeasures();
-
-      const urlWithH2 = writer.get_FullURLForPage();
-      expect(urlWithH2).toContain('H2=|r-------|');
-
-      // Simulate refreshing page with generated URL
-      const reloadedWriter = new GrooveWriter(new GrooveUtils(true));
-      reloadedWriter.set_Default_notes(urlWithH2);
-      expect(reloadedWriter.is_hh2_on(0)).toBe(true);
-      expect(reloadedWriter.get_hh2_state(0).url).toBe('r');
-      expect(reloadedWriter.is_hh2_on(1)).toBe(false);
-      expect(reloadedWriter.get_FullURLForPage()).toContain('H2=|r-------|');
-    });
-
-    test('updateEmbedLink() encodes H2 into embeddable link', () => {
-      document.body.innerHTML = `
-        <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
-        <div id="musicalInput"></div>
-        <input type="text" id="convertedUrl" />
-        <div id="status"></div>
-      `;
-      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
-      writer.set_hh2_state(0, 'crash', false);
-      writer.syncUIToMeasures();
-      writer.updateEmbedLink();
-
-      const convertedUrlElem = document.getElementById('convertedUrl');
-      expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
-      expect(convertedUrlElem.value).toContain('H2=|c-------|');
-    });
-
-    test('updateEmbedLink() encodes Toms (T1, T4) into embeddable link when toms are shown and notes exist', () => {
-      document.body.innerHTML = `
-        <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
-        <div id="musicalInput"></div>
-        <input type="text" id="convertedUrl" />
-        <div id="status"></div>
-      `;
-      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
-      writer.showHideToms(true, true, true);
-      writer.set_tom_state(2, 1, 'normal', false);
-      writer.set_tom_state(6, 4, 'normal', false);
-      writer.syncUIToMeasures();
-      writer.updateEmbedLink();
-
-      const convertedUrlElem = document.getElementById('convertedUrl');
-      expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
-      expect(convertedUrlElem.value).toContain('T1=|--o-----|');
-      expect(convertedUrlElem.value).toContain('T4=|------o-|');
-    });
   });
 });
