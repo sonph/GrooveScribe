@@ -351,6 +351,13 @@ describe('Measure to ABC', () => {
     const abc = data.getAbcNotation();
     expect(abc).toContain("(12:12:12[^g1F1]z1z1^g1^g1z1z1^g1[^g1F1]^g1^g1z1 (12:12:12!accent![c1^g1]z1e1[^A'1e1]^g1z1F1z1^g1A1z1z1 (12:12:12[^g1F1A1][!(.!!).!c1A1]^c'1z1^g1!accent!^g1[!(.!!).!c1F1]z1^g1z1!///!c1F1 (12:12:12!accent![c1^g1F1]F1F1z1[^g1F1]z1F1z1[^g1F1]z1F1z1 ||");
   });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=12&Tempo=80&Measures=1&H=|x--x--x--x--|&S=|---O-----O--|&K=|X-----X-----|
+  test('should convert measure to ABC notation -- kick and hi hat pedal', () => {
+    data.fromUrl('TimeSig=4/4&Div=12&Tempo=80&Measures=1&H=|x--x--x--x--|&S=|---O-----O--|&K=|X-----X-----|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('[^g8F^d,8] !accent![c8^g8] [^g8F^d,8] !accent![c8^g8] ||');
+  });
 });
 
 describe('MIDI note lookups', () => {

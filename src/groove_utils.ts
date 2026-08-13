@@ -129,7 +129,9 @@ function snareMidiFor(abcVal, midi_output_type: string): { note: number; velocit
 function kickMidiFor(abcVal): { kick: number | null; splash: number | null } {
   switch (abcVal) {
     case constant_ABC_KI_Splash: return { kick: null, splash: MIDI_HIHAT_FOOT };
-    case constant_ABC_KI_SandK: return { kick: MIDI_KICK_NORMAL, splash: MIDI_HIHAT_FOOT };
+    case constant_ABC_KI_SandK:
+    case "[F^d,]":
+      return { kick: MIDI_KICK_NORMAL, splash: MIDI_HIHAT_FOOT };
     case constant_ABC_KI_Normal: return { kick: MIDI_KICK_NORMAL, splash: null };
     default: return { kick: null, splash: null };
   }
@@ -941,7 +943,12 @@ class GrooveData {
       return;
     }
     if (notes.length === 1) {
-      abcs.push((notes[0].modifier || '') + notes[0].note + length);
+      if (notes[0].note.startsWith('[') && notes[0].note.endsWith(']')) {
+        const inner = notes[0].note.slice(1, -1);
+        abcs.push((notes[0].modifier || '') + '[' + inner + length + ']');
+      } else {
+        abcs.push((notes[0].modifier || '') + notes[0].note + length);
+      }
     } else {
       // Multiple notes, use a chord.
       // Accents have to be before and outside of brackets.
@@ -951,7 +958,10 @@ class GrooveData {
           accents.add(note.modifier || '');
         }
       }
-      abcs.push(Array.from(accents).join('') + '[' + notes.map(n => n.note + length).join('') + ']');
+      abcs.push(Array.from(accents).join('') + '[' + notes.map(n => {
+        const inner = n.note.startsWith('[') && n.note.endsWith(']') ? n.note.slice(1, -1) : n.note;
+        return inner + length;
+      }).join('') + ']');
     }
   }
 
@@ -1006,11 +1016,25 @@ class GrooveData {
       if (beat > 0) {
         line.push(' ');
       }
-      line.push(marker);
-      for (let k = 0; k < notesPerBeat; k++) {
-        const i = beat + k;
-        const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4);
-        GrooveData.appendAbcNotes(line, notes, noteLength);
+      let hasSubdivisions = false;
+      for (let k = 1; k < notesPerBeat; k++) {
+        if (GrooveData.hasNotesAtPosition(beat + k, hh, sn, kk, t1, t4)) {
+          hasSubdivisions = true;
+          break;
+        }
+      }
+
+      if (!hasSubdivisions) {
+        const beatLength = 32 / this.timeSig.bottom.value;
+        const notes = GrooveData.getTripletNotesAtPosition(beat, hh, sn, kk, t1, t4);
+        GrooveData.appendAbcNotes(line, notes, beatLength);
+      } else {
+        line.push(marker);
+        for (let k = 0; k < notesPerBeat; k++) {
+          const i = beat + k;
+          const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4);
+          GrooveData.appendAbcNotes(line, notes, noteLength);
+        }
       }
     }
   }
