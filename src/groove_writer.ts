@@ -38,9 +38,13 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["Escape", "off"],
       ["-", "off"],
       ["r", "right"],
+      ["R", "right"],
       ["l", "left"],
+      ["L", "left"],
       ["b", "both"],
-      ["c", "count"]])
+      ["B", "both"],
+      ["c", "count"],
+      ["C", "count"]])
   }],
   ["hhContextMenu", {
     type: "hh",
@@ -49,12 +53,18 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["-", "off"],
       ["x", "normal"],
       ["o", "open"],
+      ["O", "open"],
       ["X", "accent"],
       ["c", "crash"],
+      ["C", "crash"],
       ["r", "ride"],
+      ["R", "ride"],
       ["b", "ride_bell"],
+      ["B", "ride_bell"],
       ["m", "cow_bell"],
+      ["M", "cow_bell"],
       ["s", "stacker"],
+      ["S", "stacker"],
       ["k", "metronome_normal"],
       ["K", "metronome_accent"],
     ])
@@ -67,9 +77,13 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["o", "normal"],
       ["O", "accent"],
       ["g", "ghost"],
+      ["G", "ghost"],
       ["x", "xstick"],
+      ["X", "xstick"],
       ["d", "buzz"],
-      ["f", "flam"]])
+      ["D", "buzz"],
+      ["f", "flam"],
+      ["F", "flam"]])
   }],
   ["kickContextMenu", {
     type: "kick",
@@ -77,8 +91,37 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["Escape", "off"],
       ["-", "off"],
       ["o", "normal"],
+      ["O", "normal"],
       ["x", "splash"],
       ["X", "kick_and_splash"]])
+  }],
+  ["tom1ContextMenu", {
+    type: "tom1",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["o", "normal"],
+      ["O", "normal"],
+      ["x", "normal"],
+      ["X", "normal"],
+      ["t", "normal"],
+      ["T", "normal"],
+      ["1", "normal"],
+    ])
+  }],
+  ["tom4ContextMenu", {
+    type: "tom4",
+    note_mapping: new Map([
+      ["Escape", "off"],
+      ["-", "off"],
+      ["o", "normal"],
+      ["O", "normal"],
+      ["x", "normal"],
+      ["X", "normal"],
+      ["t", "normal"],
+      ["T", "normal"],
+      ["4", "normal"],
+    ])
   }]]);
 
 // Mode name -> AbcNote per drum. Any mode not listed here (including "off")
@@ -336,6 +379,16 @@ class GrooveWriter {
   have_shown_mixed_division_message: boolean = false;
   class_app_title: string = "Groove Scribe";
   class_measure_for_note_label_click: number = 0;
+  isMeasureContainerActive: boolean = false;
+  isAudioPlaying: boolean = false;
+  get isMeasureContainerSelected(): boolean {
+    return this.isMeasureContainerActive;
+  }
+  set isMeasureContainerSelected(val: boolean) {
+    this.isMeasureContainerActive = val;
+  }
+  selectedNoteIndex: number = 0;
+  selectedInstrument: string = "snare";
 
   constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
     this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
@@ -895,6 +948,8 @@ class GrooveWriter {
   }
 
   noteLabelClick(event: MouseEvent | null, instrument: string, measure: number): boolean {
+    this.selectedInstrument = instrument === "stickings" ? "sticking" : instrument;
+    this.setMeasureContainerSelected(true);
     this.class_measure_for_note_label_click = measure;
     const contextMenu = document.getElementById(instrument + "LabelContextMenu");
     if (contextMenu) {
@@ -1012,6 +1067,9 @@ class GrooveWriter {
   };
 
   noteRightClick(event: MouseEvent | null, type: string, id: number): boolean {
+    this.selectedInstrument = type;
+    this.selectedNoteIndex = id;
+    this.setMeasureContainerSelected(true);
     this.class_which_index_last_clicked = id;
     this.insertNoteContextMenu = document.getElementById(type + "ContextMenu");
 
@@ -1052,6 +1110,9 @@ class GrooveWriter {
   };
 
   noteLeftClick = (event: MouseEvent, type: string, id: number): void => {
+    this.selectedInstrument = type;
+    this.selectedNoteIndex = id;
+    this.setMeasureContainerSelected(true);
     if (this.class_advancedEditIsOn === true) {
       this.noteRightClick(event, type, id);
     } else {
@@ -1854,6 +1915,8 @@ class GrooveWriter {
     else
       this.addClassById("showHideTomsButton", "ClickToHide", false);
 
+    this.updateNavHighlights();
+
     if (!dontRefreshScreen)
       this.updateSheetMusic();
 
@@ -1877,6 +1940,8 @@ class GrooveWriter {
     } else {
       this.addClassById("stickingsButton", "ClickToHide", false);
     }
+
+    this.updateNavHighlights();
 
     if (!dontRefreshScreen) {
       this.updateSheetMusic();
@@ -1906,8 +1971,404 @@ class GrooveWriter {
     window.print();
   };
 
+  getVisibleInstrumentRows(): string[] {
+    const rows: string[] = [];
+    if (this.isStickingsVisible()) {
+      rows.push("sticking");
+    }
+    rows.push("hh");
+    if (this.isTomsVisible()) {
+      rows.push("tom1");
+    }
+    rows.push("snare");
+    if (this.isTomsVisible()) {
+      rows.push("tom4");
+    }
+    rows.push("kick");
+    return rows;
+  }
+
+  setMeasureContainerActive(active: boolean): void {
+    this.isMeasureContainerActive = active;
+    const rows = this.getVisibleInstrumentRows();
+    if (!rows.includes(this.selectedInstrument)) {
+      this.selectedInstrument = rows.includes("snare") ? "snare" : (rows[0] || "hh");
+    }
+    const maxNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    if (this.selectedNoteIndex < 0 || this.selectedNoteIndex >= maxNotes) {
+      this.selectedNoteIndex = 0;
+    }
+    this.updateNavHighlights();
+  }
+
+  setMeasureContainerSelected(selected: boolean): void {
+    this.setMeasureContainerActive(selected);
+  }
+
+  getNoteElement(instrument: string, index: number): HTMLElement | null {
+    switch (instrument) {
+      case "sticking":
+      case "stickings":
+        return document.getElementById("sticking" + index);
+      case "hh":
+        return document.getElementById("hi-hat" + index);
+      case "tom1":
+        return document.getElementById("tom1-" + index);
+      case "snare":
+        return document.getElementById("snare" + index);
+      case "tom4":
+        return document.getElementById("tom4-" + index);
+      case "kick":
+        return document.getElementById("kick" + index);
+      default:
+        return null;
+    }
+  }
+
+  clearNavHighlights(): void {
+    const container = document.getElementById("measureContainer");
+    if (container) {
+      container.classList.remove("nav-active");
+    }
+    const cols = document.querySelectorAll(".nav-col-highlight");
+    for (let i = 0; i < cols.length; i++) {
+      cols[i].classList.remove("nav-col-highlight");
+    }
+    const rows = document.querySelectorAll(".nav-row-highlight");
+    for (let i = 0; i < rows.length; i++) {
+      rows[i].classList.remove("nav-row-highlight");
+    }
+    const labels = document.querySelectorAll(".nav-label-highlight");
+    for (let i = 0; i < labels.length; i++) {
+      labels[i].classList.remove("nav-label-highlight");
+    }
+    const notes = document.querySelectorAll(".nav-note-cursor");
+    for (let i = 0; i < notes.length; i++) {
+      notes[i].classList.remove("nav-note-cursor");
+    }
+  }
+
+  updateNavHighlights(): void {
+    this.clearNavHighlights();
+    if (this.isAudioPlaying) return;
+
+    const container = document.getElementById("measureContainer");
+    if (container && this.isMeasureContainerActive) {
+      container.classList.add("nav-active");
+    }
+
+    const rows = this.getVisibleInstrumentRows();
+    if (!rows.includes(this.selectedInstrument)) {
+      this.selectedInstrument = rows.includes("snare") ? "snare" : (rows[0] || "hh");
+    }
+    const maxNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    if (this.selectedNoteIndex < 0 || this.selectedNoteIndex >= maxNotes) {
+      this.selectedNoteIndex = 0;
+    }
+
+    // Highlight column / stack of notes
+    const bgEle = document.getElementById("bg-highlight" + this.selectedNoteIndex);
+    if (bgEle) {
+      bgEle.classList.add("nav-col-highlight");
+    }
+    const allInstruments = ["sticking", "hh", "tom1", "snare", "tom4", "kick"];
+    for (const inst of allInstruments) {
+      const el = this.getNoteElement(inst, this.selectedNoteIndex);
+      if (el) {
+        el.classList.add("nav-col-highlight");
+      }
+    }
+
+    // Highlight row in active staff container
+    const measureIndex = Math.floor(this.selectedNoteIndex / this.data.notesPerMeasure) + 1;
+    const staff = document.getElementById("staff-container" + measureIndex);
+    if (staff) {
+      let rowSelector = "";
+      let labelSelector = "";
+      switch (this.selectedInstrument) {
+        case "sticking":
+        case "stickings":
+          rowSelector = ".stickings-container";
+          labelSelector = ".stickings-label";
+          break;
+        case "hh":
+          rowSelector = ".hi-hat-container";
+          labelSelector = ".hh-label";
+          break;
+        case "tom1":
+          rowSelector = "#tom1-container";
+          labelSelector = "#tom1-label";
+          break;
+        case "snare":
+          rowSelector = ".snare-container";
+          labelSelector = ".snare-label";
+          break;
+        case "tom4":
+          rowSelector = "#tom4-container";
+          labelSelector = "#tom4-label";
+          break;
+        case "kick":
+          rowSelector = ".kick-container";
+          labelSelector = ".kick-label";
+          break;
+      }
+      if (rowSelector) {
+        const rowEle = staff.querySelector(rowSelector);
+        if (rowEle) rowEle.classList.add("nav-row-highlight");
+      }
+      if (labelSelector) {
+        const labelEle = staff.querySelector(labelSelector);
+        if (labelEle) labelEle.classList.add("nav-label-highlight");
+      }
+    }
+
+    // Highlight active note cell
+    const noteEle = this.getNoteElement(this.selectedInstrument, this.selectedNoteIndex);
+    if (noteEle) {
+      noteEle.classList.add("nav-note-cursor");
+      if (typeof noteEle.scrollIntoView === "function") {
+        try {
+          noteEle.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+        } catch (_) {}
+      }
+    }
+  }
+
+  navigateMeasureNotes(delta: number): void {
+    const maxNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    if (maxNotes <= 0) return;
+    this.selectedNoteIndex = Math.max(0, Math.min(maxNotes - 1, this.selectedNoteIndex + delta));
+    this.setMeasureContainerSelected(true);
+  }
+
+  navigateMeasureRows(delta: number): void {
+    const rows = this.getVisibleInstrumentRows();
+    if (rows.length === 0) return;
+    let idx = rows.indexOf(this.selectedInstrument);
+    if (idx === -1) {
+      idx = rows.indexOf("snare") !== -1 ? rows.indexOf("snare") : 0;
+    }
+    const newIdx = Math.max(0, Math.min(rows.length - 1, idx + delta));
+    this.selectedInstrument = rows[newIdx];
+    this.setMeasureContainerSelected(true);
+  }
+
+  getModeForKey(instrument: string, key: string): string | null {
+    if (key === "Backspace" || key === "Delete" || key === "-" || key === "Escape") {
+      return "off";
+    }
+    const instrumentType = (instrument === "stickings" || instrument === "sticking") ? "sticking" : instrument;
+    const mapForType = POPUP_KEY_SHORTCUT_MAPPING.get(instrumentType + "ContextMenu");
+    if (!mapForType) return null;
+    return mapForType.note_mapping.get(key) ?? null;
+  }
+
+  setNoteFromNavigation(mode: string): void {
+    const instrument = (this.selectedInstrument === "stickings" || this.selectedInstrument === "sticking") ? "sticking" : this.selectedInstrument;
+    this._setDrumStateByType(instrument, this.selectedNoteIndex, mode);
+    this.updateSheetMusic();
+    this.updateNavHighlights();
+  }
+
+  handleMeasureContainerKeyDown = (e: KeyboardEvent): boolean => {
+    const target = e.target as HTMLElement;
+    if (target) {
+      const tag = target.tagName ? target.tagName.toUpperCase() : "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+        return false;
+      }
+      if (typeof target.closest === "function" && (target.closest("#embedTool") || target.closest("#sheetMusicTextFields"))) {
+        return false;
+      }
+    }
+
+    if (!this.isMeasureContainerSelected) {
+      return false;
+    }
+
+    if (this.insertNoteContextMenu) {
+      return false;
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      return false;
+    }
+
+    if (e.key === "ArrowLeft" || e.which === 37) {
+      this.navigateMeasureNotes(-1);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    if (e.key === "ArrowRight" || e.which === 39) {
+      this.navigateMeasureNotes(1);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    if (e.key === "ArrowUp" || e.which === 38) {
+      this.navigateMeasureRows(-1);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    if (e.key === "ArrowDown" || e.which === 40) {
+      this.navigateMeasureRows(1);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    if (e.key === "Backspace" || e.key === "Delete" || e.which === 8 || e.which === 46) {
+      this.setNoteFromNavigation("off");
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    if (e.key === "Escape") {
+      this.setMeasureContainerSelected(false);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    const mode = this.getModeForKey(this.selectedInstrument, e.key);
+    if (mode) {
+      this.setNoteFromNavigation(mode);
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+
+    return false;
+  };
+
+  handleElementClickSelection(target: HTMLElement): void {
+    if (!target || typeof target.closest !== "function") return;
+
+    // 1. Check for specific note element
+    const noteEl = target.closest(".hi-hat, .snare, .kick, .tom, .sticking") as HTMLElement | null;
+    if (noteEl && noteEl.id) {
+      const idStr = noteEl.id;
+      if (idStr.startsWith("hi-hat")) {
+        this.selectedInstrument = "hh";
+        const idx = parseInt(idStr.replace("hi-hat", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("snare")) {
+        this.selectedInstrument = "snare";
+        const idx = parseInt(idStr.replace("snare", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("kick")) {
+        this.selectedInstrument = "kick";
+        const idx = parseInt(idStr.replace("kick", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("tom1-")) {
+        this.selectedInstrument = "tom1";
+        const idx = parseInt(idStr.replace("tom1-", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("tom4-")) {
+        this.selectedInstrument = "tom4";
+        const idx = parseInt(idStr.replace("tom4-", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      } else if (idStr.startsWith("sticking")) {
+        this.selectedInstrument = "sticking";
+        const idx = parseInt(idStr.replace("sticking", ""), 10);
+        if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      }
+      return;
+    }
+
+    // 2. Check for background highlight column
+    const bgCol = target.closest(".bg-highlight") as HTMLElement | null;
+    if (bgCol && bgCol.id && bgCol.id.startsWith("bg-highlight")) {
+      const idx = parseInt(bgCol.id.replace("bg-highlight", ""), 10);
+      if (!isNaN(idx)) this.selectedNoteIndex = idx;
+      return;
+    }
+
+    // 3. Check for instrument labels
+    if (target.closest(".hh-label")) {
+      this.selectedInstrument = "hh";
+      return;
+    }
+    if (target.closest("#tom1-label")) {
+      this.selectedInstrument = "tom1";
+      return;
+    }
+    if (target.closest(".snare-label")) {
+      this.selectedInstrument = "snare";
+      return;
+    }
+    if (target.closest("#tom4-label")) {
+      this.selectedInstrument = "tom4";
+      return;
+    }
+    if (target.closest(".kick-label")) {
+      this.selectedInstrument = "kick";
+      return;
+    }
+    if (target.closest(".stickings-label")) {
+      this.selectedInstrument = "sticking";
+      return;
+    }
+
+    // 4. Check for row containers
+    if (target.closest(".hi-hat-container")) {
+      this.selectedInstrument = "hh";
+    } else if (target.closest("#tom1-container")) {
+      this.selectedInstrument = "tom1";
+    } else if (target.closest(".snare-container")) {
+      this.selectedInstrument = "snare";
+    } else if (target.closest("#tom4-container")) {
+      this.selectedInstrument = "tom4";
+    } else if (target.closest(".kick-container")) {
+      this.selectedInstrument = "kick";
+    } else if (target.closest(".stickings-container")) {
+      this.selectedInstrument = "sticking";
+    }
+  }
+
+  handleBgHighlightClick(event: MouseEvent, index: number): void {
+    this.selectedNoteIndex = index;
+    this.setMeasureContainerSelected(true);
+  }
+
+  setupMeasureContainerNavigation(): void {
+    document.addEventListener("mousedown", (e) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      if (typeof target.closest === "function") {
+        if (target.closest("#measureContainer") || target.closest("#musicalInput")) {
+          this.handleElementClickSelection(target);
+          this.setMeasureContainerSelected(true);
+        } else if (!target.closest(".noteContextMenu")) {
+          this.setMeasureContainerSelected(false);
+        }
+      } else {
+        this.setMeasureContainerSelected(false);
+      }
+    });
+
+    document.addEventListener("focusin", (e) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const tag = target.tagName ? target.tagName.toUpperCase() : "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (typeof target.closest === "function" && (target.closest("#embedTool") || target.closest("#sheetMusicTextFields")))) {
+        this.setMeasureContainerSelected(false);
+      }
+    });
+  }
+
   setupWriterHotKeys(): void {
+    this.setupMeasureContainerNavigation();
     document.addEventListener("keydown", (e) => {
+      if (this.handleMeasureContainerKeyDown(e)) {
+        return false;
+      }
       const target = e.target as HTMLInputElement;
       if (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA")) {
         switch (e.which) {
@@ -1998,6 +2459,27 @@ class GrooveWriter {
       }
 
       this.hilight_note(note_type, percent_complete);
+    };
+
+    const origPlayEvent = this.myGrooveUtils.midiEventCallbacks.playEvent;
+    this.myGrooveUtils.midiEventCallbacks.playEvent = () => {
+      this.isAudioPlaying = true;
+      this.clearNavHighlights();
+      if (origPlayEvent) origPlayEvent.call(this.myGrooveUtils.midiEventCallbacks);
+    };
+
+    const origStopEvent = this.myGrooveUtils.midiEventCallbacks.stopEvent;
+    this.myGrooveUtils.midiEventCallbacks.stopEvent = () => {
+      this.isAudioPlaying = false;
+      this.updateNavHighlights();
+      if (origStopEvent) origStopEvent.call(this.myGrooveUtils.midiEventCallbacks);
+    };
+
+    const origPauseEvent = this.myGrooveUtils.midiEventCallbacks.pauseEvent;
+    this.myGrooveUtils.midiEventCallbacks.pauseEvent = () => {
+      this.isAudioPlaying = false;
+      this.updateNavHighlights();
+      if (origPauseEvent) origPauseEvent.call(this.myGrooveUtils.midiEventCallbacks);
     };
 
     this.myGrooveUtils.oneTimeInitializeMidi();
@@ -2469,6 +2951,11 @@ class GrooveWriter {
       html += this.HTMLforStaffContainer(m, (m - 1) * this.data.notesPerMeasure);
     }
     container.innerHTML = html;
+    const maxNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    if (this.selectedNoteIndex >= maxNotes) {
+      this.selectedNoteIndex = Math.max(0, maxNotes - 1);
+    }
+    this.updateNavHighlights();
   }
 
   HTMLforStaffContainer(baseindex: number, indexStartForNotes: number): string {
@@ -2529,7 +3016,7 @@ class GrooveWriter {
 										<div class="background-highlight-container">\
 											<div class="opening_note_space"> </div>');
     for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-      newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" >\
+      newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" onClick="myGrooveWriter.handleBgHighlightClick(event, ' + i + ')" >\
 												</div>\n');
 
       if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {

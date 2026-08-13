@@ -28,6 +28,82 @@
   <link rel="stylesheet" type="text/css" href="css/groove_display_orange.css">
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700,300' rel='stylesheet' type='text/css'>
 
+  <style id="measure-nav-styles">
+    /* MeasureContainer Navigation & Highlighting */
+    #measureContainer {
+      outline: none !important;
+    }
+    #measureContainer:focus {
+      outline: none !important;
+    }
+    #measureContainer .bg-highlight {
+      cursor: pointer;
+    }
+    #measureContainer .nav-col-highlight,
+    #measureContainer .bg-highlight.nav-col-highlight,
+    #measureContainer .hi-hat.nav-col-highlight,
+    #measureContainer .snare.nav-col-highlight,
+    #measureContainer .kick.nav-col-highlight,
+    #measureContainer .tom.nav-col-highlight,
+    #measureContainer .sticking.nav-col-highlight {
+      background-color: rgba(36, 132, 192, 0.14) !important;
+      border-radius: 4px !important;
+    }
+    #measureContainer .hi-hat-container.nav-row-highlight,
+    #measureContainer .snare-container.nav-row-highlight,
+    #measureContainer .kick-container.nav-row-highlight,
+    #measureContainer .toms-container.nav-row-highlight,
+    #measureContainer .stickings-container.nav-row-highlight {
+      background-color: rgba(36, 132, 192, 0.07) !important;
+      border-radius: 4px !important;
+    }
+    #measureContainer .line-labels div.nav-label-highlight,
+    #measureContainer .stickings-label.nav-label-highlight {
+      color: #2484C0 !important;
+      background-color: rgba(36, 132, 192, 0.14) !important;
+      font-weight: bold !important;
+      border-radius: 4px !important;
+      padding: 2px 4px !important;
+      box-shadow: none !important;
+    }
+    #measureContainer .hi-hat.nav-note-cursor,
+    #measureContainer .snare.nav-note-cursor,
+    #measureContainer .kick.nav-note-cursor,
+    #measureContainer .tom.nav-note-cursor,
+    #measureContainer .sticking.nav-note-cursor {
+      background-color: rgba(36, 132, 192, 0.28) !important;
+      box-shadow: 0 0 0 2px #2484C0, 0 0 8px rgba(36, 132, 192, 0.6) !important;
+      border-radius: 4px !important;
+      z-index: 30 !important;
+      position: relative !important;
+    }
+    #measureContainer.nav-active .hi-hat.nav-note-cursor,
+    #measureContainer.nav-active .snare.nav-note-cursor,
+    #measureContainer.nav-active .kick.nav-note-cursor,
+    #measureContainer.nav-active .tom.nav-note-cursor,
+    #measureContainer.nav-active .sticking.nav-note-cursor {
+      background-color: rgba(36, 132, 192, 0.38) !important;
+      box-shadow: 0 0 0 2.5px #2484C0, 0 0 12px rgba(36, 132, 192, 0.85) !important;
+    }
+    #measureContainer .snare_accent {
+      position: absolute;
+      top: 1px;
+      left: 4px;
+      width: 22px;
+      height: 22px;
+      line-height: 22px;
+      font-size: 13px;
+      color: transparent;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #measureContainer .snare_accent.note-on {
+      color: #FFFFFF !important;
+    }
+  </style>
+
   <!-- JS Libraries -->
   <!-- <script src="./MIDI.js/js/MIDI/MIDI.JS.min.js" type="text/javascript"></script> -->
   <script src="./MIDI.js/js/MIDI/AudioDetect.js" type="text/javascript"></script>
@@ -167,7 +243,7 @@
         </div>
 
         <div id="musicalInput" class="fullWidthEle edit-block">
-          <div id="measureContainer">
+          <div id="measureContainer" tabindex="0">
 
           </div>
         </div>

@@ -688,11 +688,22 @@
 		cursor: pointer;
 	}
 	.snare_accent {
-		position: absolute; top: 5px; left: 11px;
-		line-height: 15px;
-		font-size: 15px;
+		position: absolute;
+		top: 1px;
+		left: 4px;
+		width: 22px;
+		height: 22px;
+		line-height: 22px;
+		font-size: 13px;
 		color: transparent;
 		cursor: pointer;
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.notes-row-container .snare_accent.note-on {
+		color: #FFFFFF !important;
 	}
 	.snare_xstick {
 		position: absolute; top: -5px; left: 3px;
@@ -1239,3 +1250,66 @@
 			width: 100% !important;
 		}
 	}
+
+	/* MeasureContainer Keyboard Navigation & Highlighting */
+	#measureContainer {
+		outline: none !important;
+	}
+	#measureContainer:focus {
+		outline: none !important;
+	}
+	.bg-highlight {
+		cursor: pointer;
+	}
+	.bg-highlight.nav-col-highlight {
+		background-color: rgba(36, 132, 192, 0.14) !important;
+		box-shadow: inset 0 0 0 1px rgba(36, 132, 192, 0.3) !important;
+		border-radius: 4px !important;
+	}
+	.hi-hat.nav-col-highlight,
+	.snare.nav-col-highlight,
+	.kick.nav-col-highlight,
+	.tom.nav-col-highlight,
+	.sticking.nav-col-highlight {
+		background-color: rgba(36, 132, 192, 0.14) !important;
+		border-radius: 4px !important;
+	}
+	.hi-hat-container.nav-row-highlight,
+	.snare-container.nav-row-highlight,
+	.kick-container.nav-row-highlight,
+	.toms-container.nav-row-highlight,
+	.stickings-container.nav-row-highlight {
+		background-color: rgba(36, 132, 192, 0.07) !important;
+		border-radius: 4px !important;
+	}
+	.line-labels div.nav-label-highlight,
+	.stickings-label.nav-label-highlight {
+		color: #2484C0 !important;
+		background-color: rgba(36, 132, 192, 0.14) !important;
+		font-weight: bold !important;
+		border-radius: 4px !important;
+		padding: 2px 4px !important;
+		box-shadow: none !important;
+		transition: background-color 0.1s ease, color 0.1s ease;
+	}
+	.hi-hat.nav-note-cursor,
+	.snare.nav-note-cursor,
+	.kick.nav-note-cursor,
+	.tom.nav-note-cursor,
+	.sticking.nav-note-cursor {
+		background-color: rgba(36, 132, 192, 0.28) !important;
+		box-shadow: 0 0 0 2px #2484C0, 0 0 8px rgba(36, 132, 192, 0.6) !important;
+		border-radius: 4px !important;
+		z-index: 30 !important;
+		position: relative;
+		transition: background-color 0.08s ease, box-shadow 0.08s ease;
+	}
+	#measureContainer.nav-active .hi-hat.nav-note-cursor,
+	#measureContainer.nav-active .snare.nav-note-cursor,
+	#measureContainer.nav-active .kick.nav-note-cursor,
+	#measureContainer.nav-active .tom.nav-note-cursor,
+	#measureContainer.nav-active .sticking.nav-note-cursor {
+		background-color: rgba(36, 132, 192, 0.38) !important;
+		box-shadow: 0 0 0 2.5px #2484C0, 0 0 12px rgba(36, 132, 192, 0.85) !important;
+	}
+

@@ -706,3 +706,456 @@ describe('Add and Remove Measure actions', () => {
     expect(writer.isTomsVisible()).toBe(true);
   });
 });
+
+describe('measureContainer Keyboard Navigation and Highlighting', () => {
+  let grooveUtils, writer;
+
+  const extrasHtml = `
+    <div id="musicalInput">
+      <div id="measureContainer" tabindex="0"></div>
+    </div>
+    <div id="embedTool">
+      <input type="text" id="subText" value="" />
+      <input type="text" id="repeatBegins" value="" />
+    </div>
+    <div id="sheetMusicTextFields">
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+    </div>
+    <div id="PermutationOptions"></div>
+    <div id="permutationAnchor"></div>
+    <div id="timeSigLabel"></div>
+    <div id="subdivision_8ths"></div>
+    <div id="subdivision_16ths"></div>
+    <div class="noteContextMenu">
+      <ul id="hhContextMenu" class="list"></ul>
+      <ul id="snareContextMenu" class="list"></ul>
+      <ul id="kickContextMenu" class="list"></ul>
+      <ul id="stickingContextMenu" class="list"></ul>
+      <ul id="tom1ContextMenu" class="list"></ul>
+      <ul id="tom4ContextMenu" class="list"></ul>
+    </div>
+  `;
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    writer = new GrooveWriter(grooveUtils);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=16&Tempo=80&H=|----------------|&S=|----------------|&K=|----------------|');
+    document.body.innerHTML = extrasHtml;
+    writer.setupMeasureContainerNavigation();
+    writer.renderMeasureContainer();
+    writer.updateSheetMusic = jest.fn();
+    writer.playSingleNote = jest.fn();
+  });
+
+  test('highlights are displayed by default on render without intercepting keys until clicked', () => {
+    expect(writer.isMeasureContainerActive).toBe(false);
+    expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
+    expect(document.getElementById('bg-highlight0').classList.contains('nav-col-highlight')).toBe(true);
+    expect(document.getElementById('snare0').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.querySelector('#staff-container1 .snare-label').classList.contains('nav-label-highlight')).toBe(true);
+  });
+
+  test('setMeasureContainerSelected toggles active state while keeping highlights visible', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 4;
+    writer.setMeasureContainerSelected(true);
+
+    expect(writer.isMeasureContainerActive).toBe(true);
+    expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(true);
+    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
+
+    const snareContainer = document.querySelector('#staff-container1 .snare-container');
+    expect(snareContainer.classList.contains('nav-row-highlight')).toBe(true);
+    const snareLabel = document.querySelector('#staff-container1 .snare-label');
+    expect(snareLabel.classList.contains('nav-label-highlight')).toBe(true);
+
+    writer.setMeasureContainerSelected(false);
+    expect(writer.isMeasureContainerActive).toBe(false);
+    expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
+    // Highlights remain visible by default
+    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
+    expect(snareContainer.classList.contains('nav-row-highlight')).toBe(true);
+    expect(snareLabel.classList.contains('nav-label-highlight')).toBe(true);
+  });
+
+  test('arrow keys navigate left/right across notes and up/down across rows', () => {
+    writer.selectedInstrument = 'hh';
+    writer.selectedNoteIndex = 0;
+    writer.setMeasureContainerSelected(true);
+
+    // Press right until beat 2 (index 4 in 16th notes)
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedNoteIndex).toBe(1);
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedNoteIndex).toBe(4);
+    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
+
+    // Press down to snare row (when toms hidden, hh -> snare -> kick)
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('snare');
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
+
+    // Press down to kick row
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('kick');
+    expect(document.getElementById('kick4').classList.contains('nav-note-cursor')).toBe(true);
+
+    // Press down again at bottom stops at kick
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('kick');
+
+    // Press up back to snare, then hh
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('snare');
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('hh');
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('hh'); // Stops at top
+  });
+
+  test('navigation includes toms when toms are visible', () => {
+    writer.showHideToms(true, true, true);
+    expect(writer.isTomsVisible()).toBe(true);
+    expect(writer.getVisibleInstrumentRows()).toEqual(['hh', 'tom1', 'snare', 'tom4', 'kick']);
+
+    writer.selectedInstrument = 'hh';
+    writer.setMeasureContainerSelected(true);
+
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('tom1');
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('snare');
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('tom4');
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('kick');
+  });
+
+  test('setting notes via context menu shortcut keys on highlighted cell', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 4;
+    writer.setMeasureContainerSelected(true);
+
+    // Press "O" -> sets snare accent
+    writer.handleMeasureContainerKeyDown({ key: 'O', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.is_snare_on(4)).toBe(true);
+    expect(writer.get_snare_state(4).url).toBe('O');
+
+    // Press "Backspace" -> clears note
+    writer.handleMeasureContainerKeyDown({ key: 'Backspace', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.is_snare_on(4)).toBe(false);
+
+    // Press "o" -> sets snare normal
+    writer.handleMeasureContainerKeyDown({ key: 'o', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.is_snare_on(4)).toBe(true);
+    expect(writer.get_snare_state(4).url).toBe('o');
+
+    // Press "g" -> ghost note
+    writer.handleMeasureContainerKeyDown({ key: 'g', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_snare_state(4).url).toBe('g');
+
+    // Press "x" -> cross stick
+    writer.handleMeasureContainerKeyDown({ key: 'x', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_snare_state(4).url).toBe('x');
+  });
+
+  test('setting notes on hi-hat and kick via keys', () => {
+    writer.selectedInstrument = 'hh';
+    writer.selectedNoteIndex = 0;
+    writer.setMeasureContainerSelected(true);
+
+    writer.handleMeasureContainerKeyDown({ key: 'x', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_hh_state(0).url).toBe('x');
+
+    writer.handleMeasureContainerKeyDown({ key: 'o', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_hh_state(0).url).toBe('o');
+
+    writer.handleMeasureContainerKeyDown({ key: 'X', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_hh_state(0).url).toBe('X');
+
+    // Switch to kick
+    writer.selectedInstrument = 'kick';
+    writer.selectedNoteIndex = 0;
+    writer.handleMeasureContainerKeyDown({ key: 'o', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_kick_state(0).url).toBe('o');
+
+    writer.handleMeasureContainerKeyDown({ key: 'x', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_kick_state(0).url).toBe('x');
+
+    writer.handleMeasureContainerKeyDown({ key: 'X', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_kick_state(0).url).toBe('X');
+  });
+
+  test('does not intercept keys when typing in notion embed options or text fields', () => {
+    writer.setMeasureContainerSelected(true);
+
+    const subTextInput = document.getElementById('subText');
+    const intercepted = writer.handleMeasureContainerKeyDown({
+      target: subTextInput,
+      key: 'o',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn()
+    });
+
+    expect(intercepted).toBe(false);
+
+    const titleInput = document.getElementById('tuneTitle');
+    const interceptedTitle = writer.handleMeasureContainerKeyDown({
+      target: titleInput,
+      key: 'ArrowRight',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn()
+    });
+
+    expect(interceptedTitle).toBe(false);
+  });
+
+  test('does not intercept keys when measureContainer is not selected', () => {
+    writer.setMeasureContainerSelected(false);
+    expect(writer.isMeasureContainerSelected).toBe(false);
+
+    const intercepted = writer.handleMeasureContainerKeyDown({
+      key: 'ArrowRight',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn()
+    });
+
+    expect(intercepted).toBe(false);
+  });
+
+  test('mouse click on note activates navigation at that note position', () => {
+    writer.noteLeftClick({ preventDefault: () => {} }, 'snare', 6);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+    expect(writer.selectedInstrument).toBe('snare');
+    expect(writer.selectedNoteIndex).toBe(6);
+    expect(document.getElementById('snare6').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.getElementById('bg-highlight6').classList.contains('nav-col-highlight')).toBe(true);
+  });
+
+  test('mouse click on row label activates navigation for that row', () => {
+    writer.noteLabelClick({ preventDefault: () => {} }, 'kick', 1);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+    expect(writer.selectedInstrument).toBe('kick');
+    expect(document.querySelector('#staff-container1 .kick-label').classList.contains('nav-label-highlight')).toBe(true);
+  });
+
+  test('multi-measure navigation moves across measure boundaries and highlights correct staff', () => {
+    writer.addMeasure();
+    expect(writer.numberOfMeasures()).toBe(2);
+
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 15; // Last note of Measure 1
+    writer.setMeasureContainerSelected(true);
+
+    expect(document.querySelector('#staff-container1 .snare-label').classList.contains('nav-label-highlight')).toBe(true);
+
+    // Press right -> moves to index 16 (first note of Measure 2)
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedNoteIndex).toBe(16);
+    expect(document.getElementById('bg-highlight16').classList.contains('nav-col-highlight')).toBe(true);
+    expect(document.getElementById('snare16').classList.contains('nav-note-cursor')).toBe(true);
+
+    // Measure 2 staff container should now have row and label highlights
+    expect(document.querySelector('#staff-container2 .snare-label').classList.contains('nav-label-highlight')).toBe(true);
+    expect(document.querySelector('#staff-container2 .snare-container').classList.contains('nav-row-highlight')).toBe(true);
+
+    // Modify note in Measure 2 via keyboard
+    writer.handleMeasureContainerKeyDown({ key: 'O', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_snare_state(16).url).toBe('O');
+
+    // Press left -> moves back to index 15 in Measure 1
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowLeft', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedNoteIndex).toBe(15);
+    expect(document.querySelector('#staff-container1 .snare-label').classList.contains('nav-label-highlight')).toBe(true);
+  });
+
+  test('stickings row navigation and editing via keyboard shortcuts', () => {
+    writer.stickingsShowHide(true, true, true);
+    expect(writer.isStickingsVisible()).toBe(true);
+    expect(writer.getVisibleInstrumentRows()[0]).toBe('sticking');
+
+    writer.selectedInstrument = 'hh';
+    writer.selectedNoteIndex = 0;
+    writer.setMeasureContainerSelected(true);
+
+    // Press up to sticking row
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('sticking');
+    expect(document.getElementById('sticking0').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.querySelector('#staff-container1 .stickings-label').classList.contains('nav-label-highlight')).toBe(true);
+
+    // Press 'r' -> Right
+    writer.handleMeasureContainerKeyDown({ key: 'r', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_sticking_state(0).url).toBe('R');
+
+    // Press 'l' -> Left
+    writer.handleMeasureContainerKeyDown({ key: 'l', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_sticking_state(0).url).toBe('L');
+
+    // Press 'b' -> Both
+    writer.handleMeasureContainerKeyDown({ key: 'b', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_sticking_state(0).url).toBe('b');
+
+    // Press 'c' -> Count
+    writer.handleMeasureContainerKeyDown({ key: 'c', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_sticking_state(0).url).toBe('c');
+
+    // Press Backspace -> clears sticking
+    writer.handleMeasureContainerKeyDown({ key: 'Backspace', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_sticking_state(0).abc).toBe(false);
+  });
+
+  test('tom rows editing via keyboard shortcuts and clearing', () => {
+    writer.showHideToms(true, true, true);
+    writer.selectedInstrument = 'tom1';
+    writer.selectedNoteIndex = 2;
+    writer.setMeasureContainerSelected(true);
+
+    writer.handleMeasureContainerKeyDown({ key: 'o', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_tom_state(2, 1).url).toBe('o');
+
+    writer.handleMeasureContainerKeyDown({ key: 'Delete', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_tom_state(2, 1).abc).toBe(false);
+
+    writer.selectedInstrument = 'tom4';
+    writer.handleMeasureContainerKeyDown({ key: 'x', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_tom_state(2, 4).url).toBe('o');
+
+    writer.handleMeasureContainerKeyDown({ key: 'Backspace', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.get_tom_state(2, 4).abc).toBe(false);
+  });
+
+  test('escape key deactivates key interception while keeping highlights visible', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 2;
+    writer.setMeasureContainerSelected(true);
+    expect(writer.isMeasureContainerActive).toBe(true);
+
+    writer.handleMeasureContainerKeyDown({ key: 'Escape', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.isMeasureContainerActive).toBe(false);
+    expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
+    expect(document.getElementById('snare2').classList.contains('nav-note-cursor')).toBe(true);
+  });
+
+  test('boundary clamping on arrow keys', () => {
+    writer.selectedInstrument = 'hh';
+    writer.selectedNoteIndex = 0;
+    writer.setMeasureContainerSelected(true);
+
+    // ArrowLeft at index 0 stays at 0
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowLeft', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedNoteIndex).toBe(0);
+
+    // ArrowUp at top row stays at top row
+    writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+    expect(writer.selectedInstrument).toBe('hh');
+
+    // Move to end of measure (index 15)
+    for (let i = 0; i < 20; i++) {
+      writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
+    }
+    expect(writer.selectedNoteIndex).toBe(15);
+
+    // Move down to bottom row (kick)
+    for (let i = 0; i < 10; i++) {
+      writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+    }
+    expect(writer.selectedInstrument).toBe('kick');
+  });
+
+  test('document mousedown outside and focusin inside inputs deselects measureContainer', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 0;
+    writer.setMeasureContainerSelected(true);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+
+    // Mousedown on body (outside measureContainer)
+    document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.isMeasureContainerSelected).toBe(false);
+    expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
+
+    // Select measureContainer again
+    writer.setMeasureContainerSelected(true);
+    expect(writer.isMeasureContainerSelected).toBe(true);
+
+    // Focus into an input in embedTool
+    const subText = document.getElementById('subText');
+    subText.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(writer.isMeasureContainerSelected).toBe(false);
+  });
+
+  test('changeDivision clamps selectedNoteIndex and refreshes highlights', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 14;
+    writer.setMeasureContainerSelected(true);
+
+    writer.changeDivision(8); // Now only 8 notes per measure (0..7)
+    expect(grooveUtils.data.notesPerMeasure).toBe(8);
+    expect(writer.selectedNoteIndex).toBe(7); // Clamped to 7
+    expect(document.getElementById('snare7').classList.contains('nav-note-cursor')).toBe(true);
+  });
+
+  test('clicking on any element moves highlight directly to that element', () => {
+    writer.setMeasureContainerSelected(false);
+    expect(writer.isMeasureContainerSelected).toBe(false);
+
+    // 1. Click on hi-hat note 5
+    const hh5 = document.getElementById('hi-hat5');
+    hh5.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.isMeasureContainerSelected).toBe(true);
+    expect(writer.selectedInstrument).toBe('hh');
+    expect(writer.selectedNoteIndex).toBe(5);
+    expect(document.getElementById('hi-hat5').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.getElementById('bg-highlight5').classList.contains('nav-col-highlight')).toBe(true);
+
+    // 2. Click on background highlight column 10
+    const bg10 = document.getElementById('bg-highlight10');
+    bg10.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.selectedNoteIndex).toBe(10);
+    expect(document.getElementById('bg-highlight10').classList.contains('nav-col-highlight')).toBe(true);
+
+    // 3. Click on Kick label
+    const kickLabel = document.querySelector('#staff-container1 .kick-label');
+    kickLabel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.selectedInstrument).toBe('kick');
+    expect(document.getElementById('kick10').classList.contains('nav-note-cursor')).toBe(true);
+
+    // 4. Click on Snare row container
+    const snareContainer = document.querySelector('#staff-container1 .snare-container');
+    snareContainer.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(writer.selectedInstrument).toBe('snare');
+    expect(document.getElementById('snare10').classList.contains('nav-note-cursor')).toBe(true);
+  });
+
+  test('audio playback temporarily disables navigation highlighting and restores it when stopped', () => {
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 4;
+    writer.setMeasureContainerSelected(true);
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
+
+    // Start playback
+    writer.isAudioPlaying = true;
+    writer.clearNavHighlights();
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(false);
+    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(false);
+
+    // While playing, updateNavHighlights should do nothing
+    writer.updateNavHighlights();
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(false);
+
+    // Stop playback
+    writer.isAudioPlaying = false;
+    writer.updateNavHighlights();
+    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
+  });
+});
