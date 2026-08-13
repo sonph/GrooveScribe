@@ -872,11 +872,13 @@ class GrooveData {
     return parts;
   }
 
-  static hasNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array: Array<string | null>, tom4_array: Array<string | null>): boolean {
-    if (i >= hh_array.length) {
-      return false;
-    }
-    return hh_array[i] !== null || snare_array[i] !== null || kick_array[i] !== null;
+  static hasNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array?: Array<string | null>, tom4_array?: Array<string | null>): boolean {
+    if (i >= hh_array.length) return false;
+    return hh_array[i] !== null
+      || snare_array[i] !== null
+      || kick_array[i] !== null
+      || (tom1_array != null && tom1_array[i] !== null)
+      || (tom4_array != null && tom4_array[i] !== null);
   }
 
   // Returns null if no note at this position, otherwise, a list of AbcNote objects.
@@ -2068,15 +2070,9 @@ class GrooveUtils {
     return MIDI.Player.playing;
   };
 
-  // Arrow function so `this` stays bound when passed to addEventListener.
   repeatMIDI_playback = () => {
-    if (this.shouldMIDIRepeat === false) {
-      this.shouldMIDIRepeat = true;
-      MIDI.Player.loop(true);
-    } else {
-      this.shouldMIDIRepeat = false;
-      MIDI.Player.loop(false);
-    }
+    this.shouldMIDIRepeat = !this.shouldMIDIRepeat;
+    MIDI.Player.loop(this.shouldMIDIRepeat);
     this.midiEventCallbacks.repeatChangeEvent(this.shouldMIDIRepeat);
   };
 

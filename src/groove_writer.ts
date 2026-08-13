@@ -283,6 +283,32 @@ function kickPermutationTriplets(section: number): Array<false | 'F'> {
   return expandKickPattern(pattern, KICK_TRIPLETS_LENGTH);
 }
 
+const PERMUTATION_PRE_ABC: ReadonlyArray<string> = [
+  "P:Ostinato\n%\n%\n%Just the Ositnato\n",
+  "T: \nP: Singles\n%\n%\n% singles on the \"1\"\n%\n",
+  "%\n%\n% singles on the \"e\"\n%\n",
+  "%\n%\n% singles on the \"&\"\n%\n",
+  "%\n%\n% singles on the \"a\"\n%\n",
+  "T: \nP: Doubles\n%\n%\n% doubles on the \"1\"\n%\n",
+  "%\n%\n% doubles on the \"e\"\n%\n",
+  "%\n%\n% doubles on the \"&\"\n%\n",
+  "%\n%\n% doubles on the \"a\"\n%\n",
+  "T: \nP: Down/Up Beats\n%\n%\n% upbeats on the \"1\"\n%\n",
+  "%\n%\n% downbeats on the \"e\"\n%\n",
+  "T: \nP: Triples\n%\n%\n% triples on the \"1\"\n%\n",
+  "%\n%\n% triples on the \"e\"\n%\n",
+  "%\n%\n% triples on the \"&\"\n%\n",
+  "%\n%\n% triples on the \"a\"\n%\n",
+  "T: \nP: Quads\n%\n%\n% quads\n%\n",
+];
+
+const PERMUTATION_POST_ABC: ReadonlyArray<string> = [
+  "|\n", "\\\n", "\n", "\\\n",
+  "|\n", "\\\n", "\n", "\\\n",
+  "|\n", "\\\n", "|\n", "\\\n",
+  "\n", "\\\n", "|\n", "|\n",
+];
+
 class GrooveWriter {
   myGrooveUtils: GrooveUtils;
   data: GrooveData;
@@ -410,44 +436,29 @@ class GrooveWriter {
         // Kick line can contain both bass drum and hi-hat foot splash simultaneously.
         const splashOn = this.isNoteOn(AbcNote.KI_SPLASH.getFirstHtmlIdPrefix() + id);
         const kickOn = this.isNoteOn(AbcNote.KI_NORMAL.getFirstHtmlIdPrefix() + id);
-        if (splashOn && kickOn) {
-          return AbcNote.KI_SANDK;
-        }
-        if (splashOn) {
-          return AbcNote.KI_SPLASH;
-        }
-        if (kickOn) {
-          return AbcNote.KI_NORMAL;
-        }
+        if (splashOn && kickOn) return AbcNote.KI_SANDK;
+        if (splashOn) return AbcNote.KI_SPLASH;
+        if (kickOn) return AbcNote.KI_NORMAL;
         return null;
       case DrumType.SNARE.name:
         for (const note of AbcNote.SN_ALL) {
-          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
-            return note;
-          }
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) return note;
         }
+        return null;
       case DrumType.TOM1.name:
-        if (this.isNoteOn(AbcNote.T1_NORMAL.getFirstHtmlIdPrefix() + id)) {
-          return AbcNote.T1_NORMAL;
-        }
-        return null;
+        return this.isNoteOn(AbcNote.T1_NORMAL.getFirstHtmlIdPrefix() + id) ? AbcNote.T1_NORMAL : null;
       case DrumType.TOM4.name:
-        if (this.isNoteOn(AbcNote.T4_NORMAL.getFirstHtmlIdPrefix() + id)) {
-          return AbcNote.T4_NORMAL;
-        }
-        return null;
+        return this.isNoteOn(AbcNote.T4_NORMAL.getFirstHtmlIdPrefix() + id) ? AbcNote.T4_NORMAL : null;
       case DrumType.HIHAT.name:
         for (const note of AbcNote.HH_ALL) {
-          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
-            return note;
-          }
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) return note;
         }
+        return null;
       case DrumType.STICKINGS.name:
         for (const note of AbcNote.STICKINGS_ALL) {
-          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) {
-            return note;
-          }
+          if (this.isNoteOn(note.getFirstHtmlIdPrefix() + id)) return note;
         }
+        return null;
     }
     return null;
   }
@@ -931,53 +942,25 @@ class GrooveWriter {
   };
 
   toggleAdvancedEdit() {
-    if (this.class_advancedEditIsOn) {
-      this.class_advancedEditIsOn = false;
-      this.unselectButton(document.getElementById("advancedEditAnchor"));
-    } else {
-      this.class_advancedEditIsOn = true;
-      this.selectButton(document.getElementById("advancedEditAnchor"));
+    this.class_advancedEditIsOn = !this.class_advancedEditIsOn;
+    const btn = document.getElementById("advancedEditAnchor");
+    if (btn) {
+      if (this.class_advancedEditIsOn) this.selectButton(btn);
+      else this.unselectButton(btn);
     }
-  };
+  }
 
   noteLabelClick(event, instrument, measure) {
-    var contextMenu: HTMLElement | null = null;
     this.class_measure_for_note_label_click = measure;
-
-    switch (instrument) {
-      case "stickings":
-        contextMenu = document.getElementById("stickingsLabelContextMenu");
-        break;
-      case "hh":
-        contextMenu = document.getElementById("hhLabelContextMenu");
-        break;
-      case "tom1":
-        contextMenu = document.getElementById("tom1LabelContextMenu");
-        break;
-      case "tom4":
-        contextMenu = document.getElementById("tom4LabelContextMenu");
-        break;
-      case "snare":
-        contextMenu = document.getElementById("snareLabelContextMenu");
-        break;
-      case "kick":
-        contextMenu = document.getElementById("kickLabelContextMenu");
-        break;
-      default:
-        console.log("bad case in noteLabelClick: " + instrument);
-        break;
-    }
-
+    const contextMenu = document.getElementById(instrument + "LabelContextMenu");
     if (contextMenu) {
-      if (!event)
-        event = window.event;
-      if (event.clientX || event.clientY) {
+      if (!event) event = window.event;
+      if (event && (event.clientX || event.clientY)) {
         contextMenu.style.top = event.clientY - 30 + "px";
         contextMenu.style.left = event.clientX - 35 + "px";
       }
       this.myGrooveUtils.showContextMenu(contextMenu);
     }
-
     return false;
   }
 
@@ -1084,37 +1067,13 @@ class GrooveWriter {
     return false;
   };
 
-  noteRightClick(event, type: string, id) {
+  noteRightClick(event, type: string, id: number) {
     this.class_which_index_last_clicked = id;
-
-    switch (type) {
-      case "sticking":
-        this.insertNoteContextMenu = document.getElementById("stickingContextMenu");
-        break;
-      case "hh":
-        this.insertNoteContextMenu = document.getElementById("hhContextMenu");
-        break;
-      case "tom1":
-        this.insertNoteContextMenu = document.getElementById("tom1ContextMenu");
-        break;
-      case "tom4":
-        this.insertNoteContextMenu = document.getElementById("tom4ContextMenu");
-        break;
-      case "snare":
-        this.insertNoteContextMenu = document.getElementById("snareContextMenu");
-        break;
-      case "kick":
-        this.insertNoteContextMenu = document.getElementById("kickContextMenu");
-        break;
-      default:
-        console.log("Bad case in handleNotePopup");
-        break;
-    }
+    this.insertNoteContextMenu = document.getElementById(type + "ContextMenu");
 
     if (this.insertNoteContextMenu) {
-      if (!event)
-        event = window.event;
-      if (event.clientX || event.clientY) {
+      if (!event) event = window.event;
+      if (event && (event.clientX || event.clientY)) {
         this.insertNoteContextMenu.style.top = event.clientY - 30 + "px";
         this.insertNoteContextMenu.style.left = event.clientX - 75 + "px";
       }
@@ -1234,130 +1193,14 @@ class GrooveWriter {
   }
 
   get_permutation_pre_ABC(section: number): string {
-    var abc = "";
-
-    switch (section) {
-      case 0:
-        abc += "P:Ostinato\n%\n%\n%Just the Ositnato\n";
-        break;
-      case 1:
-        abc += "T: \nP: Singles\n%\n%\n% singles on the \"1\"\n%\n";
-        break;
-      case 2:
-        abc += "%\n%\n% singles on the \"e\"\n%\n";
-        break;
-      case 3:
-        abc += "%\n%\n% singles on the \"&\"\n%\n";
-        break;
-      case 4:
-        abc += "%\n%\n% singles on the \"a\"\n%\n";
-        break;
-      case 5:
-        abc += "T: \nP: Doubles\n%\n%\n% doubles on the \"1\"\n%\n";
-        break;
-      case 6:
-        abc += "%\n%\n% doubles on the \"e\"\n%\n";
-        break;
-      case 7:
-        abc += "%\n%\n% doubles on the \"&\"\n%\n";
-        break;
-      case 8:
-        abc += "%\n%\n% doubles on the \"a\"\n%\n";
-        break;
-      case 9:
-        abc += "T: \nP: Down/Up Beats\n%\n%\n% upbeats on the \"1\"\n%\n";
-        break;
-      case 10:
-        abc += "%\n%\n% downbeats on the \"e\"\n%\n";
-        break;
-      case 11:
-        abc += "T: \nP: Triples\n%\n%\n% triples on the \"1\"\n%\n";
-        break;
-      case 12:
-        abc += "%\n%\n% triples on the \"e\"\n%\n";
-        break;
-      case 13:
-        abc += "%\n%\n% triples on the \"&\"\n%\n";
-        break;
-      case 14:
-        abc += "%\n%\n% triples on the \"a\"\n%\n";
-        break;
-      case 15:
-        abc += "T: \nP: Quads\n%\n%\n% quads\n%\n";
-        break;
-      default:
-        abc += "\nT: Error: No index passed\n";
-        break;
-    }
-    return abc;
+    return PERMUTATION_PRE_ABC[section] ?? "\nT: Error: No index passed\n";
   }
 
   get_permutation_post_ABC(section: number): string {
-    var abc = "";
-
-    switch (section) {
-      case 0:
-        abc += "|\n";
-        break;
-      case 1:
-        abc += "\\\n";
-        break;
-      case 2:
-        abc += "\n";
-        break;
-      case 3:
-        if (this.usingTriplets())
-          abc += "|\n";
-        else
-          abc += "\\\n";
-        break;
-      case 4:
-        abc += "|\n";
-        break;
-      case 5:
-        abc += "\\\n";
-        break;
-      case 6:
-        abc += "\n";
-        break;
-      case 7:
-        if (this.usingTriplets())
-          abc += "|\n";
-        else
-          abc += "\\\n";
-        break;
-      case 8:
-        abc += "|\n";
-        break;
-      case 9:
-        abc += "\\\n";
-        break;
-      case 10:
-        abc += "|\n";
-        break;
-      case 11:
-        if (this.usingTriplets())
-          abc += "|\n";
-        else
-          abc += "\\\n";
-        break;
-      case 12:
-        abc += "\n";
-        break;
-      case 13:
-        abc += "\\\n";
-        break;
-      case 14:
-        abc += "|\n";
-        break;
-      case 15:
-        abc += "|\n";
-        break;
-      default:
-        abc += "\nT: Error: No index passed\n";
-        break;
+    if (this.usingTriplets() && (section === 3 || section === 7 || section === 11)) {
+      return "|\n";
     }
-    return abc;
+    return PERMUTATION_POST_ABC[section] ?? "\nT: Error: No index passed\n";
   }
 
   // 16th note permutation array expressed in 32nd notes
@@ -1605,56 +1448,30 @@ class GrooveWriter {
   }
 
   filter_kick_array_for_permutation(old_kick_array) {
-    var new_kick_array = [];
-
-    for (var i in old_kick_array) {
-      if (old_kick_array[i] == constant_ABC_KI_Splash ||
-        old_kick_array[i] == constant_ABC_KI_SandK)
-        new_kick_array.push(constant_ABC_KI_Splash);
-      else
-        new_kick_array.push(false);
-    }
-
-    return new_kick_array;
+    return old_kick_array.map((note) =>
+      note === constant_ABC_KI_Splash || note === constant_ABC_KI_SandK
+        ? constant_ABC_KI_Splash
+        : false
+    );
   }
 
   merge_kick_arrays(primary_kick_array, secondary_kick_array) {
-    var new_kick_array = [];
-
-    for (var i in primary_kick_array) {
-      switch (primary_kick_array[i]) {
-        case false:
-          new_kick_array.push(secondary_kick_array[i]);
-          break;
-
-        case constant_ABC_KI_SandK:
-          new_kick_array.push(constant_ABC_KI_SandK);
-          break;
-
-        case constant_ABC_KI_Normal:
-          if (secondary_kick_array[i] == constant_ABC_KI_SandK ||
-            secondary_kick_array[i] == constant_ABC_KI_Splash)
-            new_kick_array.push(constant_ABC_KI_SandK);
-          else
-            new_kick_array.push(constant_ABC_KI_Normal);
-          break;
-
-        case constant_ABC_KI_Splash:
-          if (secondary_kick_array[i] == constant_ABC_KI_Normal ||
-            secondary_kick_array[i] == constant_ABC_KI_SandK)
-            new_kick_array.push(constant_ABC_KI_SandK);
-          else
-            new_kick_array.push(constant_ABC_KI_Splash);
-          break;
-
-        default:
-          console.log("bad case in merge_kick_arrays()");
-          new_kick_array.push(primary_kick_array[i]);
-          break;
+    return primary_kick_array.map((primary, i) => {
+      const secondary = secondary_kick_array[i];
+      if (primary === false) return secondary;
+      if (primary === constant_ABC_KI_SandK) return constant_ABC_KI_SandK;
+      if (primary === constant_ABC_KI_Normal) {
+        return (secondary === constant_ABC_KI_SandK || secondary === constant_ABC_KI_Splash)
+          ? constant_ABC_KI_SandK
+          : constant_ABC_KI_Normal;
       }
-    }
-
-    return new_kick_array;
+      if (primary === constant_ABC_KI_Splash) {
+        return (secondary === constant_ABC_KI_Normal || secondary === constant_ABC_KI_SandK)
+          ? constant_ABC_KI_SandK
+          : constant_ABC_KI_Splash;
+      }
+      return primary;
+    });
   }
 
   createMidiUrlFromClickableUI(MIDI_type) {
@@ -1943,14 +1760,13 @@ class GrooveWriter {
 
   SVGSaveAs() {
     this.downloadImages('svg');
-  }  ShowHideABCResults() {
+  }
+
+  ShowHideABCResults() {
     var ABCResults = document.getElementById("ABC_Results");
-
-    if (ABCResults.style.display == "block")
-      ABCResults.style.display = "none";
-    else
-      ABCResults.style.display = "block";
-
+    if (ABCResults) {
+      ABCResults.style.display = ABCResults.style.display === "block" ? "none" : "block";
+    }
     return false;
   }
 
@@ -2199,22 +2015,15 @@ class GrooveWriter {
     });
   }
 
-  swapViewEditMode(dontUpdateURL) {
-    var view_edit_button = document.getElementById("view-edit-switch");
-    if (this.data.viewMode) {
-      this.showHideCSS_ClassDisplay(".edit-block", true, true, "block");
-      if (view_edit_button)
-        view_edit_button.innerHTML = "Switch to VIEW mode";
-      this.data.viewMode = false;
-      if (!dontUpdateURL)
-        this.updateCurrentURL();
-    } else {
-      this.showHideCSS_ClassDisplay(".edit-block", true, false, "block");
-      if (view_edit_button)
-        view_edit_button.innerHTML = "Switch to EDIT mode";
-      this.data.viewMode = true;
-      if (!dontUpdateURL)
-        this.updateCurrentURL();
+  swapViewEditMode(dontUpdateURL?: boolean) {
+    this.data.viewMode = !this.data.viewMode;
+    this.showHideCSS_ClassDisplay(".edit-block", true, !this.data.viewMode, "block");
+    const view_edit_button = document.getElementById("view-edit-switch");
+    if (view_edit_button) {
+      view_edit_button.innerHTML = this.data.viewMode ? "Switch to EDIT mode" : "Switch to VIEW mode";
+    }
+    if (!dontUpdateURL) {
+      this.updateCurrentURL();
     }
   };
 
