@@ -259,8 +259,11 @@
           <span class="sheetMusicTextField"><b>Comment:</b> <input class="sheetMusicInputField" id="tuneComments"
               onchange="myGrooveWriter.refresh_ABC();" oninput="myGrooveWriter.refresh_ABC();" type="text"></span>
           <span id='KeyButton'><input type="checkbox" class="hiddenCheckbox" id="showLegend"
-              onclick="myGrooveWriter.refresh_ABC();"><label id="LegendLabel" for="showLegend"><i
+              onclick="myGrooveWriter.refresh_ABC();"><label id="LegendLabel" for="showLegend" title="Show Legend"><i
                 class="fa fa-key"></i></label></span>
+          <span id='TempoButton'><input type="checkbox" class="hiddenCheckbox" id="showTempo"
+              onclick="myGrooveWriter.refresh_ABC();"><label id="TempoLabel" for="showTempo" title="Show Tempo"><i
+                class="fa fa-tachometer"></i></label></span>
         </div>
 
         <div id="musicalInput" class="fullWidthEle edit-block">
@@ -277,8 +280,8 @@
           <br>
           <div>
             <form>
-              <label for="showTempo">Show Tempo</label>
-              <input type="checkbox" id="showTempo" name="showTempo"><br><br>
+              <label for="embedShowTempo">Show Tempo</label>
+              <input type="checkbox" id="embedShowTempo" name="showTempo" onchange="const st = document.getElementById('showTempo'); if (st) { st.checked = this.checked; } myGrooveWriter.refresh_ABC();"><br><br>
 
               <label for="subText">Sub Text:</label>
               <input type="text" id="subText" name="subText" placeholder="Chorus (can also be lyric hints)"><br><br>

@@ -649,4 +649,40 @@ describe('Legend and ABC Header', () => {
     expect(headerWithoutLegend).not.toContain('"^Hi-Hat"');
     expect(headerWithoutLegend).not.toContain('V:Feet stem=down');
   });
+
+  test('getAbcHeader includes correct Q tempo marking according to time signature', () => {
+    // 4/4 time signature -> Q: 1/4=95
+    const data44 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data44.tempo = 95;
+    data44.showTempo = true;
+    expect(data44.getAbcHeader(false, 600)).toContain('Q: 1/4=95\n');
+
+    // 6/8 compound time signature -> Q: 3/8=120
+    const data68 = new GrooveData(new TimeSignature(6, Subdivision.EIGHTH), Subdivision.EIGHTH);
+    data68.tempo = 120;
+    data68.showTempo = true;
+    expect(data68.getAbcHeader(false, 600)).toContain('Q: 3/8=120\n');
+
+    // 2/2 cut time signature -> Q: 1/2=100
+    const data22 = new GrooveData(new TimeSignature(2, Subdivision.HALF), Subdivision.QUARTER);
+    data22.tempo = 100;
+    data22.showTempo = true;
+    expect(data22.getAbcHeader(false, 600)).toContain('Q: 1/2=100\n');
+
+    // showTempo = false -> no Q: tempo mark
+    data44.showTempo = false;
+    expect(data44.getAbcHeader(false, 600)).not.toContain('Q:');
+  });
+
+  test('decodeGrooveUrl and encodeGrooveQueryString support showTempo', () => {
+    expect(decodeGrooveUrl('ShowTempo=1').showTempo).toBe(true);
+    expect(decodeGrooveUrl('EmbedTempoTimeSig=true').showTempo).toBe(true);
+    expect(decodeGrooveUrl('').showTempo).toBe(false);
+
+    const data = new GrooveData();
+    data.showTempo = true;
+    expect(encodeGrooveQueryString(data)).toContain('ShowTempo=1');
+    data.showTempo = false;
+    expect(encodeGrooveQueryString(data)).not.toContain('ShowTempo');
+  });
 });

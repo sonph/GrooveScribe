@@ -88,7 +88,11 @@ function decodeConvertedUrl() {
   const convertedUrl = document.getElementById("convertedUrl").value;
   const query = parseQuery(convertedUrl.split("?")[1]);
   dbg.query = query;
-  document.getElementById("showTempo").checked = (query.EmbedTempoTimeSig || "") === "true";
+  const isTempo = (query.EmbedTempoTimeSig || "") === "true" || (query.ShowTempo || "") === "1";
+  const stElem = document.getElementById("showTempo");
+  if (stElem) stElem.checked = isTempo;
+  const embedStElem = document.getElementById("embedShowTempo");
+  if (embedStElem) embedStElem.checked = isTempo;
   document.getElementById("subText").value = decodeURIComponent(query.subText || "");
   document.getElementById("repeatBegins").value = query.RepeatBegins || "";
   document.getElementById("repeatEnds").value = query.RepeatEnds || "";
@@ -103,7 +107,10 @@ function openLink() {
   }
 }
 
-document.getElementById("showTempo").addEventListener("keypress", convert);
+const tempoInput = document.getElementById("showTempo") || document.getElementById("embedShowTempo");
+if (tempoInput) tempoInput.addEventListener("keypress", convert);
+const embedTempoInput = document.getElementById("embedShowTempo");
+if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("keypress", convert);
 document.getElementById("convertBtn").addEventListener("click", convert);
 document.getElementById("copyBtn").addEventListener("click", convertAndCopy);
 document.getElementById("openLink").addEventListener("click", openLink);

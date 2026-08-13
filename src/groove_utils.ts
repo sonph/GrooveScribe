@@ -673,6 +673,7 @@ interface DecodedGrooveUrl {
   tempo: number;
   swingPercent: number;
   showLegend: boolean;
+  showTempo: boolean;
   // Raw pipe-delimited tab strings keyed by DrumType.name (e.g. "H", "S", "K").
   drumTabs: Map<string, string>;
 }
@@ -701,6 +702,7 @@ function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
     tempo: Math.min(Math.max(parseInt(params.get('Tempo')) || constant_DEFAULT_TEMPO, 20), 400),
     swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
     showLegend: params.get('Legend') === '1' || params.get('showLegend') === '1',
+    showTempo: params.get('ShowTempo') === '1' || params.get('EmbedTempoTimeSig') === 'true',
     drumTabs,
   };
 }
@@ -739,6 +741,7 @@ interface EncodableGrooveState {
   showStickings: boolean;
   showToms: boolean;
   showLegend?: boolean;
+  showTempo?: boolean;
 }
 
 // Build query string manually (not URLSearchParams) so `|` and `/` are preserved
@@ -760,6 +763,7 @@ function encodeGrooveQueryString(state: EncodableGrooveState): string {
   add('Swing', state.swingPercent ? state.swingPercent.toString() : '');
   add('MetronomeFreq', state.metronomeFrequency ? state.metronomeFrequency.toString() : '');
   if (state.showLegend) add('Legend', '1');
+  if (state.showTempo) add('ShowTempo', '1');
 
   for (const drum of DrumType.ALL) {
     if (!state.showStickings && drum.equals(DrumType.STICKINGS)) continue;
@@ -779,7 +783,7 @@ class GrooveData {
   timeSig: TimeSignature;
   subdivision: Subdivision;
   measures: Array<Measure>;
-  showTempo: false;
+  showTempo: boolean;
   showToms: boolean;
   showStickings: boolean;
   showLegend: boolean;
@@ -844,6 +848,7 @@ class GrooveData {
     this.tempo = decoded.tempo;
     this.swingPercent = decoded.swingPercent;
     this.showLegend = decoded.showLegend;
+    this.showTempo = decoded.showTempo;
 
     const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
     if (measures.length !== 0) {
@@ -1197,7 +1202,8 @@ class GrooveData {
     }
 
     if (this.showTempo) {
-      fullABC += `Q: 1/4=${this.tempo}\n`;
+      const beatUnit = (this.timeSig.bottom.value === 8 && this.timeSig.top % 3 === 0) ? '3/8' : `1/${this.timeSig.bottom.value}`;
+      fullABC += `Q: ${beatUnit}=${this.tempo}\n`;
     }
 
     return fullABC;

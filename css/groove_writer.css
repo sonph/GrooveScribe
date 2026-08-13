@@ -197,7 +197,7 @@
 		text-align: center;
 		padding-left: 54px;
 	}
-	#KeyButton {
+	#KeyButton, #TempoButton {
 		float: right;
 		padding-right: 5px;
 		font-size: 18px;
@@ -793,7 +793,7 @@
 		/* checkbox for the key (legend) */
 		visibility: hidden;
 	}
-	#LegendLabel {
+	#LegendLabel, #TempoLabel {
 		border: 1px solid #CCC;
 		padding: 3px 7px 5px 7px;
 		border-radius: 7px;

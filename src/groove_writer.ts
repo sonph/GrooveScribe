@@ -691,6 +691,10 @@ class GrooveWriter {
   }
 
   tempoChangeCallback = (newTempo: number): void => {
+    this.data.tempo = newTempo;
+    if (this.data.showTempo) {
+      this.updateSheetMusic();
+    }
     if (this.global_tempoChangeCallbackTimeout != null)
       window.clearTimeout(this.global_tempoChangeCallbackTimeout);
 
@@ -1686,6 +1690,11 @@ class GrooveWriter {
 
   isLegendVisible(): boolean {
     const elem = document.getElementById("showLegend") as HTMLInputElement | null;
+    return elem ? elem.checked : false;
+  }
+
+  isShowTempoChecked(): boolean {
+    const elem = document.getElementById("showTempo") as HTMLInputElement | null;
     return elem ? elem.checked : false;
   }
 
@@ -2832,6 +2841,9 @@ class GrooveWriter {
     if (authorInput && typeof authorInput.value === "string") this.data.author = authorInput.value;
     const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
     if (commentsInput && typeof commentsInput.value === "string") this.data.comments = commentsInput.value;
+    this.data.showTempo = this.isShowTempoChecked();
+    const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
+    if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
 
     const npm = this.data.notesPerMeasure;
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
@@ -2887,6 +2899,10 @@ class GrooveWriter {
     if (commentsInput) commentsInput.value = this.data.comments;
     const showLegendCheckbox = document.getElementById("showLegend") as HTMLInputElement | null;
     if (showLegendCheckbox) showLegendCheckbox.checked = this.data.showLegend;
+    const showTempoCheckbox = document.getElementById("showTempo") as HTMLInputElement | null;
+    if (showTempoCheckbox) showTempoCheckbox.checked = this.data.showTempo;
+    const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
+    if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
     this.myGrooveUtils.isLegendVisible = this.data.showLegend;
     this.myGrooveUtils.setTempo(this.data.tempo);
     this.myGrooveUtils.setSwing(this.data.swingPercent);

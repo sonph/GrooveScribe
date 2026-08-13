@@ -1397,13 +1397,69 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(writer.data.author).toBe('Clyde Stubblefield');
     expect(writer.data.comments).toBe('Count in 1 measure');
 
-    const abc = writer.generate_ABC(600);
-    expect(abc).toContain('T: Funky Drummer\n');
-    expect(abc).toContain('C: Clyde Stubblefield\n');
-    expect(abc).toContain('P: Count in 1 measure\n');
-
     expect(document.getElementById('ABCsource').value).toContain('T: Funky Drummer\n');
     expect(document.getElementById('ABCsource').value).toContain('C: Clyde Stubblefield\n');
     expect(document.getElementById('ABCsource').value).toContain('P: Count in 1 measure\n');
+  });
+
+  test('showTempo checkbox displays ABC tempo notation and syncs with tempo changes', () => {
+    document.body.innerHTML = `
+      <input type="checkbox" id="showTempo" />
+      <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+      <div id="musicalInput"></div>
+      <input id="tuneTitle" type="text" value="" />
+      <input id="tuneAuthor" type="text" value="" />
+      <input id="tuneComments" type="text" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.applyMeasuresToUI();
+    writer.displayNewSVG = jest.fn();
+
+    const showTempoCheckbox = document.getElementById('showTempo');
+    expect(writer.isShowTempoChecked()).toBe(false);
+    expect(writer.generate_ABC(600)).not.toContain('Q:');
+
+    // Check showTempo
+    showTempoCheckbox.checked = true;
+    writer.refresh_ABC();
+    expect(writer.data.showTempo).toBe(true);
+
+    // Initial tempo is 80 -> Q: 1/4=80
+    expect(writer.generate_ABC(600)).toContain('Q: 1/4=80\n');
+    expect(document.getElementById('ABCsource').value).toContain('Q: 1/4=80\n');
+
+    // Change tempo via tempoChangeCallback
+    writer.tempoChangeCallback(112);
+    expect(writer.data.tempo).toBe(112);
+    expect(writer.generate_ABC(600)).toContain('Q: 1/4=112\n');
+    expect(document.getElementById('ABCsource').value).toContain('Q: 1/4=112\n');
+
+    // Uncheck showTempo
+    showTempoCheckbox.checked = false;
+    writer.refresh_ABC();
+    expect(writer.data.showTempo).toBe(false);
+    expect(writer.generate_ABC(600)).not.toContain('Q:');
+  });
+
+  test('set_Default_notes restores showTempo state from URL', () => {
+    document.body.innerHTML = `
+      <input type="checkbox" id="showTempo" />
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input id="tuneTitle" type="text" value="" />
+      <input id="tuneAuthor" type="text" value="" />
+      <input id="tuneComments" type="text" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.displayNewSVG = jest.fn();
+
+    writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=125&ShowTempo=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    expect(document.getElementById('showTempo').checked).toBe(true);
+    expect(writer.data.showTempo).toBe(true);
+    expect(document.getElementById('ABCsource').value).toContain('Q: 1/4=125\n');
   });
 });
