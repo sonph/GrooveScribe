@@ -612,3 +612,41 @@ describe('SVG Note Highlighting & Note Mapping', () => {
     expect(utils.abcNoteNumCurrentlyHighlighted).toBe(-1);
   });
 });
+
+describe('Legend and ABC Header', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  test('decodeGrooveUrl parses Legend=1', () => {
+    expect(decodeGrooveUrl('Legend=1').showLegend).toBe(true);
+    expect(decodeGrooveUrl('showLegend=1').showLegend).toBe(true);
+    expect(decodeGrooveUrl('').showLegend).toBe(false);
+  });
+
+  test('encodeGrooveQueryString adds Legend=1 when showLegend is true', () => {
+    const data = new GrooveData();
+    data.showLegend = true;
+    expect(encodeGrooveQueryString(data)).toContain('Legend=1');
+
+    data.showLegend = false;
+    expect(encodeGrooveQueryString(data)).not.toContain('Legend');
+  });
+
+  test('getAbcHeader includes legend and 3-stave system when showLegend is true', () => {
+    const data = new GrooveData();
+    const headerWithLegend = data.getAbcHeader(false, 600, true);
+    expect(headerWithLegend).toContain('%%staves (Stickings Hands Feet)');
+    expect(headerWithLegend).toContain('V:Stickings');
+    expect(headerWithLegend).toContain('V:Hands stem=up');
+    expect(headerWithLegend).toContain('"^Hi-Hat"');
+    expect(headerWithLegend).toContain('"^Snare"');
+    expect(headerWithLegend).toContain('"^Kick"');
+    expect(headerWithLegend).toContain('V:Feet stem=down');
+
+    const headerWithoutLegend = data.getAbcHeader(false, 600, false);
+    expect(headerWithoutLegend).toContain('%%staves (Stickings Hands)');
+    expect(headerWithoutLegend).not.toContain('"^Hi-Hat"');
+    expect(headerWithoutLegend).not.toContain('V:Feet stem=down');
+  });
+});

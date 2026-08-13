@@ -1304,4 +1304,76 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(writer.is_snare_on(2)).toBe(true);
     expect(writer.is_kick_on(0)).toBe(true);
   });
+
+  test('showLegend checkbox modifies ABC to include legend at the top', () => {
+    document.body.innerHTML = `
+      <input type="checkbox" id="showLegend" />
+      <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+      <div id="musicalInput"></div>
+      <div id="tuneTitle"></div>
+      <div id="tuneAuthor"></div>
+      <div id="tuneComments"></div>
+      <input id="ABCsource" type="text" value="" />
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.applyMeasuresToUI();
+    writer.displayNewSVG = jest.fn();
+
+    const legendCheckbox = document.getElementById('showLegend');
+    expect(writer.isLegendVisible()).toBe(false);
+    expect(writer.generate_ABC(600)).not.toContain('%%staves (Stickings Hands Feet)');
+    expect(writer.generate_ABC(600)).not.toContain('"^Hi-Hat"');
+
+    // Check the box
+    legendCheckbox.checked = true;
+    expect(writer.isLegendVisible()).toBe(true);
+
+    // generate_ABC should now include the legend header
+    const abcWithLegend = writer.generate_ABC(600);
+    expect(abcWithLegend).toContain('%%staves (Stickings Hands Feet)');
+    expect(abcWithLegend).toContain('"^Hi-Hat"^g4 "^Open"!open!^g4');
+    expect(abcWithLegend).toContain('"^Snare"c4');
+    expect(abcWithLegend).toContain('"^Kick"F4');
+
+    // updateSheetMusic updates grooveUtils.isLegendVisible and data.showLegend
+    writer.updateSheetMusic();
+    expect(grooveUtils.isLegendVisible).toBe(true);
+    expect(writer.data.showLegend).toBe(true);
+    expect(document.getElementById('ABCsource').value).toContain('"^Hi-Hat"');
+
+    // Uncheck the box
+    legendCheckbox.checked = false;
+    writer.updateSheetMusic();
+    expect(grooveUtils.isLegendVisible).toBe(false);
+    expect(writer.data.showLegend).toBe(false);
+    expect(document.getElementById('ABCsource').value).not.toContain('"^Hi-Hat"');
+  });
+
+  test('set_Default_notes restores showLegend checkbox state from URL', () => {
+    document.body.innerHTML = `
+      <input type="checkbox" id="showLegend" />
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input id="tuneTitle" type="text" value="" />
+      <input id="tuneAuthor" type="text" value="" />
+      <input id="tuneComments" type="text" value="" />
+      <input id="ABCsource" type="text" value="" />
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.displayNewSVG = jest.fn();
+
+    writer.set_Default_notes('TimeSig=4/4&Div=8&Legend=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    expect(document.getElementById('showLegend').checked).toBe(true);
+    expect(writer.data.showLegend).toBe(true);
+    expect(grooveUtils.isLegendVisible).toBe(true);
+    expect(document.getElementById('ABCsource').value).toContain('"^Hi-Hat"');
+
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    expect(document.getElementById('showLegend').checked).toBe(false);
+    expect(writer.data.showLegend).toBe(false);
+    expect(grooveUtils.isLegendVisible).toBe(false);
+    expect(document.getElementById('ABCsource').value).not.toContain('"^Hi-Hat"');
+  });
 });

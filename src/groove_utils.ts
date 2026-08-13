@@ -672,6 +672,7 @@ interface DecodedGrooveUrl {
   comments: string;
   tempo: number;
   swingPercent: number;
+  showLegend: boolean;
   // Raw pipe-delimited tab strings keyed by DrumType.name (e.g. "H", "S", "K").
   drumTabs: Map<string, string>;
 }
@@ -699,6 +700,7 @@ function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
     comments: params.get('Comments') || '',
     tempo: Math.min(Math.max(parseInt(params.get('Tempo')) || constant_DEFAULT_TEMPO, 20), 400),
     swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
+    showLegend: params.get('Legend') === '1' || params.get('showLegend') === '1',
     drumTabs,
   };
 }
@@ -736,6 +738,7 @@ interface EncodableGrooveState {
   measures: Array<Measure>;
   showStickings: boolean;
   showToms: boolean;
+  showLegend?: boolean;
 }
 
 // Build query string manually (not URLSearchParams) so `|` and `/` are preserved
@@ -756,6 +759,7 @@ function encodeGrooveQueryString(state: EncodableGrooveState): string {
   add('Tempo', state.tempo.toString());
   add('Swing', state.swingPercent ? state.swingPercent.toString() : '');
   add('MetronomeFreq', state.metronomeFrequency ? state.metronomeFrequency.toString() : '');
+  if (state.showLegend) add('Legend', '1');
 
   for (const drum of DrumType.ALL) {
     if (!state.showStickings && drum.equals(DrumType.STICKINGS)) continue;
@@ -778,6 +782,7 @@ class GrooveData {
   showTempo: false;
   showToms: boolean;
   showStickings: boolean;
+  showLegend: boolean;
   title: string;
   author: string;
   comments: string;
@@ -801,6 +806,7 @@ class GrooveData {
     this.showTempo = false;
     this.showToms = false;
     this.showStickings = false;
+    this.showLegend = false;
     this.title = "";
     this.author = "";
     this.comments = "";
@@ -837,6 +843,7 @@ class GrooveData {
     this.comments = decoded.comments;
     this.tempo = decoded.tempo;
     this.swingPercent = decoded.swingPercent;
+    this.showLegend = decoded.showLegend;
 
     const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
     if (measures.length !== 0) {
@@ -1108,7 +1115,7 @@ class GrooveData {
     //     FullNoteHHArray.length);
   }
 
-  getAbcHeader(isPermutation: boolean, renderWidth: number): string {
+  getAbcHeader(isPermutation: boolean, renderWidth: number, showLegend: boolean = false): string {
     // 0 is GrooveUtil index if there are multiple instances.
     var fullABC = `%abc\n%%fullsvg _0\nX:6\nM:${this.timeSig.toString()}\n`;
     if (this.title) {
@@ -1163,8 +1170,11 @@ class GrooveData {
       '%%map drum ^c heads=Xhead print=c  % Cross Stick\n' +
       '%%map drum ^d, heads=Xhead print=d,  % Foot Splash\n';
 
-    // If kick_stems_up is customizable and false, add Feet voice here.
-    fullABC += "%%staves (Stickings Hands)\n";
+    if (showLegend || this.showLegend) {
+      fullABC += "%%staves (Stickings Hands Feet)\n";
+    } else {
+      fullABC += "%%staves (Stickings Hands)\n";
+    }
 
     if (this.comments) {
       fullABC += `P: ${this.comments}\n%%musicspace 20px\n`;
@@ -1172,6 +1182,19 @@ class GrooveData {
 
     // the K ends the header;
     fullABC += "K:C clef=perc\n";
+
+    if (showLegend || this.showLegend) {
+      fullABC += 'V:Stickings\n' +
+        'x8 x8 x8 x8 x8 x8 x8 x8 ||\n' +
+        'V:Hands stem=up \n' +
+        '%%voicemap drum\n' +
+        '"^Hi-Hat"^g4 "^Open"!open!^g4 ' +
+        '"^Crash"^c\'4 "^Stacker"^d\'4 "^Ride"^A\'4 "^Ride Bell"^B\'4 x2 "^Tom"e4 "^Tom"A4 "^Snare"c4 "^Buzz"!///!c4 "^Cross"^c4 "^Ghost  "!(.!!).!c4 "^Flam"{/c}c4  x10 ||\n' +
+        'V:Feet stem=down \n' +
+        '%%voicemap drum\n' +
+        'x52 "^Kick"F4 "^HH foot"^d,4 x4 ||\n' +
+        'T:\n';
+    }
 
     if (this.showTempo) {
       fullABC += `Q: 1/4=${this.tempo}\n`;
@@ -1342,6 +1365,7 @@ class GrooveUtils {
   tempoChangeCallback: ((tempo: number) => void) | null;
   lastMidiTimeUpdate: number;
   swingPercent: number;
+  isLegendVisible: boolean;
 
   constructor(excludeAbcForTesting = false) {
     this.grooveUtilsUniqueIndex = 0;
@@ -1350,6 +1374,7 @@ class GrooveUtils {
     this.metronomeSolo = false;
     this.metronomeOffsetClickStart = "1";
     this.metronomeOffsetClickStartRotation = 0;
+    this.isLegendVisible = false;
     this.noteCallback = null;
     this.playEventCallback = null;
     this.repeatCallback = null;
@@ -1633,16 +1658,27 @@ class GrooveUtils {
   };
 
   renderABCtoSVG(abcString: string): { svg: string, error_html: string } {
-    this.abcNoteNumIndex = 0;
-    this.abcToSVGCallback.abcNoteNumIndex = 0;
-    this.abcToSVGCallback.grooveUtilsUniqueIndex = this.grooveUtilsUniqueIndex;
-    this.abcToSVGCallback.abc_svg_output = '';
-    this.abcToSVGCallback.abc_error_output = '';
+    if (this.isLegendVisible) {
+      this.abcNoteNumIndex = -15;
+      if (this.abcToSVGCallback)
+        this.abcToSVGCallback.abcNoteNumIndex = -15;
+    } else {
+      this.abcNoteNumIndex = 0;
+      if (this.abcToSVGCallback)
+        this.abcToSVGCallback.abcNoteNumIndex = 0;
+    }
+    if (this.abcToSVGCallback) {
+      this.abcToSVGCallback.grooveUtilsUniqueIndex = this.grooveUtilsUniqueIndex;
+      this.abcToSVGCallback.abc_svg_output = '';
+      this.abcToSVGCallback.abc_error_output = '';
+    }
 
-    this.abc_obj.tosvg("SOURCE", abcString);
+    if (this.abc_obj) {
+      this.abc_obj.tosvg("SOURCE", abcString);
+    }
     return {
-      svg: this.abcToSVGCallback.abc_svg_output,
-      error_html: this.abcToSVGCallback.abc_error_output
+      svg: this.abcToSVGCallback ? this.abcToSVGCallback.abc_svg_output : '',
+      error_html: this.abcToSVGCallback ? this.abcToSVGCallback.abc_error_output : ''
     };
   }
 

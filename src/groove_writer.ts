@@ -1684,8 +1684,13 @@ class GrooveWriter {
     }
   };
 
+  isLegendVisible(): boolean {
+    const elem = document.getElementById("showLegend") as HTMLInputElement | null;
+    return elem ? elem.checked : false;
+  }
+
   generate_ABC(renderWidth: number): string {
-    return this.data.getAbcHeader(this.class_permutation_type != 'none', renderWidth)
+    return this.data.getAbcHeader(this.class_permutation_type != 'none', renderWidth, this.isLegendVisible())
       + this.data.getAbcNotation();
   }
 
@@ -1694,6 +1699,8 @@ class GrooveWriter {
   // on the page.
   updateSheetMusic(): void {
     this.syncUIToMeasures();
+    this.data.showLegend = this.isLegendVisible();
+    this.myGrooveUtils.isLegendVisible = this.isLegendVisible();
     var renderWidth = 600;
     var svgTarget = document.getElementById("svgTarget");
     if (svgTarget) {
@@ -1702,7 +1709,9 @@ class GrooveWriter {
     }
 
     var fullABC = this.generate_ABC(renderWidth);
-    (document.getElementById("ABCsource") as HTMLInputElement).value = fullABC;
+    var abcSource = document.getElementById("ABCsource") as HTMLInputElement | null;
+    if (abcSource)
+      abcSource.value = fullABC;
     // this.updateGrooveDBSource();
 
     // update the current URL so that reloads and history traversal and link shares and bookmarks work correctly
@@ -2863,9 +2872,15 @@ class GrooveWriter {
     if (this.data.showStickings)
       this.stickingsShowHide(true, true, true);
 
-    (document.getElementById("tuneTitle") as HTMLInputElement).value = this.data.title;
-    (document.getElementById("tuneAuthor") as HTMLInputElement).value = this.data.author;
-    (document.getElementById("tuneComments") as HTMLInputElement).value = this.data.comments;
+    const titleInput = document.getElementById("tuneTitle") as HTMLInputElement | null;
+    if (titleInput) titleInput.value = this.data.title;
+    const authorInput = document.getElementById("tuneAuthor") as HTMLInputElement | null;
+    if (authorInput) authorInput.value = this.data.author;
+    const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
+    if (commentsInput) commentsInput.value = this.data.comments;
+    const showLegendCheckbox = document.getElementById("showLegend") as HTMLInputElement | null;
+    if (showLegendCheckbox) showLegendCheckbox.checked = this.data.showLegend;
+    this.myGrooveUtils.isLegendVisible = this.data.showLegend;
     this.myGrooveUtils.setTempo(this.data.tempo);
     this.myGrooveUtils.setSwing(this.data.swingPercent);
     this.setMetronomeFrequency(this.data.metronomeFrequency);
