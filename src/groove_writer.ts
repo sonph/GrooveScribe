@@ -2035,7 +2035,6 @@ class GrooveWriter {
       '</tr>';
     }
     tbody.innerHTML = html;
-    this.convert(false, false);
   }
 
   getEmbedTableData(): EmbedTableData | null {
@@ -2177,7 +2176,7 @@ class GrooveWriter {
   }
 
   convert(selectUrl: boolean = false, refreshSheetMusic: boolean = true): void {
-    if (document.getElementById("hi-hat0")) {
+    if (!this.isInitializing && document.getElementById("hi-hat0")) {
       this.syncUIToMeasures();
     }
     this.syncTableToGrooveWriter();
