@@ -1376,4 +1376,34 @@ describe('LeftHandNav and Embedding Options', () => {
     expect(grooveUtils.isLegendVisible).toBe(false);
     expect(document.getElementById('ABCsource').value).not.toContain('"^Hi-Hat"');
   });
+
+  test('title, author, and comments sync from input elements into ABC sheet music', () => {
+    document.body.innerHTML = `
+      <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+      <div id="musicalInput"></div>
+      <input id="tuneTitle" type="text" value="Funky Drummer" />
+      <input id="tuneAuthor" type="text" value="Clyde Stubblefield" />
+      <input id="tuneComments" type="text" value="Count in 1 measure" />
+      <textarea id="ABCsource"></textarea>
+      <div id="diverr"></div>
+      <div id="svgTarget"></div>
+    `;
+    writer.applyMeasuresToUI();
+    writer.displayNewSVG = jest.fn();
+
+    writer.refresh_ABC();
+
+    expect(writer.data.title).toBe('Funky Drummer');
+    expect(writer.data.author).toBe('Clyde Stubblefield');
+    expect(writer.data.comments).toBe('Count in 1 measure');
+
+    const abc = writer.generate_ABC(600);
+    expect(abc).toContain('T: Funky Drummer\n');
+    expect(abc).toContain('C: Clyde Stubblefield\n');
+    expect(abc).toContain('P: Count in 1 measure\n');
+
+    expect(document.getElementById('ABCsource').value).toContain('T: Funky Drummer\n');
+    expect(document.getElementById('ABCsource').value).toContain('C: Clyde Stubblefield\n');
+    expect(document.getElementById('ABCsource').value).toContain('P: Count in 1 measure\n');
+  });
 });

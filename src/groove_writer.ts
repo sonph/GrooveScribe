@@ -2826,6 +2826,13 @@ class GrooveWriter {
   // Reads DOM click state and writes tab strings back into this.data.measures
   // so ABC/SVG generation reflects interactive edits.
   syncUIToMeasures(): void {
+    const titleInput = document.getElementById("tuneTitle") as HTMLInputElement | null;
+    if (titleInput && typeof titleInput.value === "string") this.data.title = titleInput.value;
+    const authorInput = document.getElementById("tuneAuthor") as HTMLInputElement | null;
+    if (authorInput && typeof authorInput.value === "string") this.data.author = authorInput.value;
+    const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
+    if (commentsInput && typeof commentsInput.value === "string") this.data.comments = commentsInput.value;
+
     const npm = this.data.notesPerMeasure;
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
       const measure = this.data.measures[m];
