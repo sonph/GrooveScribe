@@ -81,6 +81,61 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["X", "kick_and_splash"]])
   }]]);
 
+// Mode name -> AbcNote per drum. Any mode not listed here (including "off")
+// falls back to AbcNote.OFF via modeToNote().
+const MODE_TO_NOTE: Map<string, Map<string, AbcNote>> = new Map([
+  [DrumType.HIHAT.name, new Map<string, AbcNote>([
+    ['normal', AbcNote.HH_NORMAL],
+    ['accent', AbcNote.HH_ACCENT],
+    ['open', AbcNote.HH_OPEN],
+    ['close', AbcNote.HH_CLOSE],
+    ['ride', AbcNote.HH_RIDE],
+    ['ride_bell', AbcNote.HH_RIDE_BELl],
+    ['cow_bell', AbcNote.HH_COW_BELL],
+    ['crash', AbcNote.HH_CRASH],
+    ['stacker', AbcNote.HH_STACKER],
+    ['metronome_normal', AbcNote.HH_METRONOME_NORMAL],
+    ['metronome_accent', AbcNote.HH_METRONOME_ACCENT],
+  ])],
+  [DrumType.SNARE.name, new Map<string, AbcNote>([
+    ['normal', AbcNote.SN_NORMAL],
+    ['accent', AbcNote.SN_ACCENT],
+    ['ghost', AbcNote.SN_GHOST],
+    ['xstick', AbcNote.SN_XSTICK],
+    ['buzz', AbcNote.SN_BUZZ],
+    ['flam', AbcNote.SN_FLAM],
+    ['drag', AbcNote.SN_DRAG],
+  ])],
+  [DrumType.KICK.name, new Map<string, AbcNote>([
+    ['normal', AbcNote.KI_NORMAL],
+    ['splash', AbcNote.KI_SPLASH],
+    ['kick_and_splash', AbcNote.KI_SANDK],
+  ])],
+  [DrumType.STICKINGS.name, new Map<string, AbcNote>([
+    ['right', AbcNote.STICK_R],
+    ['left', AbcNote.STICK_L],
+    ['both', AbcNote.STICK_BOTH],
+    ['count', AbcNote.STICK_COUNT],
+  ])],
+]);
+
+function modeToNote(drumType: DrumType, mode: string): AbcNote {
+  return MODE_TO_NOTE.get(drumType.name)?.get(mode) ?? AbcNote.OFF;
+}
+
+// All AbcNotes for a given drum, iteration-order preserved. Used by
+// get_*_state() to find the currently-on note. HIHAT and SNARE variants that
+// share html_id_prefixes must be checked in the order defined on AbcNote so
+// multi-prefix notes (e.g. HH_OPEN = {hh_cross, hh_open}) resolve before their
+// single-prefix bases (HH_NORMAL = {hh_cross}).
+const NOTES_FOR_DRUM: Map<string, ReadonlyArray<AbcNote>> = new Map([
+  [DrumType.HIHAT.name, AbcNote.HH_ALL],
+  [DrumType.SNARE.name, AbcNote.SN_ALL],
+  [DrumType.STICKINGS.name, AbcNote.STICKINGS_ALL],
+  [DrumType.TOM1.name, [AbcNote.T1_NORMAL]],
+  [DrumType.TOM4.name, [AbcNote.T4_NORMAL]],
+]);
+
 class GrooveWriter {
   myGrooveUtils: GrooveUtils;
   data: GrooveData;
@@ -261,70 +316,6 @@ class GrooveWriter {
       MIDI.AudioTag.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
     }
   }
-
-  // // returns the ABC notation for the Tom state
-  // // false = off
-  // // "x" = normal tom
-  // get_tom_state(id: string, tom_num: number): { abc: string, url: string } | false {
-  //   const note: AbcNote = {
-  //     1: AbcNote.T1_NORMAL,
-  //     4: AbcNote.T4_NORMAL
-  //   }[tom_num];
-  //   if (this.isNoteOn(note.htmlAttrs.html_id_prefix + id)) {
-  //     return { abc: note.note, url: note.getFirstTabChar() };
-  //   }
-  //   return false;
-  // }
-
-  // set_tom_state(id: number, tomNum: number, mode: 'off' | 'normal', makeSound: boolean): void {
-  //   const note = {
-  //     1: AbcNote.T1_NORMAL,
-  //     4: AbcNote.T4_NORMAL
-  //   }[tomNum];
-  //   if (mode === 'off') {
-  //     this.setNoteState(note.htmlAttrs.html_id_prefix + id, mode === 'off' ? 'off' : 'on');
-  //   } else {
-  //     this.setNoteState(note.htmlAttrs.html_id_prefix + id, "on");
-  //     if (makeSound) {
-  //       this.playSingleNote(note.midiNote);
-  //     }
-  //   }
-  // }
-
-  // // silly helpers, but needed for argument compatibility with the other set states
-  // set_tom1_state(id, mode, make_sound) {
-  //   set_tom_state(id, 1, mode, make_sound);
-  // }
-
-  // set_tom4_state(id, mode, make_sound) {
-  //   set_tom_state(id, 4, mode, make_sound);
-  // }
-
-  // is_kick_on(id: number): boolean {
-  //   return get_kick_state(id) !== false;
-  // }
-
-  // returns the ABC notation for the kick state
-  // false = off
-  // "F" = normal kick
-  // "^d," = splash
-  // "F^d,"  = kick & splash
-  // get_kick_state(id: number): { abc: string, url: string } | false {
-  //   const splashOn = isNoteOn(AbcNote.KI_SPLASH.htmlAttrs.html_id_prefix + id);
-  //   const kickOn = isNoteOn(AbcNote.KI_SPLASH.htmlAttrs.html_id_prefix + id);
-  //   var note;
-  //   if (splashOn && kickOn) {
-  //     note = AbcNote.KI_SANDK;
-  //   } else if (splashOn) {
-  //     note = AbcNote.KI_SPLASH;
-  //   } else if (kickOn) {
-  //     note = AbcNote.KI_NORMAL;
-  //   }
-  //   if (note) {
-  //     return { abc: note.note, url: note.getFirstTabChar() };
-  //   }
-  //   return false;
-  // }
 
   getDrumNote(idNum: number, drumType: DrumType): AbcNote | null {
     const id = idNum.toString();
@@ -879,6 +870,33 @@ class GrooveWriter {
     };
   }
 
+  // Position a context menu below an anchor element (right-aligned via rightOffset)
+  // and show it. No-op if either element is missing.
+  showMenuBelowAnchor(menuId: string, anchorId: string, rightOffset: number) {
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const anchor = document.getElementById(anchorId);
+    if (anchor) {
+      const pos = this.getTagPosition(anchor);
+      menu.style.top = pos.y + anchor.offsetHeight + "px";
+      menu.style.left = pos.x + anchor.offsetWidth - rightOffset + "px";
+    }
+    this.myGrooveUtils.showContextMenu(menu);
+  }
+
+  // Position a context menu at the event's click point (offset by dx/dy) and show it.
+  // No-op if the menu is missing or the event has no click coordinates.
+  showMenuAtEvent(menuId: string, event, dx: number, dy: number) {
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    if (!event) event = window.event;
+    if (event && (event.clientX || event.clientY)) {
+      menu.style.top = event.clientY + dy + "px";
+      menu.style.left = event.clientX + dx + "px";
+    }
+    this.myGrooveUtils.showContextMenu(menu);
+  }
+
   tempoChangeCallback = (newTempo) => {
 
     // if there is a timeout running clear it
@@ -939,112 +957,32 @@ class GrooveWriter {
     this.updateUrl();
   };
 
-  // the user has clicked on the metronome options button
   metronomeOptionsAnchorClick = (event) => {
-
-    var contextMenu = document.getElementById("metronomeOptionsContextMenu");
-    if (contextMenu) {
-
-      var anchorPoint = document.getElementById("metronomeOptionsAnchor");
-
-      if (anchorPoint) {
-        var anchorPos = this.getTagPosition(anchorPoint);
-        contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
-        contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
-      }
-
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuBelowAnchor("metronomeOptionsContextMenu", "metronomeOptionsAnchor", 150);
   };
 
-  // the user has clicked on the permutation menu
   permutationAnchorClick = (event) => {
     // permutations disabled except in 4/4 time
     if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       return;
     }
-
-    var contextMenu = document.getElementById("permutationContextMenu");
-    if (contextMenu) {
-      var anchorPoint = document.getElementById("permutationAnchor");
-
-      if (anchorPoint) {
-        var anchorPos = this.getTagPosition(anchorPoint);
-        contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
-        contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
-      }
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuBelowAnchor("permutationContextMenu", "permutationAnchor", 150);
   };
 
-  // the user has clicked on the grooves menu
   groovesAnchorClick = (event) => {
-
-    var contextMenu = document.getElementById("grooveListWrapper");
-    if (contextMenu) {
-      var anchorPoint = document.getElementById("groovesAnchor");
-
-      if (anchorPoint) {
-        var anchorPos = this.getTagPosition(anchorPoint);
-        contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
-        contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 283 + "px";
-      }
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuBelowAnchor("grooveListWrapper", "groovesAnchor", 283);
   };
 
-  // the user has clicked on the help menu
   helpAnchorClick = (event) => {
-
-    var contextMenu = document.getElementById("helpContextMenu");
-    if (contextMenu) {
-      var anchorPoint = document.getElementById("helpAnchor");
-
-      if (anchorPoint) {
-        var anchorPos = this.getTagPosition(anchorPoint);
-        contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
-        contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
-      }
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuBelowAnchor("helpContextMenu", "helpAnchor", 150);
   };
 
-  // the user has clicked on the stickings menu (at bottom)
   stickingsAnchorClick = (event) => {
-
-    var contextMenu = document.getElementById("stickingsContextMenu");
-    if (contextMenu) {
-      var anchorPoint = document.getElementById("stickingsButton");
-
-      if (anchorPoint) {
-        if (!event)
-          event = window.event;
-        if (event.clientX || event.clientY) {
-          contextMenu.style.top = event.clientY - 100 + "px";
-          contextMenu.style.left = event.clientX - 150 + "px";
-        }
-      }
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuAtEvent("stickingsContextMenu", event, -150, -100);
   };
 
-  // the user has clicked on the download menu (at bottom)
   DownloadAnchorClick = (event) => {
-
-    var contextMenu = document.getElementById("downloadContextMenu");
-    if (contextMenu) {
-      var anchorPoint = document.getElementById("downloadButton");
-
-      if (anchorPoint) {
-        if (!event)
-          event = window.event;
-        if (event.clientX || event.clientY) {
-          contextMenu.style.top = event.clientY - 150 + "px";
-          contextMenu.style.left = event.clientX - 150 + "px";
-        }
-      }
-      this.myGrooveUtils.showContextMenu(contextMenu);
-    }
+    this.showMenuAtEvent("downloadContextMenu", event, -150, -150);
   };
 
   // figure out if the metronome options menu should be selected and change the UI
@@ -1104,22 +1042,10 @@ class GrooveWriter {
 
       case "OffTheOne":
         // bring up the next menu to be clicked
-        var contextMenu;
-
-        if (this.data.subdivision.isTriplet())
-          contextMenu = document.getElementById("metronomeOptionsOffsetClickForTripletsContextMenu");
-        else
-          contextMenu = document.getElementById("metronomeOptionsOffsetClickContextMenu");
-        if (contextMenu) {
-          var anchorPoint = document.getElementById("metronomeOptionsContextMenuOffTheOne");
-
-          if (anchorPoint) {
-            var anchorPos = this.getTagPosition(anchorPoint);
-            contextMenu.style.top = anchorPos.y + anchorPoint.offsetHeight + "px";
-            contextMenu.style.left = anchorPos.x + anchorPoint.offsetWidth - 150 + "px";
-          }
-          this.myGrooveUtils.showContextMenu(contextMenu);
-        }
+        const offTheOneMenuId = this.data.subdivision.isTriplet()
+          ? "metronomeOptionsOffsetClickForTripletsContextMenu"
+          : "metronomeOptionsOffsetClickContextMenu";
+        this.showMenuBelowAnchor(offTheOneMenuId, "metronomeOptionsContextMenuOffTheOne", 150);
         break;
       case "Dropper":
         break;
@@ -2043,61 +1969,54 @@ class GrooveWriter {
     return true;
   }
 
-  get_hh_state(id: number | string): { abc: string | false, url: string } {
-    for (const note of AbcNote.HH_ALL) {
-      if (this._isAbcNoteOn(note, id)) {
-        return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
-      }
+  // Finds the currently-on AbcNote at `id` for a drum, or null if none.
+  // Kick has bespoke logic: splash+normal both on -> KI_SANDK.
+  private _getOnNote(drumType: DrumType, id: number | string): AbcNote | null {
+    if (drumType === DrumType.KICK) {
+      const splashOn = this._isAbcNoteOn(AbcNote.KI_SPLASH, id);
+      const kickOn = this._isAbcNoteOn(AbcNote.KI_NORMAL, id);
+      if (splashOn && kickOn) return AbcNote.KI_SANDK;
+      if (splashOn) return AbcNote.KI_SPLASH;
+      if (kickOn) return AbcNote.KI_NORMAL;
+      return null;
     }
-    return { abc: false, url: '-' };
+    const notes = NOTES_FOR_DRUM.get(drumType.name) || [];
+    for (const note of notes) {
+      if (this._isAbcNoteOn(note, id)) return note;
+    }
+    return null;
+  }
+
+  private _stateFor(note: AbcNote | null): { abc: string | false, url: string } {
+    if (!note) return { abc: false, url: '-' };
+    return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
+  }
+
+  get_hh_state(id: number | string): { abc: string | false, url: string } {
+    return this._stateFor(this._getOnNote(DrumType.HIHAT, id));
   }
 
   get_snare_state(id: number | string): { abc: string | false, url: string } {
-    for (const note of AbcNote.SN_ALL) {
-      if (this._isAbcNoteOn(note, id)) {
-        return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
-      }
-    }
-    return { abc: false, url: '-' };
+    return this._stateFor(this._getOnNote(DrumType.SNARE, id));
   }
 
   get_kick_state(id: number | string, returnType?: string): any {
-    const splashOn = this._isAbcNoteOn(AbcNote.KI_SPLASH, id);
-    const kickOn = this._isAbcNoteOn(AbcNote.KI_NORMAL, id);
-    let note: AbcNote | null = null;
-    if (splashOn && kickOn) note = AbcNote.KI_SANDK;
-    else if (splashOn) note = AbcNote.KI_SPLASH;
-    else if (kickOn) note = AbcNote.KI_NORMAL;
-    const result = {
-      abc: note ? this._abcFor(note) as string : false,
-      url: note ? note.getFirstTabChar() : '-'
-    };
-    if (returnType === 'ABC') return result.abc;
-    if (returnType === 'URL') return result.url;
-    return result;
+    const state = this._stateFor(this._getOnNote(DrumType.KICK, id));
+    if (returnType === 'ABC') return state.abc;
+    if (returnType === 'URL') return state.url;
+    return state;
   }
 
   get_tom_state(id: number | string, tom_num: number): { abc: string | false, url: string } {
-    const note = tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL;
-    if (this._isAbcNoteOn(note, id)) {
-      return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
-    }
-    return { abc: false, url: '-' };
+    const drumType = tom_num === 1 ? DrumType.TOM1 : DrumType.TOM4;
+    return this._stateFor(this._getOnNote(drumType, id));
   }
 
   get_sticking_state(id: number | string, returnType?: string): any {
-    for (const note of AbcNote.STICKINGS_ALL) {
-      if (this._isAbcNoteOn(note, id)) {
-        const result = { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
-        if (returnType === 'ABC') return result.abc;
-        if (returnType === 'URL') return result.url;
-        return result;
-      }
-    }
-    const result = { abc: false, url: '-' };
-    if (returnType === 'ABC') return result.abc;
-    if (returnType === 'URL') return result.url;
-    return result;
+    const state = this._stateFor(this._getOnNote(DrumType.STICKINGS, id));
+    if (returnType === 'ABC') return state.abc;
+    if (returnType === 'URL') return state.url;
+    return state;
   }
 
   // Helpers: check if a drum is currently on (based on rendered UI state).
@@ -2108,81 +2027,27 @@ class GrooveWriter {
     return this.get_snare_state(id).abc !== false;
   }
   is_kick_on(id: number | string): boolean {
-    const state = this.get_kick_state(id);
-    return state.abc !== false;
+    return this.get_kick_state(id).abc !== false;
   }
   is_tom_on(id: number | string, tom_num: number): boolean {
     return this.get_tom_state(id, tom_num).abc !== false;
   }
 
   // Setters: mode-string based wrappers around setDrumNote.
-  // Preserved for compatibility with pre-refactor code paths.
-  private _hhModeToNote(mode: string): AbcNote {
-    switch (mode) {
-      case 'normal': return AbcNote.HH_NORMAL;
-      case 'accent': return AbcNote.HH_ACCENT;
-      case 'open': return AbcNote.HH_OPEN;
-      case 'close': return AbcNote.HH_CLOSE;
-      case 'ride': return AbcNote.HH_RIDE;
-      case 'ride_bell': return AbcNote.HH_RIDE_BELl;
-      case 'cow_bell': return AbcNote.HH_COW_BELL;
-      case 'crash': return AbcNote.HH_CRASH;
-      case 'stacker': return AbcNote.HH_STACKER;
-      case 'metronome_normal': return AbcNote.HH_METRONOME_NORMAL;
-      case 'metronome_accent': return AbcNote.HH_METRONOME_ACCENT;
-      case 'off': default: return AbcNote.OFF;
-    }
-  }
-  private _snareModeToNote(mode: string): AbcNote {
-    switch (mode) {
-      case 'normal': return AbcNote.SN_NORMAL;
-      case 'accent': return AbcNote.SN_ACCENT;
-      case 'ghost': return AbcNote.SN_GHOST;
-      case 'xstick': return AbcNote.SN_XSTICK;
-      case 'buzz': return AbcNote.SN_BUZZ;
-      case 'flam': return AbcNote.SN_FLAM;
-      case 'drag': return AbcNote.SN_DRAG;
-      case 'off': default: return AbcNote.OFF;
-    }
-  }
-  private _kickModeToNote(mode: string): AbcNote {
-    switch (mode) {
-      case 'normal': return AbcNote.KI_NORMAL;
-      case 'splash': return AbcNote.KI_SPLASH;
-      case 'kick_and_splash': return AbcNote.KI_SANDK;
-      case 'off': default: return AbcNote.OFF;
-    }
-  }
-  private _stickingModeToNote(mode: string): AbcNote {
-    switch (mode) {
-      case 'right': return AbcNote.STICK_R;
-      case 'left': return AbcNote.STICK_L;
-      case 'both': return AbcNote.STICK_BOTH;
-      case 'count': return AbcNote.STICK_COUNT;
-      case 'off': default: return AbcNote.STICK_OFF;
-    }
-  }
-
   set_hh_state(id: number | string, mode: string, makeSound: boolean = false): void {
-    const note = this._hhModeToNote(mode);
-    this.setDrumNote(Number(id), note, makeSound, DrumType.HIHAT);
+    this.setDrumNote(Number(id), modeToNote(DrumType.HIHAT, mode), makeSound, DrumType.HIHAT);
   }
   set_snare_state(id: number | string, mode: string, makeSound: boolean = false): void {
-    const note = this._snareModeToNote(mode);
-    this.setDrumNote(Number(id), note, makeSound, DrumType.SNARE);
+    this.setDrumNote(Number(id), modeToNote(DrumType.SNARE, mode), makeSound, DrumType.SNARE);
   }
   set_kick_state(id: number | string, mode: string, makeSound: boolean = false): void {
-    const note = this._kickModeToNote(mode);
-    this.setDrumNote(Number(id), note, makeSound, DrumType.KICK);
+    this.setDrumNote(Number(id), modeToNote(DrumType.KICK, mode), makeSound, DrumType.KICK);
   }
   set_tom_state(id: number | string, tom_num: number, mode: string, makeSound: boolean = false): void {
     const drumType = tom_num === 1 ? DrumType.TOM1 : DrumType.TOM4;
-    let note: AbcNote;
-    if (mode === 'normal') {
-      note = tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL;
-    } else {
-      note = AbcNote.OFF;
-    }
+    const note = mode === 'normal'
+      ? (tom_num === 1 ? AbcNote.T1_NORMAL : AbcNote.T4_NORMAL)
+      : AbcNote.OFF;
     this.setDrumNote(Number(id), note, makeSound, drumType);
   }
   set_tom1_state(id: number | string, mode: string, makeSound: boolean = false): void {
@@ -2192,10 +2057,7 @@ class GrooveWriter {
     this.set_tom_state(id, 4, mode, makeSound);
   }
   set_sticking_state(id: number | string, mode: string, makeSound: boolean = false): void {
-    const note = this._stickingModeToNote(mode);
-    // Passing STICK_OFF makes the "off" mode preserve drumType via the enum, while other modes carry their own drumType.
-    const noteToSet = note === AbcNote.STICK_OFF ? AbcNote.OFF : note;
-    this.setDrumNote(Number(id), noteToSet, makeSound, DrumType.STICKINGS);
+    this.setDrumNote(Number(id), modeToNote(DrumType.STICKINGS, mode), makeSound, DrumType.STICKINGS);
   }
 
   // create a new instance of an array with all the values prefilled with false

@@ -131,6 +131,154 @@ describe('State setters and getters', () => {
   });
 });
 
+// Pins the round-trip for every (drum, mode) pair — set_*_state(mode) →
+// get_*_state() returns the expected abc + url tab char. This is the safety net
+// for refactoring the four _*ModeToNote() switches into a data-driven lookup.
+describe('All drum modes round-trip through set/get state', () => {
+  let grooveUtils, writer;
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    writer = new GrooveWriter(grooveUtils);
+    document.body.innerHTML = writer.HTMLforStaffContainer(0, 0);
+  });
+
+  test.each([
+    ['normal',           '^g',           'x'],
+    ['accent',           '!accent!^g',   'X'],
+    ['open',             '!open!^g',     'o'],
+    ['close',            '!plus!^g',     '+'],
+    ['ride',             "^A'",          'r'],
+    ['ride_bell',        "^B'",          'b'],
+    ['cow_bell',         "^D'",          'm'],
+    ['crash',            "^c'",          'c'],
+    ['stacker',          "^d'",          's'],
+    ['metronome_normal', "^e'",          'n'],
+    ['metronome_accent', "^f'",          'N'],
+  ])('hi-hat mode "%s" -> abc %s, url %s', (mode, abc, url) => {
+    writer.set_hh_state(0, mode);
+    const state = writer.get_hh_state(0);
+    expect(state.abc).toBe(abc);
+    expect(state.url).toBe(url);
+  });
+
+  test.each([
+    ['normal', 'c',              'o'],
+    ['accent', '!accent!c',      'O'],
+    ['ghost',  '!(.!!).!c',      'g'],
+    ['xstick', '^c',             'x'],
+    ['buzz',   '!///!c',         'b'],
+    ['flam',   '!accent!{/c}c',  'f'],
+    ['drag',   '{//c}c',         'd'],
+  ])('snare mode "%s" -> abc %s, url %s', (mode, abc, url) => {
+    writer.set_snare_state(0, mode);
+    const state = writer.get_snare_state(0);
+    expect(state.abc).toBe(abc);
+    expect(state.url).toBe(url);
+  });
+
+  test.each([
+    ['normal',          'F',      'o'],
+    ['splash',          '^d,',    'x'],
+    ['kick_and_splash', '[F^d,]', 'X'],
+  ])('kick mode "%s" -> abc %s, url %s', (mode, abc, url) => {
+    writer.set_kick_state(0, mode);
+    const state = writer.get_kick_state(0);
+    expect(state.abc).toBe(abc);
+    expect(state.url).toBe(url);
+  });
+
+  test.each([
+    ['right', '"R"x',     'R'],
+    ['left',  '"L"x',     'L'],
+    ['both',  '"R/L"x',   'b'],
+    ['count', '"count"x', 'c'],
+  ])('sticking mode "%s" -> abc %s, url %s', (mode, abc, url) => {
+    writer.set_sticking_state(0, mode);
+    const state = writer.get_sticking_state(0);
+    expect(state.abc).toBe(abc);
+    expect(state.url).toBe(url);
+  });
+
+  test('tom1 normal -> abc e, url o', () => {
+    writer.set_tom1_state(0, 'normal');
+    const state = writer.get_tom_state(0, 1);
+    expect(state.abc).toBe('e');
+    expect(state.url).toBe('o');
+  });
+
+  test('tom4 normal -> abc A, url o', () => {
+    writer.set_tom4_state(0, 'normal');
+    const state = writer.get_tom_state(0, 4);
+    expect(state.abc).toBe('A');
+    expect(state.url).toBe('o');
+  });
+
+  test.each(['hh', 'snare', 'kick', 'sticking'])(
+    '%s unknown mode falls back to off', (drum) => {
+    const setters = {
+      hh: () => writer.set_hh_state(0, 'nonsense'),
+      snare: () => writer.set_snare_state(0, 'nonsense'),
+      kick: () => writer.set_kick_state(0, 'nonsense'),
+      sticking: () => writer.set_sticking_state(0, 'nonsense'),
+    };
+    const getters = {
+      hh: () => writer.get_hh_state(0),
+      snare: () => writer.get_snare_state(0),
+      kick: () => writer.get_kick_state(0),
+      sticking: () => writer.get_sticking_state(0),
+    };
+    setters[drum]();
+    expect(getters[drum]().abc).toBe(false);
+  });
+
+  test('kick with both splash and normal on returns kick_and_splash', () => {
+    writer.set_kick_state(0, 'normal');
+    writer.set_kick_state(0, 'splash');
+    // Setting splash on top of normal replaces it (setDrumNote clears siblings).
+    // To exercise the SANDK path, use the explicit kick_and_splash mode.
+    writer.set_kick_state(0, 'kick_and_splash');
+    const state = writer.get_kick_state(0);
+    expect(state.abc).toBe('[F^d,]');
+    expect(state.url).toBe('X');
+  });
+
+  test('get_kick_state returnType "ABC" returns bare abc string', () => {
+    writer.set_kick_state(0, 'normal');
+    expect(writer.get_kick_state(0, 'ABC')).toBe('F');
+  });
+
+  test('get_kick_state returnType "URL" returns bare url char', () => {
+    writer.set_kick_state(0, 'normal');
+    expect(writer.get_kick_state(0, 'URL')).toBe('o');
+  });
+
+  test('get_sticking_state returnType "ABC" returns bare abc string', () => {
+    writer.set_sticking_state(0, 'right');
+    expect(writer.get_sticking_state(0, 'ABC')).toBe('"R"x');
+  });
+
+  test('get_sticking_state returnType "URL" returns bare url char', () => {
+    writer.set_sticking_state(0, 'right');
+    expect(writer.get_sticking_state(0, 'URL')).toBe('R');
+  });
+
+  test('empty state returns abc=false, url=-', () => {
+    // Fresh cell — nothing set.
+    expect(writer.get_hh_state(0).abc).toBe(false);
+    expect(writer.get_hh_state(0).url).toBe('-');
+    expect(writer.get_snare_state(0).abc).toBe(false);
+    expect(writer.get_kick_state(0).abc).toBe(false);
+    expect(writer.get_tom_state(0, 1).abc).toBe(false);
+    expect(writer.get_tom_state(0, 4).abc).toBe(false);
+    expect(writer.get_sticking_state(0).abc).toBe(false);
+  });
+});
+
 describe('Note context menu lifecycle', () => {
   let grooveUtils, writer;
 
