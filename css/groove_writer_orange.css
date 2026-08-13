@@ -292,6 +292,24 @@
 	.notes-row-container {
 		display: inline-block;
 	}
+	.notes-row-container .note-on {
+		color: rgb(0, 0, 0);
+	}
+	.notes-row-container .note-off{
+		color: #CCCCCC;
+		border-color: #999;
+	}
+	.notes-row-container .note-hidden{
+		color: transparent;
+		background-color: transparent;
+		border-color: transparent;
+	}
+	.notes-row-container .snare_circle.note-on,
+	.notes-row-container .kick_circle.note-on,
+	.notes-row-container [class^="tom_circle"].note-on {
+		background-color: #000;
+		border-color: #999;
+	}
 	.heading1 {
 		font-size: 30px;
 		font-weight: bold;
@@ -643,7 +661,7 @@
 		position: relative; top: -1px; left: 0px;
 	}
 	.snare_ghost {
-		position: absolute; top: -4px; left: 1px;
+		position: absolute; top: -4px; left: 0px;
 		font-size: 26px;
 		line-height: 30px;
 		color: transparent;

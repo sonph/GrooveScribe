@@ -4,10 +4,10 @@
   "description": "Readme for Groove Scribe",
   "main": "MIDI.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "python3 -m http.server 8001"
   },
   "repository": {
     "type": "git",
@@ -16,17 +16,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/sonph/GrooveScribe/issues"
   },
   "homepage": "https://github.com/sonph/GrooveScribe#readme",
   "devDependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.2",
-    "babel-jest": "^30.3.0",
-    "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
-    "vite": "^8.0.3"
+    "jest": "^30.0.3",
+    "jest-environment-jsdom": "^30.0.2",
+    "typescript": "^5.4.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "webpack": "^5.100.0"
   }
 }

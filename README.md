@@ -4,34 +4,44 @@ Groove Scribe is an HTML/JS/CSS application for drummers. It acts as both a poin
 
 ## 🚀 Getting Started (Local Development)
 
-The application has been modernized to use **Vite** as a module bundler and development server, and **Jest** for continuous unit testing.
+The codebase is written in **TypeScript** (in `src/`), compiled to JavaScript (in `js/`), and tested with **Jest**.
 
 ### Prerequisites
 - Node.js (v16+)
 - npm
+- Python 3 (optional, for local HTTP server)
 
 ### Installation
 1. Clone the repository.
-2. Run `npm install` to install the required development dependencies.
+2. Run `npm install` to install dependencies.
 
-### Running the Application (Dev Server)
-To run the local development server with hot module replacement (HMR):
-```bash
-npm run dev
-```
-Open the provided URL (usually `http://localhost:5173` or `http://localhost:3001`) in your browser to view the application.
+### TypeScript Compilation
+TypeScript source files are located in `src/` and compiled to JavaScript in `js/` according to `tsconfig.json`.
 
-### Building for Production
-To compile and minify the optimized static assets:
+- **Build once:**
+  ```bash
+  npm run build
+  ```
+- **Watch mode (auto-recompile on change):**
+  ```bash
+  npm run watch
+  ```
+
+### Running the Application (Local Web Server)
+Groove Scribe runs statically in the browser:
 ```bash
-npm run build
+npm run serve
 ```
-The production-ready output will be placed in the `/dist` folder. You can deploy this folder directly to any static file hosting service.
+Or use any static web server (such as `python3 -m http.server 8001` or `npx serve .`).
+
+Then open:
+- Main app: [http://localhost:8001/](http://localhost:8001/)
+- Groove DB view: [http://localhost:8001/GrooveDBCreateGroove.html](http://localhost:8001/GrooveDBCreateGroove.html)
 
 ### Running Tests
-The project utilizes Jest for unit testing of core calculation algorithms. To run the test suite:
+The project utilizes Jest for unit testing of core algorithms, URL codecs, MIDI mappings, ABC notation generation, and UI state transformations:
 ```bash
-npm run test
+npm test
 ```
 
 ***
@@ -42,11 +52,10 @@ Groove Scribe runs entirely in the browser with no backend dependencies. The log
 
 ### Groove Writer
 - Includes all the authoring code and the interactive grid interface.
-- Translates interactive grid clicks into an array of notes and time-signatures that can be parsed as music.
+- Translates interactive grid clicks into measures, notes, and time-signatures that can be parsed as music.
 - **Key Files**: 
+  - `src/groove_writer.ts` (TypeScript authoring logic)
   - `index.html` (Main authoring view)
-  - `js/main.js` (System entry ES module)
-  - `js/groove_writer.js` (Authoring logic, makes calls to display utilities)
 
 ### Groove Display
 - The playback engine and sheet music generator. It is designed to run cohesively with the authoring view, or purely separately for embedding drum loops in other applications.
@@ -54,7 +63,7 @@ Groove Scribe runs entirely in the browser with no backend dependencies. The log
 - Translates the ABC notation using `abc2svg` for sheet music SVG rendering.
 - Handles audio fallback using `Midi.js` for MIDI compilation and standard playback.
 - **Key Files**:
-  - `js/groove_utils.js` (Core timing, rendering, and playback functions/utilities)
+  - `src/groove_utils.ts` (Core timing, rendering, and playback functions/utilities)
   - `js/grooves.js` (Static data dictionaries for groove presets)
   - `js/groove_display.js` (Initialization logic for embedding displays)
 

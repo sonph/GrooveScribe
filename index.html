@@ -28,7 +28,7 @@
   <link rel="stylesheet" type="text/css" href="css/groove_display_orange.css">
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700,300' rel='stylesheet' type='text/css'>
 
-  <!--   Other peoples JS libraries    -->
+  <!-- JS Libraries -->
   <!-- <script src="./MIDI.js/js/MIDI/MIDI.JS.min.js" type="text/javascript"></script> -->
   <script src="./MIDI.js/js/MIDI/AudioDetect.js" type="text/javascript"></script>
   <script src="./MIDI.js/js/MIDI/LoadPlugin.js" type="text/javascript"></script>
@@ -47,18 +47,25 @@
   <!-- script to convert SVG to PNGs for download -->
   <script type="text/javascript" src="./js/pablo.min.js"></script>
 
-  <!-- script for sharing to social sites -->
-
-
-
   <!-- Minified version: <script src="./js/groove_writer.min.js" type="text/javascript"></script> -->
 
   <!-- jsmidgen for generating a midi file -->
   <script src="./js/jsmidgen.js" type="text/javascript"></script>
-  <!--   our custom JS  -->
-  <script type="module" src="js/main.js"></script>
+  <script src="js/groove_utils.js"></script>
+  <script src="js/groove_writer.js"></script>
+  <script src="js/grooves.js"></script>
+  <script src="js/notion-embed.js" defer></script>
 
-  <script src="./js/notion-embed.js" defer></script>
+  <script type="text/javascript">
+    /*jslint browser:true evil:true on:true */
+    var myGrooveWriter = new GrooveWriter();
+    window.onload = function () {
+      'use strict';
+      myGrooveWriter.runsOnPageLoad();
+    };
+  </script>
+
+  <script src="js/local_development.js" defer></script>
 
 </head>
 
@@ -92,7 +99,7 @@
             onclick="myGrooveWriter.changeDivision(48);"><span
               class="left-button-content"><span>MIXED<br>Division</span></span></span>
 
-
+          <span class="left-button" onclick="myGrooveWriter.swapViewEditMode();"><span class="left-button-content"><span id="view-edit-switch">Switch to EDIT mode</span></span></span>
 
           <span class="left-button edit-block" id="undoButton" onclick="myGrooveWriter.undoCommand();"><span
               class="left-button-content"><i class="fa fa-undo"></i>&nbsp;&nbsp;Undo</span></span>
@@ -210,14 +217,14 @@
               <label for="measureText">Text at begin or end of specific measures (separated by ;):</label>
               <input type="text" id="measureText" name="measureText" placeholder="1:b:start here;2:e:end here"><br><br>
 
-              <label for="convertedUrl">Converted URL:</label>
+              <label for="convertedUrl">Embeddable link:</label>
               <input type="text" id="convertedUrl" name="convertedUrl"><br><br>
 
-              <button type="button" id="convertBtn">Convert</button>
-              <button type="button" id="copyBtn">Convert & copy to clipboard</button>
-              <button type="button" id="openLink">Open link</button>
+              <button type="button" id="convertBtn">Embed link</button>
+              <button type="button" id="copyBtn">Embed & copy link to clipboard</button>
+              <button type="button" id="openLink">Open embed link</button>
               <br><br>
-              <button type="button" id="decodeUrlBtn">Decode converted URL</button>
+              <button type="button" id="decodeUrlBtn">Decode embed link</button>
             </form>
           </div>
           <div>
@@ -228,7 +235,7 @@
             <h4>How to use this tool:</h4>
             <ol>
               <li>Transcribe your drum groove.</li>
-              <li>Fill out the above options. Click convert and copy the converted link.</li>
+              <li>Fill out the above options. Click "Embed" and copy the embed link.</li>
               <li>In Notion, insert an embed block with <code>/embed</code> then paste the link.</li>
             </ol>
             <p></p>For more info & demo, see <a href="https://github.com/sonph/notion-drum-sheet"
@@ -256,7 +263,7 @@
           </div>
         </div>
 
-        <div id="debugDisplayArea">
+        <div id="debugDisplayArea" style="display:none;">
           <span id="undoStack"></span>
           <span id="redoStack"></span>
           <span id="URLSearchData"></span>
@@ -271,7 +278,7 @@
             For more information about ABC Notation go here: <a
               href="http://abcnotation.com/">http://abcnotation.com/</a>
             <p></p>
-            <textarea id="ABCsource" rows="10" cols="72"></textarea>
+            <textarea id="ABCsource" rows="25" cols="72"></textarea>
             <br>
             <button type="button" onclick="myGrooveWriter.displayNewSVG();">Re-render the music</button>
             <button type="button" onclick="myGrooveWriter.saveABCtoFile();">Save ABC to file</button>
@@ -299,9 +306,6 @@
         <li class="metronomeOptionsContextMenuItem" id="metronomeOptionsContextMenuOffTheOne"
           onclick='myGrooveWriter.metronomeOptionsMenuPopupClick("OffTheOne");' title="Click on the e, &, or a">Offset
           click</li>
-        <!--
-				<li id="metronomeOptionsContextMenuDropper"   onclick='myGrooveWriter.metronomeOptionsMenuPopupClick("Dropper")'  >Beat Dropper</li>
-				-->
       </ul>
     </div>
     <div class="noteContextMenu">
@@ -535,10 +539,6 @@
           onclick="myGrooveWriter.close_MetronomeAutoSpeedupConfiguration('ok');">Done</button>
       </div>
     </div>
-
-
-
-
 
   </div>
 

@@ -1,0 +1,14 @@
+{
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "noImplicitAny": false,
+    "noEmitOnError": false,
+    "outDir": "./js",
+    "target": "es2020",
+    "strict": false,
+    "module": "none",
+    "sourceMap": true,
+    "skipLibCheck": true
+  }
+}

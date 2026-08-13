@@ -1,6 +1,7 @@
 MIDI.js/js/MIDI/MIDI.JS.min.js
 js/groove_display.min.js
 js/groove_writer.min.js
+js/local_development.js
 Lesson.css
 cordova/platforms/
 mikeLessons.html
@@ -9,6 +10,13 @@ cordova/plugins/
 
 # Node
 node_modules/
+
+# TypeScript build output
+js/groove_utils.js
+js/groove_utils.js.map
+js/groove_writer.js
+js/groove_writer.js.map
+tsjs/
 
 # Build output
 dist/
