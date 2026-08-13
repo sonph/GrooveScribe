@@ -3039,8 +3039,12 @@ class GrooveWriter {
     this.set_Default_notes(window.location.search);
     this.setupPermutationMenu();
 
-    // if Mode != "view" put into edit mode  (we default to view mode to prevent screen flicker)
+    // The DOM defaults to view-mode CSS (to prevent flicker), so if the URL
+    // asks for edit mode we need to flip it. swapViewEditMode is a toggler
+    // keyed on data.viewMode, so temporarily set data to view so the toggle
+    // moves us to edit.
     if (!this.data.viewMode) {
+      this.data.viewMode = true;
       this.swapViewEditMode(true);
     }
 
