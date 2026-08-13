@@ -1185,14 +1185,14 @@ class GrooveData {
 
     if (showLegend || this.showLegend) {
       fullABC += 'V:Stickings\n' +
-        'x8 x8 x8 x8 x8 x8 x8 x8 ||\n' +
+        'x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 x8 ||\n' +
         'V:Hands stem=up \n' +
         '%%voicemap drum\n' +
-        '"^Hi-Hat"^g4 "^Open"!open!^g4 ' +
-        '"^Crash"^c\'4 "^Stacker"^d\'4 "^Ride"^A\'4 "^Ride Bell"^B\'4 x2 "^Tom"e4 "^Tom"A4 "^Snare"c4 "^Buzz"!///!c4 "^Cross"^c4 "^Ghost  "!(.!!).!c4 "^Flam"{/c}c4  x10 ||\n' +
+        '"^Hi-Hat"^g8 "^Open"!open!^g8 ' +
+        '"^Crash"^c\'8 "^Stacker"^d\'8 "^Ride"^A\'8 "^Ride Bell"^B\'8 x4 "^Tom"e8 "^Tom"A8 "^Snare"c8 "^Buzz"!///!c8 "^Cross"^c8 "^Ghost  "!(.!!).!c8 "^Flam"{/c}c8  x20 ||\n' +
         'V:Feet stem=down \n' +
         '%%voicemap drum\n' +
-        'x52 "^Kick"F4 "^HH foot"^d,4 x4 ||\n' +
+        'x104 "^Kick"F8 "^HH foot"^d,8 x8 ||\n' +
         'T:\n';
     }
 

@@ -1332,9 +1332,9 @@ describe('LeftHandNav and Embedding Options', () => {
     // generate_ABC should now include the legend header
     const abcWithLegend = writer.generate_ABC(600);
     expect(abcWithLegend).toContain('%%staves (Stickings Hands Feet)');
-    expect(abcWithLegend).toContain('"^Hi-Hat"^g4 "^Open"!open!^g4');
-    expect(abcWithLegend).toContain('"^Snare"c4');
-    expect(abcWithLegend).toContain('"^Kick"F4');
+    expect(abcWithLegend).toContain('"^Hi-Hat"^g8 "^Open"!open!^g8');
+    expect(abcWithLegend).toContain('"^Snare"c8');
+    expect(abcWithLegend).toContain('"^Kick"F8');
 
     // updateSheetMusic updates grooveUtils.isLegendVisible and data.showLegend
     writer.updateSheetMusic();
