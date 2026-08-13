@@ -2866,6 +2866,42 @@ class GrooveWriter {
         measure.setDataFromString(drum, chars.join(''));
       }
     }
+
+    if (typeof (window as any).getEmbedTableData === "function") {
+      const tableData = (window as any).getEmbedTableData();
+      if (tableData) {
+        this.data.repeatBegins = new Set(
+          tableData.repeatBegins ? tableData.repeatBegins.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+        );
+        this.data.repeatEnds = new Set(
+          tableData.repeatEnds ? tableData.repeatEnds.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+        );
+        const repeatEndings = new Map<number, string>();
+        if (tableData.repeatEndings) {
+          tableData.repeatEndings.split(";").filter(Boolean).forEach((part: string) => {
+            const [mStr, end] = part.split(":");
+            const m = parseInt(mStr, 10);
+            if (!isNaN(m) && end) repeatEndings.set(m, end);
+          });
+        }
+        this.data.repeatEndings = repeatEndings;
+        const measureText = new Map<number, MeasureTextEntry>();
+        if (tableData.measureText) {
+          tableData.measureText.split(";").filter(Boolean).forEach((part: string) => {
+            const [mStr, pos, ...rest] = part.split(":");
+            const m = parseInt(mStr, 10);
+            const txt = rest.join(":");
+            if (!isNaN(m) && txt) {
+              const entry = measureText.get(m) || {};
+              if (pos === "b") entry.begin = txt;
+              if (pos === "e") entry.end = txt;
+              measureText.set(m, entry);
+            }
+          });
+        }
+        this.data.measureText = measureText;
+      }
+    }
   }
 
   // Propagates parsed measure data onto the clickable UI note-on/off classes.

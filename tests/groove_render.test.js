@@ -55,9 +55,12 @@ describe('groove_render.js isolated execution', () => {
     const url = '?TimeSig=4/4&Div=8&Tempo=80&ShowTempo=1&subText=Chorus%20Section&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Intro;4:e:Outro&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|--o---o-|--o---o-|&K=|o---o---|o---o---|o---o---|o---o---|';
     const data = new GrooveData().fromUrl(url);
 
+    expect(data.comments).toBe('Chorus Section');
     const qs = data.toQueryString();
     expect(qs).toContain('ShowTempo=1');
-    expect(qs).toContain('subText=Chorus%20Section');
+    expect(qs).not.toContain('EmbedTempoTimeSig');
+    expect(qs).toContain('Comments=Chorus%20Section');
+    expect(qs).not.toContain('subText=');
     expect(qs).toContain('RepeatBegins=1;3');
     expect(qs).toContain('RepeatEnds=2;4');
     expect(qs).toContain('RepeatEndings=2:1;4:2');
@@ -65,10 +68,21 @@ describe('groove_render.js isolated execution', () => {
 
     const editorUrl = data.toEditorUrl();
     expect(editorUrl).toContain('https://sonpham.me/GrooveScribe/index.html?');
-    expect(editorUrl).toContain('subText=Chorus%20Section');
+    expect(editorUrl).toContain('ShowTempo=1');
+    expect(editorUrl).not.toContain('EmbedTempoTimeSig');
+    expect(editorUrl).toContain('Comments=Chorus%20Section');
+    expect(editorUrl).not.toContain('subText=');
     expect(editorUrl).toContain('RepeatBegins=1;3');
     expect(editorUrl).toContain('RepeatEnds=2;4');
     expect(editorUrl).toContain('RepeatEndings=2:1;4:2');
     expect(editorUrl).toContain('MeasureText=1:b:Intro;4:e:Outro');
+  });
+
+  test('GrooveData gives priority to Comments over subText', () => {
+    const url = '?TimeSig=4/4&Div=8&Comments=Priority%20Comment&subText=Legacy%20SubText&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|';
+    const data = new GrooveData().fromUrl(url);
+    expect(data.comments).toBe('Priority Comment');
+    expect(data.toQueryString()).toContain('Comments=Priority%20Comment');
+    expect(data.toQueryString()).not.toContain('Legacy%20SubText');
   });
 });

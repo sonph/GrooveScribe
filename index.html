@@ -278,17 +278,8 @@
 
 
         <div id="embedTool" class="fullWidthEle">
-          <h3><a href="https://www.notion.so/" target="_blank">
-              Notion</a> Embedding Options</h3>
-          <br>
           <div>
             <form id="embedForm">
-              <label for="embedShowTempo">Show Tempo</label>
-              <input type="checkbox" id="embedShowTempo" name="showTempo" onchange="const st = document.getElementById('showTempo'); if (st) { st.checked = this.checked; } myGrooveWriter.refresh_ABC();"><br><br>
-
-              <label for="subText">Sub Text:</label>
-              <input type="text" id="subText" name="subText" placeholder="Chorus (can also be lyric hints)"><br><br>
-
               <div class="embedTableContainer">
                 <table id="embedMeasureTable" class="embedMeasureTable">
                   <thead>
@@ -315,24 +306,12 @@
               <label for="convertedUrl">Embeddable link:</label>
               <input type="text" id="convertedUrl" name="convertedUrl"><br><br>
 
-              <button type="button" id="convertBtn">Embed link</button>
-              <button type="button" id="copyBtn">Embed & copy link to clipboard</button>
+              <button type="button" id="copyBtn">Copy link</button>
               <button type="button" id="openLink">Open embed link</button>
             </form>
           </div>
           <div>
             <span id="status"></span>
-          </div>
-          <br>
-          <div>
-            <h4>How to use this tool:</h4>
-            <ol>
-              <li>Transcribe your drum groove.</li>
-              <li>Fill out the above options. Click "Embed" and copy the embed link.</li>
-              <li>In Notion, insert an embed block with <code>/embed</code> then paste the link.</li>
-            </ol>
-            <p></p>For more info & demo, see <a href="https://github.com/sonph/notion-drum-sheet"
-              target="_blank">https://github.com/sonph/notion-drum-sheet</a></p>
           </div>
         </div>
 

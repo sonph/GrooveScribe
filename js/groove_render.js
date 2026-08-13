@@ -452,7 +452,17 @@ function decodeGrooveUrl(paramsString) {
             }
         });
     }
-    const subText = params.get('subText') ? decodeURIComponent(params.get('subText')) : '';
+    // Backward compatibility: "subText" parameter is merged into "Comments", with "Comments" taking priority.
+    const rawComments = params.get('Comments') ?? params.get('comments');
+    const rawSubText = params.get('subText') ?? params.get('subtext');
+    let comments = '';
+    if (rawComments !== null && rawComments !== undefined) {
+        comments = decodeURIComponent(rawComments);
+    }
+    else if (rawSubText !== null && rawSubText !== undefined) {
+        comments = decodeURIComponent(rawSubText);
+    }
+    const subText = comments;
     return {
         viewMode: params.get('Mode') === 'view',
         debugMode: params.get('Debug') === '1',
@@ -461,7 +471,7 @@ function decodeGrooveUrl(paramsString) {
         metronomeFrequency: Math.max(parseInt(params.get('MetronomeFreq')) || 0, 0),
         title: params.get('Title') || '',
         author: params.get('Author') || '',
-        comments: params.get('Comments') || '',
+        comments: comments,
         tempo: Math.min(Math.max(parseInt(params.get('Tempo')) || constant_DEFAULT_TEMPO, 20), 400),
         swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
         showLegend: params.get('Legend') === '1' || params.get('showLegend') === '1',
@@ -505,7 +515,8 @@ function encodeGrooveQueryString(state) {
     add('Div', state.subdivision.value.toString());
     add('Title', encodeURIComponent(state.title));
     add('Author', encodeURIComponent(state.author));
-    add('Comments', encodeURIComponent(state.comments));
+    // Backward compatibility: subText is merged into Comments, with Comments taking priority
+    add('Comments', encodeURIComponent(state.comments || state.subText || ''));
     add('Tempo', state.tempo.toString());
     add('Swing', state.swingPercent ? state.swingPercent.toString() : '');
     add('MetronomeFreq', state.metronomeFrequency ? state.metronomeFrequency.toString() : '');
@@ -546,9 +557,6 @@ function encodeGrooveQueryString(state) {
         if (textParts.length > 0) {
             add('MeasureText', textParts.join(';'));
         }
-    }
-    if (state.subText && state.subText.trim().length > 0) {
-        add('subText', encodeURIComponent(state.subText.trim()));
     }
     for (const drum of DrumType.ALL) {
         if (!state.showStickings && drum.equals(DrumType.STICKINGS))

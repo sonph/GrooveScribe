@@ -14,8 +14,10 @@
 
 			var textE = document.getElementById("subText");
 			var topDiv = document.getElementById("topDiv");
-			if (data.subText) {
-				textE.innerText = data.subText;
+			// Backward compatibility: "subText" parameter is merged into "Comments", with "Comments" taking priority.
+			var displayText = data.comments || data.subText || '';
+			if (displayText) {
+				textE.innerText = displayText;
 			} else if (topDiv) {
 				topDiv.style.display = "none";
 			}

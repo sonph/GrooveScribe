@@ -200,20 +200,80 @@ function setEmbedTableData(data: Partial<EmbedTableData> | null): void {
   });
 }
 
-function convert(selectUrl: boolean = false): void {
+let isConverting = false;
+
+function getGrooveWriterInstance(): any {
+  if (typeof (window as any) !== "undefined" && (window as any).myGrooveWriter) {
+    return (window as any).myGrooveWriter;
+  }
+  if (typeof (globalThis as any) !== "undefined" && (globalThis as any).myGrooveWriter) {
+    return (globalThis as any).myGrooveWriter;
+  }
+  if (typeof (global as any) !== "undefined" && (global as any).myGrooveWriter) {
+    return (global as any).myGrooveWriter;
+  }
+  return undefined;
+}
+
+function syncTableToGrooveWriter(): void {
+  const tableData = getEmbedTableData();
+  if (!tableData) return;
+  const gw = getGrooveWriterInstance();
+  if (gw && gw.data) {
+    const data = gw.data;
+    data.repeatBegins = new Set(
+      tableData.repeatBegins ? tableData.repeatBegins.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+    );
+    data.repeatEnds = new Set(
+      tableData.repeatEnds ? tableData.repeatEnds.split(";").filter(Boolean).map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n)) : []
+    );
+    const repeatEndings = new Map<number, string>();
+    if (tableData.repeatEndings) {
+      tableData.repeatEndings.split(";").filter(Boolean).forEach((part: string) => {
+        const [mStr, end] = part.split(":");
+        const m = parseInt(mStr, 10);
+        if (!isNaN(m) && end) repeatEndings.set(m, end);
+      });
+    }
+    data.repeatEndings = repeatEndings;
+    const measureText = new Map<number, MeasureTextEntry>();
+    if (tableData.measureText) {
+      tableData.measureText.split(";").filter(Boolean).forEach((part: string) => {
+        const [mStr, pos, ...rest] = part.split(":");
+        const m = parseInt(mStr, 10);
+        const txt = rest.join(":");
+        if (!isNaN(m) && txt) {
+          const entry = measureText.get(m) || {};
+          if (pos === "b") entry.begin = txt;
+          if (pos === "e") entry.end = txt;
+          measureText.set(m, entry);
+        }
+      });
+    }
+    data.measureText = measureText;
+  }
+}
+
+function convert(selectUrl: boolean = false, refreshSheetMusic: boolean = true): void {
+  syncTableToGrooveWriter();
+
   const args = typeof window !== "undefined" && window.location ? window.location.search : "";
   var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
 
   const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
   const showTempo = showTempoElem ? showTempoElem.checked : false;
   if (showTempo) {
-    convertedUrl = convertedUrl + "&EmbedTempoTimeSig=true";
+    convertedUrl = convertedUrl + "&ShowTempo=1";
   }
 
+  // Backward compatibility: subText is merged into Comments, with Comments taking priority
+  const tuneComments = document.getElementById("tuneComments") as HTMLInputElement | null;
   const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
-  const subText = subTextElem ? subTextElem.value : "";
-  if (subText.length > 0) {
-    convertedUrl += "&subText=" + encodeURIComponent(subText);
+  const comments = (tuneComments && typeof tuneComments.value === "string" && tuneComments.value.trim().length > 0)
+    ? tuneComments.value.trim()
+    : (subTextElem && typeof subTextElem.value === "string" ? subTextElem.value.trim() : "");
+  if (comments.length > 0) {
+    convertedUrl += "&Comments=" + encodeURIComponent(comments);
   }
 
   const tableData = getEmbedTableData();
@@ -257,6 +317,18 @@ function convert(selectUrl: boolean = false): void {
 
   if (selectUrl === true) {
     setStatus("Converted!");
+  }
+
+  if (refreshSheetMusic && !isConverting) {
+    isConverting = true;
+    try {
+      const gw = getGrooveWriterInstance();
+      if (gw && typeof gw.refresh_ABC === "function") {
+        gw.refresh_ABC();
+      }
+    } finally {
+      isConverting = false;
+    }
   }
 }
 
@@ -303,35 +375,52 @@ function populateFromUrl(urlOrQuery?: string): void {
   const query = parseQuery(queryString);
   dbg.query = query;
 
-  const isTempo = (query.EmbedTempoTimeSig || "") === "true" || (query.ShowTempo || "") === "1";
+  const isTempo = (query.EmbedTempoTimeSig || query.embedTempoTimeSig || "") === "true" || (query.ShowTempo || query.showTempo || "") === "1";
   const stElem = document.getElementById("showTempo") as HTMLInputElement | null;
-  if (stElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
+  if (stElem && (query.EmbedTempoTimeSig !== undefined || query.embedTempoTimeSig !== undefined || query.ShowTempo !== undefined || query.showTempo !== undefined)) {
     stElem.checked = isTempo;
   }
   const embedStElem = document.getElementById("embedShowTempo") as HTMLInputElement | null;
-  if (embedStElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
+  if (embedStElem && (query.EmbedTempoTimeSig !== undefined || query.embedTempoTimeSig !== undefined || query.ShowTempo !== undefined || query.showTempo !== undefined)) {
     embedStElem.checked = isTempo;
   }
 
-  const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
-  if (subTextElem && query.subText !== undefined) {
-    subTextElem.value = decodeURIComponent((query.subText || "").replace(/\+/g, ' '));
+  // Backward compatibility: "subText" parameter is merged into "Comments", with "Comments" taking priority.
+  const commentsVal = query.Comments !== undefined ? query.Comments : (query.comments !== undefined ? query.comments : (query.subText !== undefined ? query.subText : query.subtext));
+  if (commentsVal !== undefined) {
+    const decodedComments = decodeURIComponent((commentsVal || "").replace(/\+/g, ' '));
+    const commentsInput = document.getElementById("tuneComments") as HTMLInputElement | null;
+    if (commentsInput) {
+      commentsInput.value = decodedComments;
+    }
+    const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
+    if (subTextElem) {
+      subTextElem.value = decodedComments;
+    }
+    if (typeof (window as any).myGrooveWriter !== "undefined" && (window as any).myGrooveWriter.data) {
+      (window as any).myGrooveWriter.data.comments = decodedComments;
+    }
   }
 
+  const rbVal = query.RepeatBegins !== undefined ? query.RepeatBegins : query.repeatBegins;
+  const reVal = query.RepeatEnds !== undefined ? query.RepeatEnds : query.repeatEnds;
+  const rendVal = query.RepeatEndings !== undefined ? query.RepeatEndings : query.repeatEndings;
+  const mtVal = query.MeasureText !== undefined ? query.MeasureText : query.measureText;
+
   const rbInput = document.getElementById("repeatBegins") as HTMLInputElement | null;
-  if (rbInput && query.RepeatBegins !== undefined) rbInput.value = query.RepeatBegins || "";
+  if (rbInput && rbVal !== undefined) rbInput.value = rbVal || "";
   const reInput = document.getElementById("repeatEnds") as HTMLInputElement | null;
-  if (reInput && query.RepeatEnds !== undefined) reInput.value = query.RepeatEnds || "";
+  if (reInput && reVal !== undefined) reInput.value = reVal || "";
   const rendInput = document.getElementById("repeatEndings") as HTMLInputElement | null;
-  if (rendInput && query.RepeatEndings !== undefined) rendInput.value = query.RepeatEndings || "";
+  if (rendInput && rendVal !== undefined) rendInput.value = rendVal || "";
   const mtInput = document.getElementById("measureText") as HTMLInputElement | null;
-  if (mtInput && query.MeasureText !== undefined) mtInput.value = encodeAfterLastColon(query.MeasureText || "", false);
+  if (mtInput && mtVal !== undefined) mtInput.value = encodeAfterLastColon(mtVal || "", false);
 
   setEmbedTableData({
-    repeatBegins: query.RepeatBegins || (rbInput ? rbInput.value : ""),
-    repeatEnds: query.RepeatEnds || (reInput ? reInput.value : ""),
-    repeatEndings: query.RepeatEndings || (rendInput ? rendInput.value : ""),
-    measureText: encodeAfterLastColon(query.MeasureText || (mtInput ? mtInput.value : ""), false)
+    repeatBegins: rbVal || (rbInput ? rbInput.value : ""),
+    repeatEnds: reVal || (reInput ? reInput.value : ""),
+    repeatEndings: rendVal || (rendInput ? rendInput.value : ""),
+    measureText: encodeAfterLastColon(mtVal || (mtInput ? mtInput.value : ""), false)
   });
 
   convert();
@@ -362,6 +451,11 @@ if (typeof document !== "undefined") {
   if (tempoInput) tempoInput.addEventListener("change", () => convert());
   const embedTempoInput = document.getElementById("embedShowTempo");
   if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("change", () => convert());
+  const commentsInput = document.getElementById("tuneComments");
+  if (commentsInput) {
+    commentsInput.addEventListener("input", () => convert());
+    commentsInput.addEventListener("change", () => convert());
+  }
   const subTextInput = document.getElementById("subText");
   if (subTextInput) {
     subTextInput.addEventListener("input", () => convert());

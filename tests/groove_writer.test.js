@@ -1472,6 +1472,14 @@ describe('Notion Embedding Options Measure Table', () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
       <div id="embedTool">
         <input type="checkbox" id="showTempo" />
         <input type="checkbox" id="embedShowTempo" />
@@ -1489,6 +1497,11 @@ describe('Notion Embedding Options Measure Table', () => {
         <span id="status"></span>
       </div>
     `;
+    writer = new GrooveWriter(grooveUtils);
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
   });
 
   test('renderEmbedMeasureTable creates expected table rows with checkboxes, dropdowns, and inputs', () => {
@@ -1548,12 +1561,45 @@ describe('Notion Embedding Options Measure Table', () => {
 
     const convertedUrl = document.getElementById('convertedUrl').value;
     expect(convertedUrl).toContain('https://sonpham.me/GrooveScribe/render.html');
-    expect(convertedUrl).toContain('EmbedTempoTimeSig=true');
-    expect(convertedUrl).toContain('subText=Main%20Verse');
+    expect(convertedUrl).toContain('ShowTempo=1');
+    expect(convertedUrl).not.toContain('EmbedTempoTimeSig');
+    expect(convertedUrl).toContain('Comments=Main%20Verse');
+    expect(convertedUrl).not.toContain('subText=');
     expect(convertedUrl).toContain('&RepeatBegins=1');
     expect(convertedUrl).toContain('&RepeatEnds=2;3');
     expect(convertedUrl).toContain('&RepeatEndings=2:1;3:2');
     expect(convertedUrl).toContain('&MeasureText=1:b:Intro;3:e:Fill');
+  });
+
+  test('table changes update myGrooveWriter ABC and sheet music', () => {
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|');
+    embed.renderEmbedMeasureTable(2);
+
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    // Enable repeat start on measure 1, repeat end on measure 2, and add intro text
+    rows[0].querySelector('.embed-repeat-start').checked = true;
+    rows[0].querySelector('.embed-text-begin').value = 'Verse';
+    rows[1].querySelector('.embed-repeat-end').checked = true;
+
+    embed.convert();
+
+    // Verify writer.data was updated
+    expect(writer.data.repeatBegins.has(1)).toBe(true);
+    expect(writer.data.repeatEnds.has(2)).toBe(true);
+    expect(writer.data.measureText.get(1)).toEqual({ begin: 'Verse' });
+
+    // Verify ABC source contains repeat signs and measure text
+    const abcSource = document.getElementById('ABCsource').value;
+    expect(abcSource).toContain('|:');
+    expect(abcSource).toContain(':|');
+    expect(abcSource).toContain('"Verse"');
   });
 
   test('convert does not select or focus convertedUrl on keystrokes/input, but does on explicit convert(true)', () => {
