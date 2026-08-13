@@ -555,3 +555,42 @@ describe('shouldDisplayPermutation', () => {
     for (let i = 0; i < 16; i++) expect(PERMUTATION_SECTIONS[i]).toBeDefined();
   });
 });
+
+describe('MIDI and Note Mapping in GrooveWriter', () => {
+  let grooveUtils, writer;
+
+  beforeEach(() => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    writer = new GrooveWriter(grooveUtils);
+    grooveUtils.data.fromUrl('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    document.body.innerHTML = writer.HTMLforStaffContainer(1, 0);
+    writer.applyMeasuresToUI();
+  });
+
+  test('createMidiUrlFromClickableUI populates note_mapping_array for playback highlighting', () => {
+    // Midi globals for Midi.File and Midi.Track
+    global.Midi = {
+      File: function() {
+        this.addTrack = jest.fn();
+        this.toBytes = jest.fn().mockReturnValue('mockMidiBytes');
+      },
+      Track: function() {
+        this.events = [];
+        this.setTempo = jest.fn();
+        this.setInstrument = jest.fn();
+        this.addNoteOn = jest.fn();
+        this.addNoteOff = jest.fn();
+      }
+    };
+
+    writer.createMidiUrlFromClickableUI('our_MIDI');
+    expect(grooveUtils.note_mapping_array).not.toBeNull();
+    expect(Array.isArray(grooveUtils.note_mapping_array)).toBe(true);
+    expect(grooveUtils.note_mapping_array.length).toBeGreaterThan(0);
+    // Position 0 has kick and hi-hat -> should be true
+    expect(grooveUtils.note_mapping_array[0]).toBe(true);
+  });
+});

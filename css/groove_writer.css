@@ -179,6 +179,14 @@
 	#hiddenDescription {
 		display: none;
 	}
+	.abcr {  /* rectangles enclosing notes in ABC SVG */
+		fill: transparent;
+		fill-opacity: 0.25;
+	}
+	.abcr.highlighted {
+		fill: var(--highlight-color) !important;
+		fill-opacity: 0.25;
+	}
 	#musicalInput {
 		display: block;
 		width: 100%;

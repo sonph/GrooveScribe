@@ -1297,6 +1297,8 @@ class SVGLibCallback {
     this.svg_highlight_h = 44;
     // -- optional attributes
     this.page_format = true; // define the non-page-breakable blocks
+    this.grooveUtilsUniqueIndex = 0;
+    this.abcNoteNumIndex = 0;
   }
 
   // include a file (%%abc-include)
@@ -1335,7 +1337,7 @@ class SVGLibCallback {
     if (type == "note" || type == "grace") {
       y = this.svg_highlight_y;
       h = this.svg_highlight_h;
-      this.abc_obj.out_svg('<rect style="fill: transparent;" class="abcr" id="abcNoteNum_' + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumIndex + '" x="');
+      this.abc_obj.out_svg('<rect class="abcr" id="abcNoteNum_' + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumIndex + '" x="');
       this.abc_obj.out_sxsy(x, '" y="', y);
       this.abc_obj.out_svg('" width="' + w.toFixed(2) + '" height="' + h.toFixed(2) + '"/>\n');
 
@@ -1775,21 +1777,25 @@ class GrooveUtils {
     var mapping_array = new Array(num_notes); // create large empty array
 
     for (var i = 0; i < num_notes; i++) {
-      if ((HH_array && HH_array[i] !== false) ||
-        (snare_array && snare_array[i] !== false) ||
-        (kick_array && kick_array[i] !== false)) {
-        mapping_array[i] = true;
-      } else {
-        mapping_array[i] = false;
-
-        // check toms as well with for loop
-        if (toms_array) {
-          for (var j = 0; j < constant_NUMBER_OF_TOMS; j++) {
-            if (toms_array[j][i] !== undefined && toms_array[j][i] !== false)
-              mapping_array[i] = true;
+      var hasNote = false;
+      if (HH_array && HH_array[i] !== false && HH_array[i] !== null && HH_array[i] !== undefined && HH_array[i] !== '-') {
+        hasNote = true;
+      }
+      if (snare_array && snare_array[i] !== false && snare_array[i] !== null && snare_array[i] !== undefined && snare_array[i] !== '-') {
+        hasNote = true;
+      }
+      if (kick_array && kick_array[i] !== false && kick_array[i] !== null && kick_array[i] !== undefined && kick_array[i] !== '-') {
+        hasNote = true;
+      }
+      if (!hasNote && toms_array) {
+        for (var j = 0; j < toms_array.length; j++) {
+          if (toms_array[j] && toms_array[j][i] !== undefined && toms_array[j][i] !== false && toms_array[j][i] !== null && toms_array[j][i] !== '-') {
+            hasNote = true;
+            break;
           }
         }
       }
+      mapping_array[i] = hasNote;
     }
 
     return mapping_array;
@@ -1875,6 +1881,8 @@ class GrooveUtils {
   // returns an object with two items.   "svg" and "error_html"
   renderABCtoSVG(abcString: string): { svg: string, error_html: string } {
     this.abcNoteNumIndex = 0;
+    this.abcToSVGCallback.abcNoteNumIndex = 0;
+    this.abcToSVGCallback.grooveUtilsUniqueIndex = this.grooveUtilsUniqueIndex;
     this.abcToSVGCallback.abc_svg_output = ''; // clear
     this.abcToSVGCallback.abc_error_output = ''; // clear
 
@@ -1902,11 +1910,10 @@ class GrooveUtils {
     if (this.abcNoteNumCurrentlyHighlighted > -1) {
       var myElements = document.querySelectorAll("#abcNoteNum_" + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumCurrentlyHighlighted);
       for (var i = 0; i < myElements.length; i++) {
-        //note.className = note.className.replace(new RegExp(' highlighted', 'g'), "");
-        var class_name = myElements[i].getAttribute("class");
+        var class_name = myElements[i].getAttribute("class") || "";
         myElements[i].setAttribute("class", class_name.replace(new RegExp(' highlighted', 'g'), ""));
-        if (this.data.debugMode && i === 0) {
-          if (!this.isElementOnScreen(myElements[i])) {
+        if (this.data && this.data.debugMode && i === 0) {
+          if (!this.isElementOnScreen(myElements[i]) && typeof myElements[i].scrollIntoView === 'function') {
             if (this.abcNoteNumCurrentlyHighlighted === 0)
               myElements[i].scrollIntoView({ block: "start", behavior: "smooth" });   // autoscroll if necessary
             else
@@ -1923,9 +1930,16 @@ class GrooveUtils {
 
     this.clearHighlightNoteInABCSVG();
 
+    if (noteToHighlight < 0) {
+      return;
+    }
+
     var myElements = document.querySelectorAll("#abcNoteNum_" + this.grooveUtilsUniqueIndex + "_" + noteToHighlight);
     for (var i = 0; i < myElements.length; i++) {
-      myElements[i].setAttribute("class", myElements[i].getAttribute("class") + " highlighted");
+      var class_name = myElements[i].getAttribute("class") || "";
+      if (!class_name.includes("highlighted")) {
+        myElements[i].setAttribute("class", class_name + " highlighted");
+      }
       this.abcNoteNumCurrentlyHighlighted = noteToHighlight;
     }
   };
@@ -1934,14 +1948,17 @@ class GrooveUtils {
   // Then highlight the note
   highlightNoteInABCSVGFromPercentComplete(percentComplete) {
 
-    if (this.note_mapping_array !== null) {
+    if (this.note_mapping_array !== null && this.note_mapping_array.length > 0) {
       // convert percentComplete to an index
-      var curNoteIndex = percentComplete * this.note_mapping_array.length;
+      var curNoteIndex = Math.floor(percentComplete * this.note_mapping_array.length);
+      if (curNoteIndex >= this.note_mapping_array.length) {
+        curNoteIndex = this.note_mapping_array.length - 1;
+      }
 
       // now count through the array with the possible notes to find the note number as
       // it correlates to the ABC
       var real_note_index = -1;
-      for (var i = 0; i < curNoteIndex && i < this.note_mapping_array.length; i++) {
+      for (var i = 0; i <= curNoteIndex && i < this.note_mapping_array.length; i++) {
         if (this.note_mapping_array[i])
           real_note_index++;
       }
@@ -2215,6 +2232,22 @@ class GrooveUtils {
         swing_percentage,
         myGrooveData.timeSig);
     }
+
+    var allTomsScaled = [];
+    if (myGrooveData.toms_array) {
+      for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
+        if (myGrooveData.toms_array[i]) {
+          allTomsScaled[i] = this.scaleNoteArrayToFullSize(myGrooveData.toms_array[i], myGrooveData);
+        }
+      }
+    }
+    this.note_mapping_array = this.create_note_mapping_array_for_highlighting(
+      FullNoteHHArray,
+      FullNoteSnareArray,
+      FullNoteKickArray,
+      allTomsScaled.length > 0 ? allTomsScaled : null,
+      FullNoteHHArray.length
+    );
 
     var midi_url = "data:audio/midi;base64," + btoa(midiFile.toBytes());
 

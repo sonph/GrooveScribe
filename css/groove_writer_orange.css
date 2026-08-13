@@ -255,6 +255,14 @@
 	#hiddenDescription {
 		display: none;
 	}
+	.abcr {  /* rectangles enclosing notes in ABC SVG */
+		fill: transparent;
+		fill-opacity: 0.25;
+	}
+	.abcr.highlighted {
+		fill: var(--highlight-color) !important;
+		fill-opacity: 0.20;
+	}
 	#musicalInput {
 		width: 100%;
 		background: #FFF;

@@ -529,3 +529,65 @@ describe('metronomeNoteAt', () => {
     expect(metronomeNoteAt(6, 8, true, ts44)).toEqual({ note: 77, velocity: 120 });
   });
 });
+
+describe('SVG Note Highlighting & Note Mapping', () => {
+  let utils;
+  beforeEach(() => {
+    require('../js/groove_utils.js');
+    utils = new global.GrooveUtils(excludeAbcForTesting = true);
+  });
+
+  test('create_note_mapping_array_for_highlighting identifies active note slots', () => {
+    const hh = ['x', null, 'x', null, false, '-'];
+    const sn = [null, 'o', null, null, null, null];
+    const kk = [null, null, null, null, null, null];
+    const toms = [[null, null, null, 'o', null, null], null, null, null];
+
+    const mapping = utils.create_note_mapping_array_for_highlighting(hh, sn, kk, toms, 6);
+    expect(mapping).toEqual([true, true, true, true, false, false]);
+  });
+
+  test('highlightNoteInABCSVGFromPercentComplete maps playback percentage to note index', () => {
+    utils.note_mapping_array = [true, false, true, false, true, false, true, false];
+    utils.highlightNoteInABCSVGByIndex = jest.fn();
+
+    // At start (0.0): maps to note 0
+    utils.highlightNoteInABCSVGFromPercentComplete(0.0);
+    expect(utils.highlightNoteInABCSVGByIndex).toHaveBeenCalledWith(0);
+
+    // At 25% (percentComplete = 0.25 -> index 2): maps to note 1
+    utils.highlightNoteInABCSVGFromPercentComplete(0.25);
+    expect(utils.highlightNoteInABCSVGByIndex).toHaveBeenCalledWith(1);
+
+    // At 50% (percentComplete = 0.50 -> index 4): maps to note 2
+    utils.highlightNoteInABCSVGFromPercentComplete(0.5);
+    expect(utils.highlightNoteInABCSVGByIndex).toHaveBeenCalledWith(2);
+
+    // At 75% (percentComplete = 0.75 -> index 6): maps to note 3
+    utils.highlightNoteInABCSVGFromPercentComplete(0.75);
+    expect(utils.highlightNoteInABCSVGByIndex).toHaveBeenCalledWith(3);
+  });
+
+  test('highlightNoteInABCSVGByIndex adds highlighted class and clears previous', () => {
+    document.body.innerHTML = `
+      <rect class="abcr" id="abcNoteNum_0_0" />
+      <rect class="abcr" id="abcNoteNum_0_1" />
+    `;
+    utils.grooveUtilsUniqueIndex = 0;
+    utils.abcNoteNumCurrentlyHighlighted = -1;
+
+    utils.highlightNoteInABCSVGByIndex(0);
+    expect(document.getElementById('abcNoteNum_0_0').getAttribute('class')).toBe('abcr highlighted');
+    expect(document.getElementById('abcNoteNum_0_1').getAttribute('class')).toBe('abcr');
+    expect(utils.abcNoteNumCurrentlyHighlighted).toBe(0);
+
+    utils.highlightNoteInABCSVGByIndex(1);
+    expect(document.getElementById('abcNoteNum_0_0').getAttribute('class')).toBe('abcr');
+    expect(document.getElementById('abcNoteNum_0_1').getAttribute('class')).toBe('abcr highlighted');
+    expect(utils.abcNoteNumCurrentlyHighlighted).toBe(1);
+
+    utils.clearHighlightNoteInABCSVG();
+    expect(document.getElementById('abcNoteNum_0_1').getAttribute('class')).toBe('abcr');
+    expect(utils.abcNoteNumCurrentlyHighlighted).toBe(-1);
+  });
+});

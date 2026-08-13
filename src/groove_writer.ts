@@ -1892,6 +1892,8 @@ class GrooveWriter {
 
     var swing_percentage = this.myGrooveUtils.getSwing() / 100;
 
+    this.myGrooveUtils.note_mapping_array = [];
+
     // all of the permutations use just the first measure
     switch (this.class_permutation_type) {
       case "kick_16ths":
@@ -1913,6 +1915,10 @@ class GrooveWriter {
             new_kick_array = this.merge_kick_arrays(new_kick_array, Kick_Array);
 
             this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+
+            this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
+              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes)
+            );
           }
         }
         break;
@@ -1933,6 +1939,10 @@ class GrooveWriter {
 
 
             this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+
+            this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
+              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes)
+            );
           }
         }
         break;
@@ -1946,6 +1956,10 @@ class GrooveWriter {
           num_notes_for_swing = 16 * this.data.timeSig.top / this.data.timeSig.bottom.value;
 
         this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+
+        this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
+          this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes)
+        );
 
         for (i = 1; i < this.data.numberOfMeasures; i++) {
           // reset arrays
@@ -1961,6 +1975,10 @@ class GrooveWriter {
           this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i);
 
           this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig);
+
+          this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
+            this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes)
+          );
         }
         break;
     }
