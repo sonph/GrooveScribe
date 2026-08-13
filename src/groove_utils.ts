@@ -90,19 +90,6 @@ var global_total_midi_play_time_msecs = 0;
 var global_total_midi_notes = 0;
 var global_total_midi_repeats = 0;
 
-function listOf<T>(...args: Array<T | Array<T>>): Array<T> {
-  const array = [];
-  for (const arg of args) {
-    if (Array.isArray(arg)) {
-      // Flatten if arg is an array.
-      array.concat(arg);
-    } else {
-      array.push(arg);
-    }
-  }
-  return array;
-}
-
 function setOf<T>(...args: T[]): Set<T> {
   return new Set(args);
 }
@@ -421,6 +408,18 @@ class Subdivision {
 
   isTriplet(): boolean {
     return this.value % 12 == 0;
+  }
+
+  // Denominator for ABC's L: header. Triplets fix L:1/32 with note lengths
+  // scaled to 48 units per 4/4 measure — abc2svg rejects fractional L: values
+  // like 1/12, and (p:q:r triplet markers reconcile the mismatch with M:4/4.
+  abcNoteLength(): number {
+    return this.isTriplet() ? 32 : this.value;
+  }
+
+  // Length (in L: units) of a single grid position at this subdivision.
+  abcPositionLength(): number {
+    return this.isTriplet() ? 48 / this.value : 1;
   }
 
   static of(number: number): Subdivision {
@@ -775,6 +774,31 @@ class GrooveData {
     return s.length > 0 ? s : null;
   }
 
+  // Same as getNotesAtPosition, but with snare BEFORE hi-hat in chord order —
+  // matches the legacy triplet output format (e.g. `[c4^g4]`, not `[^g4c4]`).
+  static getTripletNotesAtPosition(i: number, hh_array: Array<string | null>, snare_array: Array<string | null>, kick_array: Array<string | null>, tom1_array: Array<string | null>, tom4_array: Array<string | null>): Array<AbcNote> | null {
+    if (i >= hh_array.length) {
+      return [];
+    }
+    const s = [];
+    if (snare_array[i] !== null) {
+      s.push(tabCharToAbcNote(DrumType.SNARE, snare_array[i]));
+    }
+    if (hh_array[i] !== null) {
+      s.push(tabCharToAbcNote(DrumType.HIHAT, hh_array[i]));
+    }
+    if (kick_array[i] !== null) {
+      s.push(tabCharToAbcNote(DrumType.KICK, kick_array[i]));
+    }
+    if (tom1_array && tom1_array[i] !== null) {
+      s.push(tabCharToAbcNote(DrumType.TOM1, tom1_array[i]));
+    }
+    if (tom4_array && tom4_array[i] !== null) {
+      s.push(tabCharToAbcNote(DrumType.TOM4, tom4_array[i]));
+    }
+    return s.length > 0 ? s : null;
+  }
+
   // If notes is null, interpret as a rest.
   static appendAbcNotes(abcs: Array<string>, notes: Array<AbcNote> | null, length: number): void {
     if (length === 0) {
@@ -800,6 +824,66 @@ class GrooveData {
     }
   }
 
+  // Emit ABC for one measure of a non-triplet subdivision. Notes are emitted at
+  // their natural length in units of L: (which equals subdivision.value here).
+  appendPlainMeasureAbc(line: Array<string>, drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>]): void {
+    const [hh, sn, kk, t1, t4] = drumArrays;
+    const numNotesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+    var currentNotes: Array<AbcNote> | null = null;
+    var currentNotesPosition = 0;
+    // Scan positions and emit a note (or rest) whenever a new event or beat
+    // boundary is reached. Length = distance from the previous emission.
+    for (let i = 0; i <= hh.length; i++) {
+      const atStartOfBeat = (i % numNotesPerBeat === 0);
+      if (i === hh.length) {
+        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
+        return;
+      }
+      const hasNote = GrooveData.hasNotesAtPosition(i, hh, sn, kk, t1, t4);
+      if (i === 0) {
+        if (hasNote) {
+          currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
+        }
+        continue;
+      }
+      if (hasNote) {
+        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
+        currentNotes = GrooveData.getNotesAtPosition(i, hh, sn, kk, t1, t4);
+        currentNotesPosition = i;
+      } else if (atStartOfBeat) {
+        GrooveData.appendAbcNotes(line, currentNotes, i - currentNotesPosition);
+        currentNotes = null;
+        currentNotesPosition = i;
+      }
+      // Space before a new beat breaks the beam so notes don't beam across beats.
+      if (atStartOfBeat) {
+        line.push(' ');
+      }
+    }
+  }
+
+  // Emit ABC for one measure of a triplet subdivision (8th/16th/32nd triplets).
+  // Uses L:1/32 with (n:n:n markers (n = notes per beat: 3, 6, or 12) so abc2svg
+  // reconciles the n-in-a-beat mismatch with M:4/4. Each grid position emits a
+  // note (or rest) of length 48/subdivision.
+  appendTripletMeasureAbc(line: Array<string>, drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>]): void {
+    const [hh, sn, kk, t1, t4] = drumArrays;
+    const noteLength = this.subdivision.abcPositionLength();
+    const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+    const marker = `(${notesPerBeat}:${notesPerBeat}:${notesPerBeat}`;
+    for (let beat = 0; beat < hh.length; beat += notesPerBeat) {
+      if (beat > 0) {
+        line.push(' ');
+      }
+      line.push(marker);
+      for (let k = 0; k < notesPerBeat; k++) {
+        const i = beat + k;
+        const notes = GrooveData.getTripletNotesAtPosition(i, hh, sn, kk, t1, t4);
+        GrooveData.appendAbcNotes(line, notes, noteLength);
+      }
+    }
+  }
+
   // We use 2 voices, Stickings and Hands. Stickings for stickings. Hands for HH, Snare, Kick and Toms.
   // Note length is a multiple of the subdivision. Subdivision is set with `L:` in the header.
   // For example, `L:1/8` and `f1` means a 1/8 note, `f2` means a 1/4 note.
@@ -815,7 +899,22 @@ class GrooveData {
       measuresPerLine = 1; // 32nd notes are too dense, so we only show one measure per line.
     }
     var lines = [];
-    lines.push('V:Stickings\nz2 z2 z2 z2 ||')
+    const isTriplet = this.subdivision.isTriplet();
+    // Stickings voice is currently just rests. Its total length must match the
+    // hands voice — a mismatch causes abc2svg to render staves misaligned.
+    var measureRests: string;
+    if (isTriplet) {
+      // e.g. "x4x4x4" per beat — one rest per grid position, no spaces within a beat.
+      const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+      const perBeat = ('x' + this.subdivision.abcPositionLength()).repeat(notesPerBeat);
+      measureRests = Array(this.timeSig.top).fill(perBeat).join(' ');
+    } else {
+      const abcUnitsPerBeat = this.subdivision.abcNoteLength() / this.timeSig.bottom.value;
+      const beatRest = 'z' + abcUnitsPerBeat;
+      measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
+    }
+    const stickings = Array(this.measures.length).fill(measureRests).join(' | ') + ' ||';
+    lines.push('V:Stickings\n' + stickings);
     lines.push('V:Hands stem=up\n%%voicemap drum');
     var line = [];
     for (let measureNum = 0; measureNum < this.measures.length; measureNum++) {
@@ -829,62 +928,19 @@ class GrooveData {
       const kick_array = measure.getArray(DrumType.KICK);
       const tom1_array = measure.getArray(DrumType.TOM1);
       const tom4_array = measure.getArray(DrumType.TOM4);
-      const numNotesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+      const drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>] = [hh_array, snare_array, kick_array, tom1_array, tom4_array];
+      const lastMeasure = measureNum === this.measures.length - 1;
 
-      var currentNotes = [];
-      var currentNotesPosition = 0;
-
-      var lastMeasure = measureNum === this.measures.length - 1;
-      var hasNotesAtPosition = false;
-      var atStartOfBeat = true;
-      var atEndOfMeasure = false;
-
-      // To determine the note length, we scan the arrays until the next note, or the start of the next beat, or end of the measure.
-      // From the start of the beat, if there are no notes, we output a rest till the next note.
-      for (let i = 0; i <= hh_array.length; i++) {
-
-        atStartOfBeat = (i % numNotesPerBeat === 0);
-        atEndOfMeasure = i == hh_array.length;
-        if (atEndOfMeasure) {
-          if (currentNotes !== null) {
-            const noteLength = i - currentNotesPosition;
-            GrooveData.appendAbcNotes(line, currentNotes, noteLength);
-          }
-          if (lastMeasure) {
-            line.push('||');
-          } else {
-            line.push('|\\');
-          }
-          continue;
-        }
-        hasNotesAtPosition = GrooveData.hasNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array);
-        if (i === 0) {
-          if (hasNotesAtPosition) {
-            currentNotes = GrooveData.getNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array);
-            currentNotesPosition = 0;
-          }
-          continue;
-        }
-        if (i !== 0 && hasNotesAtPosition) {
-          const noteLength = i - currentNotesPosition;
-          GrooveData.appendAbcNotes(line, currentNotes, noteLength);
-          // Reset
-          currentNotes = GrooveData.getNotesAtPosition(i, hh_array, snare_array, kick_array, tom1_array, tom4_array);
-          currentNotesPosition = i;
-        } else if (atStartOfBeat) {
-          const noteLength = i - currentNotesPosition;
-          GrooveData.appendAbcNotes(line, currentNotes, noteLength);
-          // Reset
-          currentNotes = null;
-          currentNotesPosition = i;
-        }
-        // In ABC Notation, to beam the notes together, we need to put the notes without a space.
-        // Notes should never beam cross the beat, so we can just add a space before the start of the beat.
-        if (atStartOfBeat) {
-          line.push(' ');
-        }
+      if (isTriplet) {
+        this.appendTripletMeasureAbc(line, drumArrays);
+      } else {
+        this.appendPlainMeasureAbc(line, drumArrays);
       }
-      lines.push(line.join(''))
+      // Triplet output uses ` ||` / ` |` with a leading space to match the
+      // legacy format the tests pin against; plain output does not.
+      const barSep = lastMeasure ? '||' : '|\\';
+      line.push(isTriplet ? ' ' + barSep : barSep);
+      lines.push(line.join(''));
       line = [];
     }
 
@@ -914,7 +970,7 @@ class GrooveData {
     // the width of the music is always 25% bigger than what we pass in.   Go figure.
     renderWidth = Math.floor(renderWidth * 0.75);
 
-    fullABC += `L:1/${this.subdivision.value}\n`;
+    fullABC += `L:1/${this.subdivision.abcNoteLength()}\n`;
 
     if (isPermutation)
       fullABC += "%%stretchlast 0\n";

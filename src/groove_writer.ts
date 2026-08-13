@@ -27,44 +27,6 @@
 /*global GrooveUtils, Midi, Share */
 /*global MIDI, constant_MAX_MEASURES, constant_DEFAULT_TEMPO, constant_ABC_STICK_R, constant_ABC_STICK_L, constant_ABC_STICK_BOTH, constant_ABC_STICK_OFF, constant_ABC_STICK_COUNT, constant_ABC_HH_Ride, constant_ABC_HH_Ride_Bell, constant_ABC_HH_Cow_Bell, constant_ABC_HH_Crash, constant_ABC_HH_Stacker, constant_ABC_HH_Open, constant_ABC_HH_Close, constant_ABC_HH_Accent, constant_ABC_HH_Normal, constant_ABC_SN_Ghost, constant_ABC_SN_Accent, constant_ABC_SN_Normal, constant_ABC_SN_XStick, constant_ABC_SN_Buzz, constant_ABC_SN_Flam, constant_ABC_SN_Drag, constant_ABC_KI_SandK, constant_ABC_KI_Splash, constant_ABC_KI_Normal, constant_ABC_T1_Normal, constant_ABC_T2_Normal, constant_ABC_T3_Normal, constant_ABC_T4_Normal, constant_NUMBER_OF_TOMS, constant_ABC_OFF, MIDI_VELOCITY_NORMAL, MIDI_VELOCITY_ACCENT, MIDI_VELOCITY_GHOST, constant_OUR_MIDI_METRONOME_1, constant_OUR_MIDI_METRONOME_NORMAL, constant_OUR_MIDI_HIHAT_NORMAL, constant_OUR_MIDI_HIHAT_OPEN, constant_OUR_MIDI_HIHAT_ACCENT, constant_OUR_MIDI_HIHAT_CRASH, constant_OUR_MIDI_HIHAT_STACKER, constant_OUR_MIDI_HIHAT_RIDE, constant_OUR_MIDI_HIHAT_FOOT, constant_OUR_MIDI_SNARE_NORMAL, constant_OUR_MIDI_SNARE_ACCENT, constant_OUR_MIDI_SNARE_GHOST, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_XSTICK, constant_OUR_MIDI_SNARE_FLAM, onstant_OUR_MIDI_SNARE_DRAG, constant_OUR_MIDI_KICK_NORMAL, constant_OUR_MIDI_TOM1_NORMAL, constant_OUR_MIDI_TOM2_NORMAL, constant_OUR_MIDI_TOM4_NORMAL, constant_OUR_MIDI_TOM4_NORMAL */
 
-const SNARE_FLAM_SVG = `
-        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
-        	<style type="text/css">
-        		.flam_fill {fill: currentColor}
-        		.flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}
-        	</style>
-        	<defs>
-        		<path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
-        		<ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>
-        	</defs>
-        	<g id="note" transform="translate(-44 -35)">
-        		<path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>
-        		<use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>
-        		<path class="flam_stroke" d="m49.5 49.34l9-5"></path>
-        		<path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>
-        	</g>
-        </svg>'
-        `;
-
-const SNARE_DRAG_SVG = `
-       <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
-       	<style type="text/css">
-       		.flam_fill {fill: currentColor}
-       		.flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}
-       	</style>
-       	<defs>
-       		<path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
-       		<ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>
-       	</defs>
-       	<g id="note" transform="translate(-44 -35)">
-       		<path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>
-       		<use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>
-       		<path class="flam_stroke" d="m49.5 49.34l9-5"></path>
-       		<path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>
-       	</g>
-       </svg>
-        `;
-
 type KeyShortcutMapping = Map<string, { type: string, note_mapping: Map<string, string> }>;
 
 const UNDO_STACK_MAX_SIZE = 40;
@@ -118,92 +80,6 @@ const POPUP_KEY_SHORTCUT_MAPPING: KeyShortcutMapping = new Map([
       ["x", "splash"],
       ["X", "kick_and_splash"]])
   }]]);
-
-class E {
-  tag: string;
-  id?: string;
-  classList?: string | Array<string>;
-  content?: string;
-  onclick?: (ev: MouseEvent) => void;
-  oncontextmenu?: (ev: MouseEvent) => void;
-  onmouseenter?: (ev: MouseEvent) => void;
-  children?: Array<E | null>;
-  innerHTML?: string;
-
-  constructor(tag: string) {
-    this.tag = tag;
-  }
-
-  static of(tag: string, id?: string, classList?: string | Array<string>, children?: Array<E | null>): E {
-    const e = new E(tag);
-    e.id = id;
-    e.classList = classList;
-    e.children = children;
-    return e;
-  }
-
-  setContent(content: string): E {
-    this.content = content;
-    return this;
-  }
-
-  addHandlers(handlers: {
-    onclick?: (ev: MouseEvent) => void,
-    oncontextmenu?: (ev: MouseEvent) => void,
-    onmouseenter?: (ev: MouseEvent) => void,
-  }): E {
-    this.onclick = handlers.onclick;
-    this.oncontextmenu = handlers.oncontextmenu;
-    this.onmouseenter = handlers.onmouseenter;
-    return this;
-  }
-
-  addTo(parent: HTMLElement) {
-    console.log("Adding element: ", this.tag, " with id: ", this.id, " to parent: ", parent);
-    const element = document.createElement(this.tag);
-    if (this.id) {
-      element.id = this.id;
-    }
-    if (this.classList) {
-      if (typeof this.classList === "string") {
-        element.classList.add(this.classList);
-      } else {
-        this.classList.forEach((cls) => {
-          element.classList.add(cls);
-        });
-      }
-    }
-    if (this.content) {
-      element.textContent = this.content;
-    }
-    if (this.innerHTML) {
-      element.innerHTML = this.innerHTML;
-    }
-    if (this.onclick) {
-      element.onclick = this.onclick;
-    }
-    if (this.oncontextmenu) {
-      element.oncontextmenu = this.oncontextmenu
-    }
-    if (this.onmouseenter) {
-      element.onmouseenter = this.onmouseenter;
-    }
-    parent.appendChild(element);
-    for (const child of this.children || []) {
-      if (child) {
-        child.addTo(element);
-      }
-    }
-  }
-
-  addChild(child: E): E {
-    if (!this.children) {
-      this.children = [];
-    }
-    this.children.push(child);
-    return this;
-  }
-}
 
 class GrooveWriter {
   myGrooveUtils: GrooveUtils;
@@ -2754,59 +2630,8 @@ class GrooveWriter {
     document.location = midi_url;
   };
 
-  // creates a grooveData class from the clickable UI elements of the page
-  //
-  grooveDataFromClickableUI() {
-    // var myGrooveData = new this.myGrooveUtils.grooveDataNew();
-    this.data.fromUrl(window.location.search);
-
-    // this.data.notesPerMeasure = this.data.notesPerMeasure;
-    // this.data.timeDivision = class_subDivision;
-    // this.data.timeSig = this.data.timeSig;
-    // this.data.showStickings = isStickingsVisible();
-    // this.data.showToms = isTomsVisible();
-    // this.data.title = document.getElementById("tuneTitle").value;
-    // this.data.author = document.getElementById("tuneAuthor").value;
-    // this.data.comments = document.getElementById("tuneComments").value;
-    // this.data.swingPercent = this.myGrooveUtils.getSwing();
-    // this.data.tempo = this.myGrooveUtils.getTempo();
-    // this.data.metronomeFrequency = this.getMetronomeFrequency();
-    // this.data.kickStemsUp = true;
-
-    // for (var i = 0; i < this.data.numberOfMeasures; i++) {
-    //   var total_notes = this.data.notesPerMeasure * this.data.numberOfMeasures;
-    //   myGrooveData.sticking_array = [];
-    //   myGrooveData.hh_array = [];
-    //   myGrooveData.snare_array = [];
-    //   myGrooveData.kick_array = [];
-    //   myGrooveData.toms_array = [[], [], [], []];
-
-    //   // query the clickable UI and generate a arrays representing the notes of all measures
-    //   for (var i = 0; i < total_notes; i++) {
-
-    //     // only grab the stickings if they are visible
-    //     if (isStickingsVisible())
-    //       myGrooveData.sticking_array.push(get_sticking_state(i, "ABC"));
-
-    //     myGrooveData.hh_array.push(get_hh_state(i, "ABC"));
-    //     myGrooveData.snare_array.push(get_snare_state(i, "ABC"));
-    //     myGrooveData.kick_array.push(get_kick_state(i, "ABC"));
-
-    //     if (isTomsVisible()) {
-    //       myGrooveData.toms_array[0].push(get_tom_state(i, 1, "ABC"));
-    //       myGrooveData.toms_array[3].push(get_tom_state(i, 4, "ABC"));
-    //     } else {
-    //       myGrooveData.toms_array[0].push(false);
-    //       myGrooveData.toms_array[3].push(false);
-    //     }
-    //   }
-    // }
-
-    // return myGrooveData;
-  };
-
   // called by the HTML when changes happen to forms that require the ABC to update
-  refresh_ABC() {
+  refresh_ABC = () => {
     this.updateSheetMusic();
   }
 
@@ -3337,7 +3162,6 @@ class GrooveWriter {
   // This function initializes the data for the groove Scribe web page
   runsOnPageLoad() {
     this.setupWriterHotKeys(); // there are other hot keys in GrooveUtils for the midi player
-    this.setupPermutationMenu();
     this.setTimeSigLabel();
 
     // set the background and text color of the current subdivision
@@ -3346,8 +3170,12 @@ class GrooveWriter {
     // add html for the midi player
     this.myGrooveUtils.AddMidiPlayerToPage("midiPlayer", this.data.subdivision.value, undefined);
 
-    // load the groove from the URL data if it was passed in.
+    // Load the groove from the URL data if it was passed in. Must precede
+    // setupPermutationMenu because that path calls updateSheetMusic, which
+    // reads DOM state back into data.measures — running it against an empty
+    // DOM would wipe the not-yet-loaded notes.
     this.set_Default_notes(window.location.search);
+    this.setupPermutationMenu();
 
     // if Mode != "view" put into edit mode  (we default to view mode to prevent screen flicker)
     if (!this.data.viewMode) {
@@ -3399,9 +3227,13 @@ class GrooveWriter {
       window.alert("This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".\n" + 'This version of Safari is unsupported.   Please use Chrome instead');
     }
     if (this.data.debugMode) {
-      var debugOutput = document.getElementById("debugOutput");
-      if (debugOutput) {
-        debugOutput.innerHTML += "<div>This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".<br>" + this.browserInfo.uastring + "<br>Running on: " + this.browserInfo.platform + "</div>";
+      var debugArea = document.getElementById("debugDisplayArea");
+      if (debugArea) {
+        debugArea.style.display = "block";
+      }
+      var abcResults = document.getElementById("ABC_Results");
+      if (abcResults) {
+        abcResults.style.display = "block";
       }
     }
 
@@ -3605,8 +3437,6 @@ class GrooveWriter {
   // this will allow us to bookmark or reference a groove and handle undo/redo.
   //
   get_FullURLForPage(url_destination?) {
-    var myGrooveData = this.grooveDataFromClickableUI()
-    // return this.myGrooveUtils.getUrlStringFromGrooveData(myGrooveData, url_destination)
     return this.data.toUrl();
   }
 
@@ -3957,69 +3787,6 @@ class GrooveWriter {
 
   };
 
-  // change the base division to something else.
-  // eg  16th to 8ths or   32nds to 8th note triplets
-  // need to re-layout the html notes, change any globals and then reinitialize
-  //
-  // OMG this needs to be refactored really bad.   There is a GrooveData struct from groove utils that
-  //      would make this whole thing much easier.  :(
-  changeDivisionWithNotes(newDivision, Stickings, HH, Tom1, Tom4, Snare, Kick) {
-    var oldDivision = (this as any).class_subDivision;
-    var wasStickingsVisable = this.isStickingsVisible();
-    var wasTomsVisable = this.isTomsVisible();
-
-    (this as any).class_subDivision = newDivision;
-
-    this.addMeasureHtml((this as any).measureContainer);
-
-    // var newHTML = "";
-    // for (var cur_measure = 1; cur_measure <= this.data.numberOfMeasures; cur_measure++) {
-    //   newHTML += this.HTMLforStaffContainer(cur_measure, (cur_measure - 1) * this.data.notesPerMeasure);
-    // }
-
-    // // rewrite the HTML for the HTML note grid
-    // document.getElementById("measureContainer").innerHTML = newHTML;
-
-    // change the Permutation options too
-    const newHTML = this.HTMLforPermutationOptions();
-    document.getElementById("PermutationOptions").innerHTML = newHTML;
-
-    if (wasStickingsVisable)
-      this.stickingsShowHide(true, true, true);
-
-    if (wasTomsVisable)
-      this.showHideToms(true, true, true);
-
-    // now set the right notes on and off
-    if (Stickings && HH && Tom1 && Tom4 && Snare && Kick) {
-      (this as any).setNotesFromURLData("Stickings", Stickings, this.data.numberOfMeasures);
-      (this as any).setNotesFromURLData("H", HH, this.data.numberOfMeasures);
-      (this as any).setNotesFromURLData("T1", Tom1, this.data.numberOfMeasures);
-      (this as any).setNotesFromURLData("T4", Tom4, this.data.numberOfMeasures);
-      (this as any).setNotesFromURLData("S", Snare, this.data.numberOfMeasures);
-      (this as any).setNotesFromURLData("K", Kick, this.data.numberOfMeasures);
-    }
-
-    // un-highlight the old div
-    this.unselectButton(document.getElementById("subdivision_" + oldDivision + "ths"));
-
-    // highlight the new div
-    this.selectButton(document.getElementById("subdivision_" + (this as any).class_subDivision + "ths"));
-
-    // This may disable or enable the menu
-    this.setupPermutationMenu();
-
-    // may turn on or off triplets and 1/4 or 1/8th notes based on time signature
-    this.setTimeDivisionSelectionOnOrOff();
-
-    // change the time label
-    this.setTimeSigLabel();
-
-    // enable or disable swing
-    // TODO
-    // this.myGrooveUtils.swingEnabled(this.myGrooveUtils.doesDivisionSupportSwing(newDivision));
-  }
-
   expandAuthoringViewWhenNecessary(numNotesPerMeasure, numberOfMeasures) {
 
     // set the size of the musicalInput authoring element based on the number of notes
@@ -4034,302 +3801,103 @@ class GrooveWriter {
     }
   };
 
-  // change the base division to something else.
-  // eg  16th to 8ths or   32nds to 8th note triplets
-  // need to re-layout the html notes, change any globals and then reinitialize
-  changeDivision(newDivision: Subdivision) {
-    var uiStickings = "|";
-    var uiHH = "|";
-    var uiTom1 = "|";
-    var uiTom4 = "|";
-    var uiSnare = "|";
-    var uiKick = "|";
+  // Switch the note subdivision (e.g. 8ths <-> 16ths, 8ths <-> triplets) and
+  // relayout the note grid. When triplet-ness is preserved, existing notes are
+  // scaled to the new grid; otherwise the groove is reset to sensible defaults.
+  changeDivision(newDivision: Subdivision | number) {
+    const newDivValue = typeof newDivision === 'number' ? newDivision : newDivision.value;
+    const newSubdivision = Subdivision.of(newDivValue);
+    const isNewDivisionTriplets = newSubdivision.isTriplet();
 
-    if ((newDivision as any) == 48 && !this.have_shown_mixed_division_message) {
+    // Validate division fits time signature.
+    if ((newDivValue * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 !== 0) {
+      alert(`1/${newDivValue} notes are disabled in ${this.data.timeSig.top}/${this.data.timeSig.bottom.value} time. This combination would result in a half note.`);
+      return;
+    }
+    if (isNewDivisionTriplets && this.data.timeSig.bottom.value !== 4) {
+      alert(`Triplets are disabled in ${this.data.timeSig.top}/${this.data.timeSig.bottom.value} time. Use x/4 time for triplets.`);
+      return;
+    }
+    if (newDivValue === 48 && !this.have_shown_mixed_division_message) {
       this.have_shown_mixed_division_message = true;
-      alert("The MIXED subdivision allows you to create a combination of triplets and non-triplet notes in one measure.  Set every 3rd note for 16ths and every 6th note for 8th notes")
+      alert("The MIXED subdivision allows you to create a combination of triplets and non-triplet notes in one measure. Set every 3rd note for 16ths and every 6th note for 8th notes");
     }
 
-    var isNewDivisionTriplets = this.myGrooveUtils.isTripletDivision(newDivision as any);
-    var new_notes_per_measure = this.data.notesPerMeasure;
+    const oldDivValue = this.data.subdivision.value;
+    const wasStickingsVisible = this.isStickingsVisible();
+    const wasTomsVisible = this.isTomsVisible();
+    const sameTripletness = this.usingTriplets() === isNewDivisionTriplets;
 
-    // check for incompatible odd time signature division   9/8 and 1/4notes for instance or 9/16 and 1/8notes
-    if (((newDivision as any) * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 != 0) {
-      alert("1/" + newDivision + " notes are disabled in " + this.data.timeSig.top + "/" + this.data.timeSig.bottom.value + " time.  This combination would result in a half note.");
-      return;
-    }
-    if (isNewDivisionTriplets && this.data.timeSig.bottom.value != 4) {
-      alert("Triplets are disabled in " + this.data.timeSig.top + "/" + this.data.timeSig.bottom.value + " time.  Use x/4 time for triplets.");
-      return;
+    // Capture the current UI state before we rebuild the note grid.
+    if (sameTripletness) {
+      this.syncUIToMeasures();
     }
 
-    if (this.usingTriplets() === isNewDivisionTriplets) {
-      // get the encoded notes out of the UI.
-      // run through both measures.
-      var topIndex = this.data.notesPerMeasure * this.data.numberOfMeasures;
-      for (var i = 0; i < topIndex; i++) {
-        uiStickings += this.get_sticking_state(i, "URL");
-        uiHH += this.get_hh_state(i).url;
-        uiTom1 += this.get_tom_state(i, 1).url;
-        uiTom4 += this.get_tom_state(i, 4).url;
-        uiSnare += this.get_snare_state(i).url;
-        uiKick += this.get_kick_state(i, "URL");
+    // Move to the new subdivision, replacing measures with fresh ones sized
+    // to the new notesPerMeasure. Copy scaled notes over when compatible.
+    const oldMeasures = this.data.measures;
+    this.data.subdivision = newSubdivision;
+    this.data.measures = [];
+    for (let m = 0; m < oldMeasures.length; m++) {
+      const fresh = new Measure(this.data.timeSig, this.data.subdivision);
+      if (sameTripletness && oldMeasures[m]) {
+        GrooveWriter.rescaleMeasure(oldMeasures[m], fresh);
       }
+      this.data.measures.push(fresh);
+    }
 
-      // override the hi-hat if we are going to a higher division.
-      // otherwise the notes get lost in translation (not enough)
-      //if (newDivision > this.data.notesPerMeasure)
-      //	uiHH = this.myGrooveUtils.GetDefaultHHGroove(new_notes_per_measure, class_num_beats_per_measure, class_note_value_per_measure, this.data.numberOfMeasures);
-    } else {
-      // changing from or changing to a triplet division
-      // triplets don't scale well, so use defaults when we change
-      uiStickings = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
-      uiHH = (this.myGrooveUtils as any).GetDefaultHHGroove(new_notes_per_measure, this.data.numberOfMeasures);
-      uiTom1 = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
-      uiTom4 = (this.myGrooveUtils as any).buildEmptyTabString(new_notes_per_measure, this.data.numberOfMeasures);
-      uiSnare = (this.myGrooveUtils as any).GetDefaultSnareGroove(new_notes_per_measure, this.data.timeSig, this.data.numberOfMeasures);
-      uiKick = (this.myGrooveUtils as any).GetDefaultKickGroove(new_notes_per_measure, this.data.timeSig, this.data.numberOfMeasures);
-
-      // reset the metronome click, since it has different options
+    if (!sameTripletness) {
+      // Triplets don't scale cleanly; also reset the metronome click options.
       this.resetMetronomeOptionsMenuOffsetClick();
     }
 
-    this.expandAuthoringViewWhenNecessary(newDivision, this.data.numberOfMeasures);
+    this.expandAuthoringViewWhenNecessary(newDivValue, this.data.numberOfMeasures);
+    this.renderMeasureContainer();
+    document.getElementById("PermutationOptions").innerHTML = this.HTMLforPermutationOptions();
+    this.applyMeasuresToUI();
 
-    this.changeDivisionWithNotes(newDivision, uiStickings, uiHH, uiTom1, uiTom4, uiSnare, uiKick);
+    if (wasStickingsVisible) this.stickingsShowHide(true, true, true);
+    if (wasTomsVisible) this.showHideToms(true, true, true);
+
+    this.unselectButton(document.getElementById("subdivision_" + oldDivValue + "ths"));
+    this.selectButton(document.getElementById("subdivision_" + newDivValue + "ths"));
+
+    this.setupPermutationMenu();
+    this.setTimeDivisionSelectionOnOrOff();
+    this.setTimeSigLabel();
 
     this.updateSheetMusic();
-  };
-
-  createLineLabels(measure: number): E {
-    return E.of('div', undefined, 'line-labels', listOf(
-      E.of('div', undefined, 'hh-label').setContent('Hi-hat').addHandlers({
-        onclick: (event) => this.noteLabelClick(event, 'hh', measure),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteLabelClick(event, 'hh', measure);
-        },
-      }),
-      E.of('div', 'tom1-label', 'tom-label').setContent('Tom').addHandlers({
-        onclick: (event) => this.noteLabelClick(event, 'tom1', measure),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteLabelClick(event, 'tom1', measure);
-        },
-      }),
-      E.of('div', undefined, 'snare-label').setContent('Snare').addHandlers({
-        onclick: (event) => this.noteLabelClick(event, 'snare', measure),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteLabelClick(event, 'snare', measure);
-        },
-      }),
-      E.of('div', 'tom4-label', 'tom-label').setContent('Tom').addHandlers({
-        onclick: (event) => this.noteLabelClick(event, 'tom4', measure),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteLabelClick(event, 'tom4', measure);
-        },
-      }),
-      E.of('div', undefined, 'kick-label').setContent('Kick').addHandlers({
-        onclick: (event) => this.noteLabelClick(event, 'kick', measure),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteLabelClick(event, 'kick', measure);
-        },
-      }),
-    ));
   }
 
-  createNotesContainer(measure: number): E {
-    const noteGroupingSize = this.data.timeSig.bottom.divideBy(this.data.subdivision);
-    const openingSpace = E.of('div', undefined, 'opening_note_space');
-    const endSpace = E.of('div', undefined, 'end_note_space');
-    const spaceBetweenGroups = E.of('div', undefined, 'space_between_note_groups');
-
-    const highlights: E[] = [];
-    const hihats: E[] = [];
-    const snares: E[] = [];
-    const kicks: E[] = [];
-    const toms1: E[] = [];
-    const toms4: E[] = [];
-    const all = [highlights, hihats, toms1, toms4, snares, kicks];
-
-    for (let i = 0; i < this.data.notesPerMeasure; i++) {
-      const index = i + (measure * this.data.notesPerMeasure);
-      if (i === 0) {
-        all.forEach(arr => arr.push(openingSpace));
+  // Copy notes from src to dst, scaling positions by the ratio of notesPerMeasure.
+  // Both measures must have the same triplet-ness so the scale factor divides evenly.
+  static rescaleMeasure(src: Measure, dst: Measure) {
+    const drums = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
+    const srcLen = src.notesPerMeasure;
+    const dstLen = dst.notesPerMeasure;
+    for (const drum of drums) {
+      const srcArr = src.getArray(drum);
+      const dstArr = Measure.createEmptyArrayOfLength(dstLen);
+      if (dstLen >= srcLen) {
+        const scale = Math.floor(dstLen / srcLen);
+        for (let i = 0; i < srcLen; i++) dstArr[i * scale] = srcArr[i];
+      } else {
+        const scale = Math.floor(srcLen / dstLen);
+        for (let i = 0; i < dstLen; i++) dstArr[i] = srcArr[i * scale];
       }
-      if (i > 0 && i % noteGroupingSize === 0) {
-        all.forEach(arr => arr.push(spaceBetweenGroups));
-      }
-
-      // Highlights
-      highlights.push(E.of('div', `bg-highlight${index}`, 'bg-highlight'));
-
-      // Hihats
-      const hihat = E.of('div', `hi-hat${index}`, 'hi-hat').addHandlers({
-        onclick: (event) => this.noteLeftClick(event, 'hh', index),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteRightClick(event, 'hh', index);
-        },
-        onmouseenter: (event) => this.noteOnMouseEnter(event, 'hh', index)
-      });
-      AbcNote.HH_ALL.forEach((note) => {
-        const htmlPrefix = note.getFirstHtmlIdPrefix();
-        hihat.addChild(
-          E.of('div', `${htmlPrefix}${index}`, ['note_part', htmlPrefix], listOf(
-            E.of('i', undefined, `fa ${note.htmlAttrs.iconClass || ''}`))));
-      });
-      hihats.push(hihat);
-
-      // Snares
-      const snare = E.of('div', `snare${index}`, 'snare').addHandlers({
-        onclick: (event) => this.noteLeftClick(event, 'snare', index),
-        oncontextmenu: (event) => {
-          event.preventDefault();
-          this.noteRightClick(event, 'snare', index);
-        },
-        onmouseenter: (event) => this.noteOnMouseEnter(event, 'snare', index)
-      });
-      AbcNote.SN_ALL.forEach((note) => {
-        const htmlPrefix = note.getFirstHtmlIdPrefix();
-        if (note.note === AbcNote.SN_GHOST.note) {
-          const snare_ghost = E.of('div', `snare_ghost${index}`, ['note_part', htmlPrefix]);
-          snare_ghost.innerHTML = `(<i class="fa fa-${note.htmlAttrs.iconClass || ''} dot_in_snare_ghost_note"></i>)`;
-          snare.addChild(snare_ghost);
-          return;
-        }
-        if (note.note === AbcNote.SN_FLAM.note) {
-          const snare_flam = E.of('div', `snare_flam${index}`, ['note_part', htmlPrefix]);
-          snare_flam.innerHTML = SNARE_FLAM_SVG;
-          snare.addChild(snare_flam);
-          return;
-        }
-        if (note.note === AbcNote.SN_DRAG.note) {
-          const snare_drag = E.of('div', `snare_drag${index}`, ['note_part', htmlPrefix]);
-          snare_drag.innerHTML = SNARE_DRAG_SVG;
-          snare.addChild(snare_drag);
-          return;
-        }
-        snare.addChild(
-          E.of('div', `${htmlPrefix}${index}`, ['note_part', htmlPrefix], listOf(
-            E.of('i', undefined, `fa ${note.htmlAttrs.iconClass || ''}`))));
-      });
-      snares.push(snare);
-
-      // Kicks
-      const kick = E.of('div', `kick${index}`, 'kick', listOf(
-        E.of('div', `${AbcNote.KI_NORMAL.getFirstHtmlIdPrefix()}${index}`, ['note_part', AbcNote.KI_NORMAL.getFirstHtmlIdPrefix()]),
-        E.of('div', `${AbcNote.KI_SPLASH.getFirstHtmlIdPrefix()}${index}`, ['note_part', AbcNote.KI_SPLASH.getFirstHtmlIdPrefix()], listOf(
-          E.of('i', undefined, `fa ${AbcNote.KI_SPLASH.htmlAttrs.iconClass || ''}`)
-        )).addHandlers({
-          onclick: (event) => this.noteLeftClick(event, 'kick', index),
-          oncontextmenu: (event) => {
-            event.preventDefault();
-            this.noteRightClick(event, 'kick', index);
-          },
-          onmouseenter: (event) => this.noteOnMouseEnter(event, 'kick', index)
-        })));
-
-      // Toms
-
-      if (i === this.data.notesPerMeasure - 1) {
-        all.forEach(arr => arr.push(endSpace));
-      }
+      dst.arrays.set(drum.name, dstArr);
     }
-
-    return E.of('div', undefined, 'music-line-container', listOf(
-      E.of('div', undefined, 'notes-container', listOf(
-        E.of('div', undefined, 'staff-line-1'),
-        E.of('div', undefined, 'staff-line-2'),
-        E.of('div', undefined, 'staff-line-3'),
-        E.of('div', undefined, 'staff-line-4'),
-        E.of('div', undefined, 'staff-line-5'),
-        E.of('div', undefined, 'background-highlight-container'),
-        E.of('div', undefined, 'hi-hat-container'),
-        E.of('div', undefined, 'toms-container'),
-        E.of('div', undefined, 'snare-container'),
-        E.of('div', undefined, 'toms-container'),
-        E.of('div', undefined, 'kick-container'),
-      ))));
   }
 
-  addMeasureHtml(measureContainer: HTMLElement) {
-    const noteGroupingSize = this.data.timeSig.bottom.divideBy(this.data.subdivision);
-    const measures: Array<E> = [];
-
-    for (let measure = 0; measure < this.data.numberOfMeasures; measure++) {
-      const showRemoveButton = this.data.numberOfMeasures > 1 && measure > 0;
-
-      const stickings = [];
-      for (let i = 0; i < this.data.notesPerMeasure; i++) {
-        i = i + (measure * this.data.notesPerMeasure);
-        const handlers = {
-          onclick: (event) => this.noteLeftClick(event, 'sticking', i),
-          oncontextmenu: (event) => {
-            event.preventDefault();
-            this.noteRightClick(event, 'sticking', i);
-          },
-        }
-        const sticking = E.of('div', `sticking${i}`, 'sticking', listOf(
-          E.of('div', `sticking_right${i}`, listOf('sticking_right', 'note_part')).setContent('R').addHandlers({
-            onclick: handlers.onclick,
-            oncontextmenu: handlers.oncontextmenu,
-            onmouseenter: (event) => this.noteOnMouseEnter(event, 'sticking', i),
-          }),
-          E.of('div', `sticking_left${i}`, listOf('sticking_left', 'note_part')).setContent('L').addHandlers(handlers),
-          E.of('div', `sticking_both${i}`, listOf('sticking_both', 'note_part')).setContent('R/L').addHandlers(handlers),
-          E.of('div', `sticking_count${i}`, listOf('sticking_count', 'note_part')).setContent('C').addHandlers(handlers)
-        ));
-
-        stickings.push(sticking);
-        // Add space between every note grouping, except the last one.
-        if (i % noteGroupingSize == 0 && i < this.data.notesPerMeasure - 1) {
-          stickings.push(E.of('div', undefined, 'space_between_note_groups'));
-        }
-      }
-
-      const staffContainer = E.of('div', 'staff-container' + measure.toString(), 'staff-container', listOf(
-        E.of('div', undefined, 'stickings-row-container', listOf(
-          E.of('div', undefined, 'line-labels', listOf(
-            E.of('div', undefined, 'stickings-label').addHandlers({
-              onclick: (event) => this.noteLabelClick(event, 'stickings', measure),
-              oncontextmenu: (event) => {
-                event.preventDefault();
-                this.noteLabelClick(event, 'stickings', measure);
-              },
-            }),
-          )),
-          E.of('div', undefined, 'music-line-container', listOf(
-            E.of('div', undefined, 'notes-container', listOf(
-              E.of('div', undefined, 'stickings-container', listOf(
-                E.of('div', undefined, 'opening_note_space'),
-                stickings,
-                E.of('div', undefined, 'end_note_space')
-              ))
-            ))
-          )),
-          E.of('span', undefined, 'notes-row-container', listOf(
-            this.createLineLabels(measure),
-            this.createNotesContainer(measure)
-          )),
-          showRemoveButton ? this.htmlRemoveMeasureButton(measure) : null,
-        ))));
-      measures.push(staffContainer);
+  // Render all measures into #measureContainer.
+  renderMeasureContainer() {
+    const container = document.getElementById("measureContainer");
+    if (!container) return;
+    let html = "";
+    for (let m = 1; m <= this.data.numberOfMeasures; m++) {
+      html += this.HTMLforStaffContainer(m, (m - 1) * this.data.notesPerMeasure);
     }
-    measures.forEach((measure, index) => {
-      measure.addTo(measureContainer);
-    });
-  }
-
-  htmlRemoveMeasureButton(measure: number): E {
-    return E.of('span', 'closeMeasureButton' + measure, 'closeMeasureButton', listOf(
-      E.of('i', undefined, 'fa fa-times')
-    )).addHandlers({
-      onclick: (event) => this.closeMeasureButtonClick(measure),
-    });
+    container.innerHTML = html;
   }
 
   // public function

@@ -218,3 +218,83 @@ describe('Note context menu lifecycle', () => {
     expect(writer.insertNoteContextMenu).toBeNull();
   });
 });
+
+describe('changeDivision', () => {
+  let grooveUtils, writer;
+
+  const SUBDIVISION_IDS = ['subdivision_8ths', 'subdivision_16ths', 'subdivision_32ths',
+    'subdivision_12ths', 'subdivision_24ths', 'subdivision_48ths'];
+
+  const subdivisionButtonsHtml = SUBDIVISION_IDS.map(id => `<div id="${id}"></div>`).join('');
+  const extrasHtml = subdivisionButtonsHtml +
+    '<div id="PermutationOptions"></div>' +
+    '<div id="permutationAnchor"></div>' +
+    '<div class="kick-container"></div><div class="snare-container"></div>' +
+    '<div id="musicalInput"></div>' +
+    '<div id="timeSigLabel"></div>';
+
+  const setup = (url) => {
+    jest.resetModules();
+    require('../js/groove_utils.js');
+    require('../js/groove_writer.js');
+    grooveUtils = new GrooveUtils(true);
+    writer = new GrooveWriter(grooveUtils);
+    // GrooveWriter's constructor calls fromUrl(window.location.search), so we
+    // parse the intended URL after the writer is built to avoid getting reset.
+    grooveUtils.data.fromUrl(url);
+    document.body.innerHTML = extrasHtml
+      + '<div id="measureContainer">' + writer.HTMLforStaffContainer(1, 0) + '</div>';
+    // Populate DOM note-on state from the parsed measure data. changeDivision
+    // reads UI state back into measures, so without this the notes look empty.
+    writer.applyMeasuresToUI();
+    // Mark 8ths as the currently-selected subdivision (matches page init).
+    document.getElementById('subdivision_8ths').classList.add('buttonSelected');
+    // Avoid ABC/SVG re-rendering in these UI-focused tests.
+    writer.updateSheetMusic = jest.fn();
+  };
+
+  const isSelected = (id) => document.getElementById(id).classList.contains('buttonSelected');
+
+  test('switching 8 -> 16 highlights only the new button', () => {
+    setup('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    writer.changeDivision(16);
+    expect(isSelected('subdivision_8ths')).toBe(false);
+    expect(isSelected('subdivision_16ths')).toBe(true);
+    expect(grooveUtils.data.subdivision.value).toBe(16);
+  });
+
+  test('switching 8 -> 16 -> 32 leaves only 32 highlighted', () => {
+    setup('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    writer.changeDivision(16);
+    writer.changeDivision(32);
+    expect(isSelected('subdivision_8ths')).toBe(false);
+    expect(isSelected('subdivision_16ths')).toBe(false);
+    expect(isSelected('subdivision_32ths')).toBe(true);
+    expect(grooveUtils.data.subdivision.value).toBe(32);
+  });
+
+  test('rescaleMeasure scales up (8 -> 16) by spacing notes out', () => {
+    setup('TimeSig=4/4&Div=8&Tempo=80&H=|x-x-x-x-|');
+    const src = grooveUtils.data.measures[0];
+    // Manually build the destination as changeDivision does.
+    const dst = new Measure(grooveUtils.data.timeSig, Subdivision.of(16));
+    GrooveWriter.rescaleMeasure(src, dst);
+    expect(dst.toString(DrumType.HIHAT)).toBe('x---x---x---x---');
+  });
+
+  test('rescaleMeasure scales down (16 -> 8) by keeping every other slot', () => {
+    setup('TimeSig=4/4&Div=16&Tempo=80&H=|x-x-x-x-x-x-x-x-|');
+    const src = grooveUtils.data.measures[0];
+    const dst = new Measure(grooveUtils.data.timeSig, Subdivision.of(8));
+    GrooveWriter.rescaleMeasure(src, dst);
+    // Positions 0,2,4,6,8,10,12,14 in the 16-grid map to 0..7 — all 'x' in this pattern.
+    expect(dst.toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+  });
+
+  test('refresh_ABC is bound and safe to reassign to window.onresize', () => {
+    setup('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+    window.onresize = writer.refresh_ABC;
+    expect(() => window.onresize()).not.toThrow();
+    expect(writer.updateSheetMusic).toHaveBeenCalled();
+  });
+});

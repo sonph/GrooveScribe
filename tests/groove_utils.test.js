@@ -258,4 +258,27 @@ describe('Measure to ABC', () => {
     const abc = data.getAbcNotation();
     expect(abc).toContain('!accent![^g2F2] !accent!c2 !accent![^g2c2] !open!!accent![^g2c2]');
   });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=12&Tempo=80&Measures=1&H=|xxxxxxxxxxxx|&S=|---O-----O--|&K=|o-----o-----|
+  test('should convert measure to ABC notation -- 8th triplets', () => {
+    data.fromUrl('TimeSig=4/4&Div=12&Tempo=80&Measures=1&H=|xxxxxxxxxxxx|&S=|---O-----O--|&K=|o-----o-----|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('V:Stickings\nx4x4x4 x4x4x4 x4x4x4 x4x4x4 ||');
+    expect(abc).toContain('(3:3:3[^g4F4]^g4^g4 (3:3:3!accent![c4^g4]^g4^g4 (3:3:3[^g4F4]^g4^g4 (3:3:3!accent![c4^g4]^g4^g4 ||');
+  });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=24&Tempo=80&Measures=1&H=|x-x-x-x-x-x-x-x-x-x-x-x-|&S=|------O-----------O-----|&K=|o---o----o--o--o---ooooo|
+  test('should convert measure to ABC notation -- 16th triplets', () => {
+    data.fromUrl('TimeSig=4/4&Div=24&Tempo=80&Measures=1&H=|x-x-x-x-x-x-x-x-x-x-x-x-|&S=|------O-----------O-----|&K=|o---o----o--o--o---ooooo|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain('V:Stickings\nx2x2x2x2x2x2 x2x2x2x2x2x2 x2x2x2x2x2x2 x2x2x2x2x2x2 ||');
+    expect(abc).toContain('(6:6:6[^g2F2]z2^g2z2[^g2F2]z2 (6:6:6!accent![c2^g2]z2^g2F2^g2z2 (6:6:6[^g2F2]z2^g2F2^g2z2 (6:6:6!accent![c2^g2]F2[^g2F2]F2[^g2F2]F2 ||');
+  });
+
+  // https://sonpham.me/GrooveScribe/?Debug=1&TimeSig=4/4&Div=48&Tempo=80&Measures=1&H=|x--xx--xxxx-x--rx---x---x-c-xX--x---x---x---x---|&S=|------------O------------g----g---b-O-----------|&K=|o-------o---------o-----o-----o----oooo-o-o-o-o-|&T1=|--------------oo--------------------------------|&T4=|---------------------o--oo----------------------|
+  test('should convert measure to ABC notation -- 32nd triplets with mixed drums', () => {
+    data.fromUrl('TimeSig=4/4&Div=48&Tempo=80&Measures=1&H=|x--xx--xxxx-x--rx---x---x-c-xX--x---x---x---x---|&S=|------------O------------g----g---b-O-----------|&K=|o-------o---------o-----o-----o----oooo-o-o-o-o-|&T1=|--------------oo--------------------------------|&T4=|---------------------o--oo----------------------|');
+    const abc = data.getAbcNotation();
+    expect(abc).toContain("(12:12:12[^g1F1]z1z1^g1^g1z1z1^g1[^g1F1]^g1^g1z1 (12:12:12!accent![c1^g1]z1e1[^A'1e1]^g1z1F1z1^g1A1z1z1 (12:12:12[^g1F1A1][!(.!!).!c1A1]^c'1z1^g1!accent!^g1[!(.!!).!c1F1]z1^g1z1!///!c1F1 (12:12:12!accent![c1^g1F1]F1F1z1[^g1F1]z1F1z1[^g1F1]z1F1z1 ||");
+  });
 });
