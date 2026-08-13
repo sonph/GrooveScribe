@@ -1168,7 +1168,7 @@ class MidiEventCallback {
   loadMIDIFromURL: (url: string) => void;
   getMidiImageLocation: () => string;
 
-  constructor(grooveUtils) {
+  constructor(grooveUtils: GrooveUtils) {
     this.grooveUtils = grooveUtils;
     this.grooveUtilsUniqueIndex = grooveUtils.grooveUtilsUniqueIndex;
     this.noteHasChangedSinceLastDataLoad = false;
@@ -1183,7 +1183,7 @@ class MidiEventCallback {
     };
   }
 
-  loadMidiDataEvent(_playStarting?: boolean) {
+  loadMidiDataEvent(_playStarting?: boolean): void {
     if (this.grooveUtils && this.grooveUtils.data) {
       var midiURL = this.create_MIDIURLFromGrooveData(this.grooveUtils.data);
       this.loadMIDIFromURL(midiURL);
@@ -1193,36 +1193,36 @@ class MidiEventCallback {
     }
   }
 
-  doesMidiDataNeedRefresh() {
+  doesMidiDataNeedRefresh(): boolean {
     return this.noteHasChangedSinceLastDataLoad;
   }
 
-  pauseEvent() {
+  pauseEvent(): void {
     var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
     if (icon)
       icon.className = "midiPlayImage Paused";
   }
 
-  resumeEvent() { };
-  stopEvent() {
+  resumeEvent(): void { };
+  stopEvent(): void {
     var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
     if (icon)
       icon.className = "midiPlayImage Stopped";
   }
-  repeatChangeEvent(newValue) {
+  repeatChangeEvent(newValue: boolean): void {
     if (newValue)
       (document.getElementById("midiRepeatImage" + this.grooveUtilsUniqueIndex) as HTMLImageElement).src = this.getMidiImageLocation() + "repeat.png";
     else
       (document.getElementById("midiRepeatImage" + this.grooveUtilsUniqueIndex) as HTMLImageElement).src = this.getMidiImageLocation() + "grey_repeat.png";
   }
-  percentProgress(percent) { };
-  notePlaying(note_type?, note_position?) { };
+  percentProgress(percent: number): void { };
+  notePlaying(note_type?: string, note_position?: number): void { };
 
-  midiInitialized() {
+  midiInitialized(): void {
     var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
     if (icon) {
       icon.className = "midiPlayImage Stopped";
-      icon.onclick = (event) => {
+      icon.onclick = (event: MouseEvent) => {
         this.grooveUtils.startOrStopMIDI_playback();
       };
     }
@@ -1253,18 +1253,18 @@ class SVGLibCallback {
     this.abcNoteNumIndex = 0;
   }
 
-  read_file(fn) {
+  read_file(fn: string): string {
     return "";
   };
 
-  errmsg(msg, l, c) {
+  errmsg(msg: string, l?: number, c?: number): void {
     this.abc_error_output += msg + "<br/>\n";
   };
 
-  get_abcmodel(tsfirst, voice_tb, music_types) { };
+  get_abcmodel(tsfirst: any, voice_tb: any, music_types: any): void { };
 
-  anno_start(type, start, stop, x, y, w, h) { };
-  anno_stop(type, start, stop, x, y, w, h) {
+  anno_start(type: string, start: any, stop: any, x: number, y: number, w: number, h: number): void { };
+  anno_stop(type: string, start: any, stop: any, x: number, y: number, w: number, h: number): void {
     if (type == "bar") {
       this.svg_highlight_y = y + 5;
       this.svg_highlight_h = h + 10;
@@ -1282,7 +1282,7 @@ class SVGLibCallback {
     }
   };
 
-  img_out(str) {
+  img_out(str: string): void {
     this.abc_svg_output += str;
   };
 }
@@ -1346,7 +1346,7 @@ class GrooveUtils {
     this.midiBaseLocation = "";
   }
 
-  getQueryVariableFromString(variable: string, def_value: string, my_string: string) {
+  getQueryVariableFromString(variable: string, def_value: string, my_string: string): string {
     var query = my_string.substring(1);
     var vars = query.split("&");
     for (var i = 0; i < vars.length; i++) {
@@ -1358,21 +1358,18 @@ class GrooveUtils {
     return (def_value);
   };
 
-  getQueryVariableFromURL(variable, def_value) {
-    return (this.getQueryVariableFromString(variable, def_value, window.location.search));
-  };
 
   is_touch_device(): boolean {
     return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
   };
 
-  documentOnClickHanderCloseContextMenu = (event) => {
+  documentOnClickHanderCloseContextMenu = (event: MouseEvent): void => {
     if (this.visible_context_menu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
     }
   };
 
-  showContextMenu(contextMenu) {
+  showContextMenu(contextMenu: HTMLElement | null): void {
     if (!contextMenu) return;
     if (this.visible_context_menu && this.visible_context_menu !== contextMenu) {
       this.hideContextMenu(this.visible_context_menu as HTMLElement);
@@ -1392,7 +1389,7 @@ class GrooveUtils {
     }, 100);
   };
 
-  hideContextMenu(contextMenu?: HTMLElement) {
+  hideContextMenu(contextMenu?: HTMLElement): void {
     document.onclick = () => { };
     document.body.style.cursor = "auto";
     const target = (contextMenu || this.visible_context_menu) as HTMLElement | false;
@@ -1410,27 +1407,27 @@ class GrooveUtils {
     return this.isTripletDivision((notesPerMeasure / timeSig.top) * timeSig.bottom.value);
   }
 
-  getMetronomeSolo() {
+  getMetronomeSolo(): boolean {
     return this.metronomeSolo;
   };
 
-  setMetronomeSolo(bool) {
+  setMetronomeSolo(bool: boolean): void {
     this.metronomeSolo = bool;
   };
 
-  getMetronomeOffsetClickStart() {
+  getMetronomeOffsetClickStart(): string {
     return this.metronomeOffsetClickStart;
   };
 
-  getMetronomeOffsetClickStartIsRotating() {
+  getMetronomeOffsetClickStartIsRotating(): boolean {
     return this.metronomeOffsetClickStart == 'ROTATE';
   };
 
-  setMetronomeOffsetClickStart(value) {
+  setMetronomeOffsetClickStart(value: string): void {
     this.metronomeOffsetClickStart = value;
   };
 
-  advanceMetronomeOptionsOffsetClickStartRotation() {
+  advanceMetronomeOptionsOffsetClickStartRotation(): boolean {
     if (this.getMetronomeOffsetClickStartIsRotating()) {
       this.metronomeOffsetClickStartRotation++;
       return true;
@@ -1438,7 +1435,7 @@ class GrooveUtils {
     return false;
   };
 
-  getMetronomeOptionsOffsetClickStartRotation(isTriplets) {
+  getMetronomeOptionsOffsetClickStartRotation(isTriplets: boolean): string {
     if (this.getMetronomeOffsetClickStartIsRotating()) {
       if (isTriplets && this.metronomeOffsetClickStartRotation > 2)
         this.metronomeOffsetClickStartRotation = 0;
@@ -1460,13 +1457,13 @@ class GrooveUtils {
     }
   };
 
-  resetMetronomeOptionsOffsetClickStartRotation(value?) {
+  resetMetronomeOptionsOffsetClickStartRotation(value?: any): number {
     return this.metronomeOffsetClickStartRotation = 0;
   };
 
   // Merges two drum tab lines. "-" are blanks overwritten by non-blank tokens.
   // When both lines have notes at position i, dominateLine takes priority.
-  mergeDrumTabLines(dominateLine, subordinateLine) {
+  mergeDrumTabLines(dominateLine: string, subordinateLine: string): string {
     var newLine = "";
     for (var i = 0; i < Math.max(dominateLine.length, subordinateLine.length); i++) {
       const firstChar = dominateLine.charAt(i);
@@ -1482,7 +1479,7 @@ class GrooveUtils {
     return newLine;
   };
 
-  setupHotKeys() {
+  setupHotKeys(): void {
     document.onkeydown = (e) => {
       const target = e.target as HTMLInputElement;
       if (e.which == 32 && (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA"))) {
@@ -1500,41 +1497,9 @@ class GrooveUtils {
     };
   }
 
-  // Looks for modifiers like !accent! or !plus! and moves them outside of the ABC chord group
-  // so abc2svg renders them correctly.
-  moveAccentsOrOtherModifiersOutsideOfGroup(abcNoteStrings, modifier_to_look_for) {
-    var found_modifier = false;
-    var rindex = abcNoteStrings.notes1.lastIndexOf(modifier_to_look_for);
-    if (rindex > -1) {
-      found_modifier = true;
-      abcNoteStrings.notes1 = abcNoteStrings.notes1.replace(modifier_to_look_for, "");
-    }
-    rindex = abcNoteStrings.notes2.lastIndexOf(modifier_to_look_for);
-    if (rindex > -1) {
-      found_modifier = true;
-      abcNoteStrings.notes2 = abcNoteStrings.notes2.replace(modifier_to_look_for, "");
-    }
-    rindex = abcNoteStrings.notes3.lastIndexOf(modifier_to_look_for);
-    if (rindex > -1) {
-      found_modifier = true;
-      abcNoteStrings.notes3 = abcNoteStrings.notes3.replace(modifier_to_look_for, "");
-    }
-    if (found_modifier)
-      return modifier_to_look_for;
 
-    return "";
-  }
-
-  testArrayOfArraysForEquality(array_of_arrays, test_index, test_value) {
-    for (var i = 0; i < array_of_arrays.length; i++) {
-      if (array_of_arrays[i][test_index] !== undefined && array_of_arrays[i][test_index] !== test_value)
-        return false;
-    }
-    return true;
-  }
-
-  noteGroupingSize(notes_per_measure, timeSig) {
-    var note_grouping;
+  noteGroupingSize(notes_per_measure: number, timeSig: TimeSignature): number {
+    var note_grouping: number;
     var usingTriplets = this.isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig);
 
     if (usingTriplets) {
@@ -1551,14 +1516,14 @@ class GrooveUtils {
     return note_grouping;
   };
 
-  notesPerMeasureInFullSizeArray(is_triplet_division, timeSig) {
+  notesPerMeasureInFullSizeArray(is_triplet_division: boolean, timeSig: TimeSignature): number {
     if (is_triplet_division) {
       return 48 * (timeSig.top / timeSig.bottom.value);
     }
     return 32 * (timeSig.top / timeSig.bottom.value);
   }
 
-  getNoteScaler(notes_per_measure, timeSig) {
+  getNoteScaler(notes_per_measure: number, timeSig: TimeSignature): number {
     if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36) {
       console.log("Error in getNoteScaler, out of range: " + timeSig.top);
       return 1.0;
@@ -1568,43 +1533,8 @@ class GrooveUtils {
     return Math.ceil(this.notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
   };
 
-  // Expand array to full resolution (48 per measure for triplets, 32 for straight)
-  // by padding non-active positions with false.
-  scaleNoteArrayToFullSize(note_array, grooveData) {
-    const num_measures = grooveData.numberOfMeasures;
-    const notes_per_measure = grooveData.notesPerMeasure;
-    var scaler = this.getNoteScaler(grooveData.notesPerMeasure, grooveData.timeSig);
-    var retArray = [];
-    var i;
 
-    if (scaler == 1)
-      return note_array;
-
-    for (i = 0; i < num_measures * notes_per_measure * scaler; i++)
-      retArray[i] = false;
-
-    for (i = 0; i < num_measures * notes_per_measure; i++) {
-      var ret_array_index = (i) * scaler;
-      retArray[ret_array_index] = note_array[i];
-    }
-
-    return retArray;
-  }
-
-  count_active_notes_in_arrays(array_of_arrays, start_index, how_far_to_measure) {
-    var num_active_notes = 0;
-    for (var i = start_index; i < start_index + how_far_to_measure; i++) {
-      for (var which_array = 0; which_array < array_of_arrays.length; which_array++) {
-        if (array_of_arrays[which_array][i] !== false) {
-          num_active_notes++;
-          which_array = array_of_arrays.length;
-        }
-      }
-    }
-    return num_active_notes;
-  }
-
-  create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes) {
+  create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_array: Array<any>, kick_array: Array<any>, toms_array: Array<Array<any>> | null, num_notes: number): Array<boolean> {
     var mapping_array = new Array(num_notes);
 
     for (var i = 0; i < num_notes; i++) {
@@ -1632,7 +1562,7 @@ class GrooveUtils {
     return mapping_array;
   };
 
-  figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number) {
+  figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number): string | number {
     const note_index = index % notes_per_measure;
     const implied_sub_division = sub_division * (4 / time_sig_bottom);
     switch (implied_sub_division) {
@@ -1692,7 +1622,7 @@ class GrooveUtils {
     };
   }
 
-  isElementOnScreen(element) {
+  isElementOnScreen(element: HTMLElement): boolean {
     var rect = element.getBoundingClientRect();
     return (
       rect.top >= 80 &&
@@ -1702,14 +1632,14 @@ class GrooveUtils {
     );
   };
 
-  clearHighlightNoteInABCSVG() {
+  clearHighlightNoteInABCSVG(): void {
     if (this.abcNoteNumCurrentlyHighlighted > -1) {
       var myElements = document.querySelectorAll("#abcNoteNum_" + this.grooveUtilsUniqueIndex + "_" + this.abcNoteNumCurrentlyHighlighted);
       for (var i = 0; i < myElements.length; i++) {
         var class_name = myElements[i].getAttribute("class") || "";
         myElements[i].setAttribute("class", class_name.replace(new RegExp(' highlighted', 'g'), ""));
         if (this.data && this.data.debugMode && i === 0) {
-          if (!this.isElementOnScreen(myElements[i]) && typeof myElements[i].scrollIntoView === 'function') {
+          if (!this.isElementOnScreen(myElements[i] as HTMLElement) && typeof myElements[i].scrollIntoView === 'function') {
             if (this.abcNoteNumCurrentlyHighlighted === 0)
               myElements[i].scrollIntoView({ block: "start", behavior: "smooth" });
             else
@@ -1721,7 +1651,7 @@ class GrooveUtils {
     }
   };
 
-  highlightNoteInABCSVGByIndex(noteToHighlight) {
+  highlightNoteInABCSVGByIndex(noteToHighlight: number): void {
     this.clearHighlightNoteInABCSVG();
 
     if (noteToHighlight < 0) {
@@ -1738,7 +1668,7 @@ class GrooveUtils {
     }
   };
 
-  highlightNoteInABCSVGFromPercentComplete(percentComplete) {
+  highlightNoteInABCSVGFromPercentComplete(percentComplete: number): void {
     if (this.note_mapping_array !== null && this.note_mapping_array.length > 0) {
       var curNoteIndex = Math.floor(percentComplete * this.note_mapping_array.length);
       if (curNoteIndex >= this.note_mapping_array.length) {
@@ -1755,7 +1685,7 @@ class GrooveUtils {
     }
   }
 
-  tempoUpdate(tempo) {
+  tempoUpdate(tempo: number): void {
     (document.getElementById('tempoTextField' + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + tempo;
     this.updateRangeSlider('tempoInput' + this.grooveUtilsUniqueIndex);
     this.midiNoteHasChanged();
@@ -1764,51 +1694,51 @@ class GrooveUtils {
       this.tempoChangeCallback(tempo);
   };
 
-  tempoUpdateFromTextField = (event) => {
-    var newTempo = event.target.value;
-    (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = newTempo;
+  tempoUpdateFromTextField = (event: Event): void => {
+    var newTempo = Number((event.target as HTMLInputElement).value);
+    (document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + newTempo;
     this.tempoUpdate(newTempo);
   };
 
-  tempoUpdateFromSlider = (event) => {
-    this.tempoUpdate(event.target.value);
+  tempoUpdateFromSlider = (event: Event): void => {
+    this.tempoUpdate(Number((event.target as HTMLInputElement).value));
   };
 
-  upTempo() {
+  upTempo(): void {
     var tempo = this.getTempo();
     tempo++;
     this.setTempo(tempo);
   };
 
-  downTempo() {
+  downTempo(): void {
     var tempo = this.getTempo();
     tempo--;
     this.setTempo(tempo);
   };
 
-  getGrooveUtilsBaseLocation() {
+  getGrooveUtilsBaseLocation(): string {
     return this.midiBaseLocation;
   };
 
-  getMidiSoundFontLocation() {
+  getMidiSoundFontLocation(): string {
     return this.getGrooveUtilsBaseLocation() + "soundfont/";
   };
-  getMidiImageLocation() {
+  getMidiImageLocation(): string {
     return this.getGrooveUtilsBaseLocation() + "images/";
   };
 
-  setGrooveData(grooveData: GrooveData) {
+  setGrooveData(grooveData: GrooveData): void {
     this.data = grooveData;
   };
 
-  midiNoteHasChanged() {
+  midiNoteHasChanged(): void {
     this.midiEventCallbacks.noteHasChangedSinceLastDataLoad = true;
   };
-  midiResetNoteHasChanged() {
+  midiResetNoteHasChanged(): void {
     this.midiEventCallbacks.noteHasChangedSinceLastDataLoad = false;
   };
 
-  MIDI_build_midi_url_count_in_track(timeSig: TimeSignature) {
+  MIDI_build_midi_url_count_in_track(timeSig: TimeSignature): string {
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
     midiFile.addTrack(midiTrack);
@@ -1841,7 +1771,7 @@ class GrooveUtils {
    * metronome_frequency: 0, 4, 8, 16 (none, quarter notes, 8ths, 16ths)
    * num_notes_for_swing: base division note count to determine upbeat swing positions
    */
-  MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig) {
+  MIDI_from_HH_Snare_Kick_Arrays(midiTrack: any, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>> | null, midi_output_type: string, metronome_frequency: number, num_notes: number, num_notes_for_swing: number, swing_percentage: number, timeSig: TimeSignature): void {
     var prev_hh_note: any = 46; // default open hi-hat to mute previous open hats on first stroke
     var midi_channel = 9; // standard MIDI percussion channel
 
@@ -1934,7 +1864,7 @@ class GrooveUtils {
       midiTrack.addNoteOff(0, 60, delay_for_next_note - 1);
   };
 
-  create_MIDIURLFromGrooveData(myGrooveData, MIDI_type) {
+  create_MIDIURLFromGrooveData(myGrooveData: GrooveData, MIDI_type?: string): string {
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
     midiFile.addTrack(midiTrack);
@@ -1943,67 +1873,63 @@ class GrooveUtils {
     midiTrack.setInstrument(0, 0x13);
 
     var swing_percentage = myGrooveData.swingPercent / 100;
+    const isTriplets = myGrooveData.subdivision.isTriplet();
+    const fullSizePerMeasure = this.notesPerMeasureInFullSizeArray(isTriplets, myGrooveData.timeSig);
+    const num_notes_for_swing = myGrooveData.subdivision.value < 16
+      ? (8 * myGrooveData.timeSig.top) / myGrooveData.timeSig.bottom.value
+      : (16 * myGrooveData.timeSig.top) / myGrooveData.timeSig.bottom.value;
 
-    var FullNoteHHArray = this.scaleNoteArrayToFullSize(myGrooveData.hh_array, myGrooveData);
-    var FullNoteSnareArray = this.scaleNoteArrayToFullSize(myGrooveData.snare_array, myGrooveData);
-    var FullNoteKickArray = this.scaleNoteArrayToFullSize(myGrooveData.kick_array, myGrooveData);
+    this.note_mapping_array = [];
 
-    var measure_notes = FullNoteHHArray.length / myGrooveData.numberOfMeasures;
     for (var measureIndex = 0; measureIndex < myGrooveData.numberOfMeasures; measureIndex++) {
-      var FullNoteTomsArray = [];
-      for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
-        var orig_measure_notes = myGrooveData.notesPerMeasure;
-        FullNoteTomsArray[i] = this.scaleNoteArrayToFullSize(myGrooveData.toms_array[i].slice(orig_measure_notes * measureIndex, orig_measure_notes * (measureIndex + 1)), myGrooveData);
-      }
+      const measure = myGrooveData.measures[measureIndex];
+      const hhArray = measure ? measure.getScaledArray(DrumType.HIHAT, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.HIHAT, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
+      const snareArray = measure ? measure.getScaledArray(DrumType.SNARE, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.SNARE, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
+      const kickArray = measure ? measure.getScaledArray(DrumType.KICK, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.KICK, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false);
+      const tomsArray: Array<Array<any>> = [
+        measure ? measure.getScaledArray(DrumType.TOM1, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.TOM1, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false),
+        new Array(fullSizePerMeasure).fill(false),
+        new Array(fullSizePerMeasure).fill(false),
+        measure ? measure.getScaledArray(DrumType.TOM4, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.TOM4, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false),
+      ];
 
-      this.MIDI_from_HH_Snare_Kick_Arrays(midiTrack,
-        FullNoteHHArray.slice(measure_notes * measureIndex, measure_notes * (measureIndex + 1)),
-        FullNoteSnareArray.slice(measure_notes * measureIndex, measure_notes * (measureIndex + 1)),
-        FullNoteKickArray.slice(measure_notes * measureIndex, measure_notes * (measureIndex + 1)),
-        FullNoteTomsArray,
-        MIDI_type,
+      this.MIDI_from_HH_Snare_Kick_Arrays(
+        midiTrack,
+        hhArray,
+        snareArray,
+        kickArray,
+        tomsArray,
+        MIDI_type || "general_MIDI",
         myGrooveData.metronomeFrequency,
-        measure_notes,
-        myGrooveData.timeDivision,
+        fullSizePerMeasure,
+        num_notes_for_swing,
         swing_percentage,
-        myGrooveData.timeSig);
+        myGrooveData.timeSig
+      );
+
+      this.note_mapping_array = this.note_mapping_array.concat(
+        this.create_note_mapping_array_for_highlighting(
+          hhArray,
+          snareArray,
+          kickArray,
+          tomsArray,
+          fullSizePerMeasure
+        )
+      );
     }
 
-    var allTomsScaled = [];
-    if (myGrooveData.toms_array) {
-      for (var i = 0; i < constant_NUMBER_OF_TOMS; i++) {
-        if (myGrooveData.toms_array[i]) {
-          allTomsScaled[i] = this.scaleNoteArrayToFullSize(myGrooveData.toms_array[i], myGrooveData);
-        }
-      }
-    }
-    this.note_mapping_array = this.create_note_mapping_array_for_highlighting(
-      FullNoteHHArray,
-      FullNoteSnareArray,
-      FullNoteKickArray,
-      allTomsScaled.length > 0 ? allTomsScaled : null,
-      FullNoteHHArray.length
-    );
-
-    var midi_url = "data:audio/midi;base64," + btoa(midiFile.toBytes());
-
-    return midi_url;
+    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
   };
 
-  loadMIDIFromURL(midiURL) {
+  loadMIDIFromURL(midiURL: string): void {
 
     MIDI.Player.timeWarp = 1; // speed the song is played back
     MIDI.Player.BPM = this.getTempo();
     MIDI.Player.loadFile(midiURL, this.midiLoaderCallback());
   };
 
-  MIDISaveAs(midiURL) {
 
-    // save as
-    document.location = midiURL;
-  };
-
-  pauseMIDI_playback() {
+  pauseMIDI_playback(): void {
     if (this.isMIDIPaused === false) {
       this.isMIDIPaused = true;
       this.midiEventCallbacks.pauseEvent();
@@ -2014,7 +1940,7 @@ class GrooveUtils {
   };
 
   // play button or keypress
-  startMIDI_playback() {
+  startMIDI_playback(): void {
     if (MIDI.Player.playing) {
       return;
     } else if (this.isMIDIPaused && false === this.midiEventCallbacks.doesMidiDataNeedRefresh()) {
@@ -2035,7 +1961,7 @@ class GrooveUtils {
   };
 
   // stop button or keypress
-  stopMIDI_playback() {
+  stopMIDI_playback(): void {
     if (MIDI.Player.playing || this.isMIDIPaused) {
       this.isMIDIPaused = false;
       MIDI.Player.stop();
@@ -2047,7 +1973,7 @@ class GrooveUtils {
   };
 
   // modal play/stop button
-  startOrStopMIDI_playback() {
+  startOrStopMIDI_playback(): void {
 
     if (MIDI.Player.playing) {
       this.stopMIDI_playback();
@@ -2057,7 +1983,7 @@ class GrooveUtils {
   };
 
   // modal play/pause button
-  startOrPauseMIDI_playback() {
+  startOrPauseMIDI_playback(): void {
 
     if (MIDI.Player.playing) {
       this.pauseMIDI_playback();
@@ -2066,17 +1992,17 @@ class GrooveUtils {
     }
   };
 
-  isPlaying() {
+  isPlaying(): boolean {
     return MIDI.Player.playing;
   };
 
-  repeatMIDI_playback = () => {
+  repeatMIDI_playback = (): void => {
     this.shouldMIDIRepeat = !this.shouldMIDIRepeat;
     MIDI.Player.loop(this.shouldMIDIRepeat);
     this.midiEventCallbacks.repeatChangeEvent(this.shouldMIDIRepeat);
   };
 
-  oneTimeInitializeMidi() {
+  oneTimeInitializeMidi(): void {
     if (global_midiInitialized) {
       this.midiEventCallbacks.midiInitialized();
       return;
@@ -2095,13 +2021,13 @@ class GrooveUtils {
     });
   };
 
-  getMidiStartTime() {
+  getMidiStartTime(): Date {
     return global_current_midi_start_time;
   };
 
   // calculate how long the midi has been playing total (since the last play/pause press
   // this is computationally expensive
-  getMidiPlayTime() {
+  getMidiPlayTime(): Date {
     var time_now = new Date();
     var play_time_diff = new Date(time_now.getTime() - global_current_midi_start_time.getTime());
 
@@ -2126,7 +2052,7 @@ class GrooveUtils {
 
   // update the midi play timer on the player.
   // Keeps track of how long we have been playing.
-  updateMidiPlayTime() {
+  updateMidiPlayTime(): void {
     var totalTime = this.getMidiPlayTime();
     var time_string = totalTime.getUTCMinutes() + ":" + (totalTime.getSeconds() < 10 ? "0" : "") + totalTime.getSeconds();
 
@@ -2139,7 +2065,7 @@ class GrooveUtils {
   // This is the function that the 3rd party midi library calls to give us events.
   // This is different from the callbacks that we use for the midi code in this library to
   // do events.   (Double chaining)
-  ourMIDICallback(data) {
+  ourMIDICallback(data: any): void {
     var percentComplete = (data.now / data.end);
     this.midiEventCallbacks.percentProgress(percentComplete * 100);
 
@@ -2206,11 +2132,11 @@ class GrooveUtils {
     }
   }
 
-  midiLoaderCallback() {
+  midiLoaderCallback(): void {
     MIDI.Player.addListener((data) => this.ourMIDICallback(data));
   }
 
-  getTempo() {
+  getTempo(): number {
     var tempoInput = document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement;
     var tempo = constant_DEFAULT_TEMPO;
 
@@ -2223,7 +2149,7 @@ class GrooveUtils {
     return tempo;
   };
 
-  updateRangeSlider(sliderID) {
+  updateRangeSlider(sliderID: string): void {
     var slider = document.getElementById(sliderID) as HTMLInputElement;
     var programaticCSSRules = document.getElementById(sliderID + "CSSRules");
     if (!programaticCSSRules) {
@@ -2244,12 +2170,12 @@ class GrooveUtils {
     programaticCSSRules.textContent = new_style_str;
   }
 
-  setSwingSlider(newSetting) {
-    (document.getElementById("swingInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = newSetting;
+  setSwingSlider(newSetting: number): void {
+    (document.getElementById("swingInput" + this.grooveUtilsUniqueIndex) as HTMLInputElement).value = "" + newSetting;
     this.updateRangeSlider('swingInput' + this.grooveUtilsUniqueIndex);
   };
 
-  swingEnabled(trueElseFalse) {
+  swingEnabled(trueElseFalse: boolean): void {
     this.swingIsEnabled = trueElseFalse;
     if (this.swingIsEnabled === false) {
       this.setSwing(0);
@@ -2258,7 +2184,7 @@ class GrooveUtils {
     }
   };
 
-  getSwing() {
+  getSwing(): number {
     var swing = 0;
 
     if (this.swingIsEnabled) {
@@ -2274,7 +2200,7 @@ class GrooveUtils {
     return (swing);
   };
 
-  swingUpdateText(swingAmount) {
+  swingUpdateText(swingAmount: number): void {
     if (this.swingIsEnabled === false) {
       document.getElementById('swingOutput' + this.grooveUtilsUniqueIndex).innerHTML = "N/A";
     } else {
@@ -2284,29 +2210,29 @@ class GrooveUtils {
     }
   };
 
-  setSwing(swingAmount) {
+  setSwing(swingAmount: number): void {
     if (this.swingIsEnabled === false)
       swingAmount = 0;
     this.setSwingSlider(swingAmount);
     this.swingUpdateText(swingAmount);
   };
 
-  swingUpdateEvent = (event) => {
+  swingUpdateEvent = (event: Event): void => {
     if (this.swingIsEnabled === false) {
       this.setSwingSlider(0);
     } else {
-      this.swingUpdateText(event.target.value);
+      this.swingUpdateText(Number((event.target as HTMLInputElement).value));
       this.updateRangeSlider('swingInput' + this.grooveUtilsUniqueIndex);
     }
   };
 
   // Stub: pre-refactor code called this to toggle count-in on the metronome.
   // No corresponding logic exists yet; treat as no-op to preserve UI state on caller side.
-  setMetronomeCountIn(enabled: boolean) {
+  setMetronomeCountIn(enabled: boolean): void {
     // intentional no-op
   }
 
-  setMetronomeFrequencyDisplay(newFrequency) {
+  setMetronomeFrequencyDisplay(newFrequency: number): void {
     var mm = document.getElementById('midiMetronomeMenu' + this.grooveUtilsUniqueIndex);
 
     if (mm) {
@@ -2318,14 +2244,14 @@ class GrooveUtils {
     }
   };
 
-  loadFullScreenGrooveScribe = () => {
+  loadFullScreenGrooveScribe = (): void => {
     var fullURL = (this as any).getUrlStringFromGrooveData(this.data, 'fullGrooveScribe');
 
     var win = window.open(fullURL, '_blank');
     win.focus();
   };
 
-  metronomeMiniMenuClick = () => {
+  metronomeMiniMenuClick = (): void => {
     if (this.data.metronomeFrequency > 0)
       this.data.metronomeFrequency = 0;
     else
@@ -2335,7 +2261,7 @@ class GrooveUtils {
     this.midiNoteHasChanged();
   };
 
-  expandOrRetractMIDI_playback(force, expandElseContract) {
+  expandOrRetractMIDI_playback(force?: boolean, expandElseContract?: boolean): void {
     var playerControlElement = document.getElementById('playerControl' + this.grooveUtilsUniqueIndex);
     var playerControlRowElement = document.getElementById('playerControlsRow' + this.grooveUtilsUniqueIndex);
     var tempoAndProgressElement = document.getElementById('tempoAndProgress' + this.grooveUtilsUniqueIndex);
@@ -2363,7 +2289,7 @@ class GrooveUtils {
     }
   };
 
-  addInlineMetronomeSVG() {
+  addInlineMetronomeSVG(): string {
     return '<svg class="midiMetronomeImage" version="1.1" width="30" height="30"' +
       'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 100 100" ' +
       'xml:space="preserve"><path d="M86.945,10.635c-0.863-0.494-1.964-0.19-2.455,0.673l-8.31,14.591l-2.891-1.745l-1.769,9.447l0.205,0.123' +
@@ -2374,7 +2300,7 @@ class GrooveUtils {
       'c0.253-1,1.303-1.812,2.334-1.812h14.431c1.032,0,2.081,0.725,2.331,1.725l7.854,31.421L50.714,70.625z"></path></svg>'
   }
 
-  addInLineGScribeLogoLoneGSVG() {
+  addInLineGScribeLogoLoneGSVG(): string {
     return '<?xml version="1.0"?><svg width="20" heigth="30" viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">' +
       ' <g>' +
       '  <title>Layer 1</title>' +
@@ -2402,7 +2328,7 @@ class GrooveUtils {
       '</svg>';
   }
 
-  HTMLForMidiPlayer(expandable) {
+  HTMLForMidiPlayer(expandable?: boolean): string {
     var newHTML = '' +
       '<div id="playerControl' + this.grooveUtilsUniqueIndex + '" class="playerControl">' +
       '	<div class="playerControlsRow" id="playerControlsRow' + this.grooveUtilsUniqueIndex + '">' +
@@ -2443,23 +2369,15 @@ class GrooveUtils {
 
   // pass in a tag ID.  (not a class)
   // HTML will be put within the tag replacing whatever else was there
-  AddMidiPlayerToPage(HTML_Id_to_attach_to, division, expandable) {
+  AddMidiPlayerToPage(HTML_Id_to_attach_to: string, division: number, expandable?: boolean): void {
     var html_element = document.getElementById(HTML_Id_to_attach_to);
     if (html_element)
       html_element.innerHTML = this.HTMLForMidiPlayer(expandable);
 
-    var browserInfo = this.getBrowserInfo();
-    var isIE10 = false;
-    if (browserInfo.browser == "MSIE" && parseInt(browserInfo.version, 10) < 12)
-      isIE10 = true;
-
     // now attach the onclicks
     html_element = document.getElementById("tempoInput" + this.grooveUtilsUniqueIndex);
     if (html_element) {
-      if (isIE10)
-        html_element.addEventListener("click", this.tempoUpdateFromSlider, false);
-      else
-        html_element.addEventListener("input", this.tempoUpdateFromSlider, false);
+      html_element.addEventListener("input", this.tempoUpdateFromSlider, false);
     }
 
     html_element = document.getElementById("tempoTextField" + this.grooveUtilsUniqueIndex);
@@ -2469,10 +2387,7 @@ class GrooveUtils {
 
     html_element = document.getElementById("swingInput" + this.grooveUtilsUniqueIndex);
     if (html_element) {
-      if (isIE10)
-        html_element.addEventListener("click", this.swingUpdateEvent, false);
-      else
-        html_element.addEventListener("input", this.swingUpdateEvent, false);
+      html_element.addEventListener("input", this.swingUpdateEvent, false);
     }
 
     html_element = document.getElementById("midiRepeatImage" + this.grooveUtilsUniqueIndex);
@@ -2499,59 +2414,7 @@ class GrooveUtils {
     this.swingEnabled(this.doesDivisionSupportSwing(division));
   }
 
-  getBrowserInfo() {
-    var browser = navigator.appName;
-    var useragent = navigator.userAgent;
-    var version: string;
-    switch (browser) {
-      case 'Microsoft Internet Explorer':
-        browser = "MSIE";
-        version = useragent.substr(useragent.lastIndexOf('MSIE') + 5, 3);
-        break;
-      case 'Netscape':
-        if (useragent.lastIndexOf('Edge/') > 0) {
-          browser = "Edge";
-          version = useragent.substr(useragent.lastIndexOf('Edge/') + 5, 4);
-        } else if (useragent.lastIndexOf('Chrome/') > 0) {
-          browser = "Chrome";
-          version = useragent.substr(useragent.lastIndexOf('Chrome/') + 7, 4);
-        } else if (useragent.lastIndexOf('Firefox/') > 0) {
-          browser = "Firefox";
-          version = useragent.substr(useragent.lastIndexOf('Firefox/') + 8, 5);
-        } else if (useragent.lastIndexOf('Safari/') > 0) {
-          browser = "Safari";
-          version = useragent.substr(useragent.lastIndexOf('Safari/') + 7, 6);
-        } else if (useragent.lastIndexOf('Trident/') > 0) {
-          browser = "MSIE";
-          version = useragent.substr(useragent.lastIndexOf('rv:') + 3, 4);
-        } else {
-          console.log("undefined browser");
-        }
-        break;
-      case 'Opera':
-        version = useragent.substr(useragent.lastIndexOf('Version/') + 8, 5);
-        break;
-    }
-    var platform = "windows";
-    if (useragent.lastIndexOf('iPhone') > 0) {
-      platform = "iOS";
-    } else if (useragent.lastIndexOf('iPad') > 0) {
-      platform = "iOS";
-    } else if (useragent.lastIndexOf('Android') > 0) {
-      platform = "android";
-    } else if (useragent.lastIndexOf('Macintosh') > 0) {
-      platform = "mac";
-    }
-
-    return {
-      "browser": browser,
-      "version": version,
-      "platform": platform,
-      "uastring": useragent
-    };
-  }
-
-  setTempo(newTempo: number) {
+  setTempo(newTempo: number): void {
     if (newTempo < 19 && newTempo > 281)
       return;
 
@@ -2559,7 +2422,7 @@ class GrooveUtils {
     this.tempoUpdate(newTempo);
   };
 
-  doesDivisionSupportSwing(division) {
+  doesDivisionSupportSwing(division: number): boolean {
 
     if (this.isTripletDivision(division) || division == 4)
       return false;

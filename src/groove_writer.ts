@@ -329,7 +329,6 @@ class GrooveWriter {
   class_which_index_last_clicked: number = 0;
   class_undo_stack: Array<string> = [];
   class_redo_stack: Array<string> = [];
-  browserInfo: any = null;
   class_our_midi_start_time: any | null = null;
   class_our_midi_start_tempo: number = 0;
   class_our_last_midi_tempo_increase_time: any | null = null;
@@ -344,15 +343,15 @@ class GrooveWriter {
     this.data.fromUrl(window.location.search);
   }
 
-  usingTriplets() {
+  usingTriplets(): boolean {
     return this.data.subdivision.isTriplet();
   }
 
-  removeClass(element: HTMLElement, cssClass: string) {
+  removeClass(element: HTMLElement, cssClass: string): void {
     element.classList.remove(cssClass);
   }
 
-  addClass(element: HTMLElement, cssClass: string, addElseRemove: boolean = true) {
+  addClass(element: HTMLElement, cssClass: string, addElseRemove: boolean = true): boolean {
     if (addElseRemove) {
       element.classList.add(cssClass);
       return true;
@@ -364,7 +363,7 @@ class GrooveWriter {
     return false;
   }
 
-  addClassById(elementId: string, cssClass: string, addElseRemove: boolean = true) {
+  addClassById(elementId: string, cssClass: string, addElseRemove: boolean = true): boolean {
     const element = document.getElementById(elementId);
     if (!element) {
       console.log("addClassById: element not found for id: ", elementId);
@@ -381,7 +380,7 @@ class GrooveWriter {
     return this.data.notesPerMeasure;
   }
 
-  setNoteState(elementId: string, state: "on" | "off" | "hidden") {
+  setNoteState(elementId: string, state: "on" | "off" | "hidden"): void {
     const element = document.getElementById(elementId);
     if (!element) {
       throw new Error("setNoteState: element not found for id: " + elementId);
@@ -413,15 +412,15 @@ class GrooveWriter {
     return "off";
   }
 
-  selectButton(element: HTMLElement) {
+  selectButton(element: HTMLElement): void {
     this.addClass(element, "buttonSelected", true);
   }
 
-  unselectButton(element: HTMLElement) {
+  unselectButton(element: HTMLElement): void {
     this.addClass(element, "buttonSelected", false);
   }
 
-  playSingleNote(note_val: number) {
+  playSingleNote(note_val: number): void {
     if (MIDI.WebAudio) {
       MIDI.WebAudio.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
     } else if (MIDI.AudioTag) {
@@ -511,62 +510,8 @@ class GrooveWriter {
     this.setDrumNote(id, newState, true);
   }
 
-  hilight_individual_note(instrument: string, id: number) {
-    id = Math.floor(id);
-    if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
-      return;
 
-    document.getElementById(instrument + id).style.borderColor = "orange";
-
-    if (this.class_cur_hh_highlight_id !== -1 && this.class_cur_hh_highlight_id != id) {
-      if (this.class_cur_hh_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
-        document.getElementById("hi-hat" + this.class_cur_hh_highlight_id).style.borderColor = "transparent";
-      this.class_cur_hh_highlight_id = -1;
-    }
-    if (this.class_cur_tom1_highlight_id !== -1 && this.class_cur_tom1_highlight_id != id) {
-      if (this.class_cur_tom1_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
-        document.getElementById("tom1-" + this.class_cur_tom1_highlight_id).style.borderColor = "transparent";
-      this.class_cur_tom1_highlight_id = -1;
-    }
-    if (this.class_cur_tom4_highlight_id !== -1 && this.class_cur_tom4_highlight_id != id) {
-      if (this.class_cur_tom4_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
-        document.getElementById("tom4-" + this.class_cur_tom4_highlight_id).style.borderColor = "transparent";
-      this.class_cur_tom4_highlight_id = -1;
-    }
-    if (this.class_cur_snare_highlight_id !== -1 && this.class_cur_snare_highlight_id != id) {
-      if (this.class_cur_snare_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
-        document.getElementById("snare" + this.class_cur_snare_highlight_id).style.borderColor = "transparent";
-      this.class_cur_snare_highlight_id = -1;
-    }
-    if (this.class_cur_kick_highlight_id !== -1 && this.class_cur_kick_highlight_id != id) {
-      if (this.class_cur_kick_highlight_id < this.data.notesPerMeasure * this.data.numberOfMeasures)
-        document.getElementById("kick" + this.class_cur_kick_highlight_id).style.borderColor = "transparent";
-      this.class_cur_kick_highlight_id = -1;
-    }
-
-    switch (instrument) {
-      case "hi-hat":
-        this.class_cur_hh_highlight_id = id;
-        break;
-      case "tom1":
-        this.class_cur_tom1_highlight_id = id;
-        break;
-      case "tom4":
-        this.class_cur_tom4_highlight_id = id;
-        break;
-      case "snare":
-        this.class_cur_snare_highlight_id = id;
-        break;
-      case "kick":
-        this.class_cur_kick_highlight_id = id;
-        break;
-      default:
-        console.log("bad case in hilight_note");
-        break;
-    }
-  }
-
-  hilight_all_notes_on_same_beat(instrument: string, id: number) {
+  hilight_all_notes_on_same_beat(instrument: string, id: number): void {
     id = Math.floor(id);
     if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
       return;
@@ -639,13 +584,13 @@ class GrooveWriter {
     }
   }
 
-  getTagPosition(tag) {
+  getTagPosition(tag: HTMLElement | null): { x: number, y: number } {
     var xVal = 0,
       yVal = 0;
     while (tag) {
       xVal += (tag.offsetLeft - tag.scrollLeft + tag.clientLeft);
       yVal += (tag.offsetTop - tag.scrollTop + tag.clientTop);
-      tag = tag.offsetParent;
+      tag = tag.offsetParent as HTMLElement | null;
     }
     return {
       x: xVal,
@@ -654,7 +599,7 @@ class GrooveWriter {
   }
 
   // Position a context menu below an anchor element (right-aligned via rightOffset)
-  showMenuBelowAnchor(menuId: string, anchorId: string, rightOffset: number) {
+  showMenuBelowAnchor(menuId: string, anchorId: string, rightOffset: number): void {
     const menu = document.getElementById(menuId);
     if (!menu) return;
     const anchor = document.getElementById(anchorId);
@@ -667,10 +612,10 @@ class GrooveWriter {
   }
 
   // Position a context menu at the event's click point (offset by dx/dy)
-  showMenuAtEvent(menuId: string, event, dx: number, dy: number) {
+  showMenuAtEvent(menuId: string, event: MouseEvent | null, dx: number, dy: number): void {
     const menu = document.getElementById(menuId);
     if (!menu) return;
-    if (!event) event = window.event;
+    if (!event) event = window.event as MouseEvent | null;
     if (event && (event.clientX || event.clientY)) {
       menu.style.top = event.clientY + dy + "px";
       menu.style.left = event.clientX + dx + "px";
@@ -678,7 +623,7 @@ class GrooveWriter {
     this.myGrooveUtils.showContextMenu(menu);
   }
 
-  tempoChangeCallback = (newTempo) => {
+  tempoChangeCallback = (newTempo: number): void => {
     if (this.global_tempoChangeCallbackTimeout != null)
       window.clearTimeout(this.global_tempoChangeCallbackTimeout);
 
@@ -688,7 +633,7 @@ class GrooveWriter {
     }, 300);
   }
 
-  setMetronomeButton(metronomeInterval: number) {
+  setMetronomeButton(metronomeInterval: number): void {
     var id = "";
     switch (metronomeInterval) {
       case 4:
@@ -718,40 +663,40 @@ class GrooveWriter {
     this.myGrooveUtils.midiNoteHasChanged();
   };
 
-  getMetronomeFrequency() {
+  getMetronomeFrequency(): number {
     return this.class_metronome_frequency;
   }
 
-  setMetronomeFrequency(newFrequency) {
+  setMetronomeFrequency(newFrequency: number): void {
     this.class_metronome_frequency = newFrequency;
     this.setMetronomeButton(newFrequency);
     this.updateUrl();
   };
 
-  metronomeOptionsAnchorClick = (event) => {
+  metronomeOptionsAnchorClick = (event: MouseEvent): void => {
     this.showMenuBelowAnchor("metronomeOptionsContextMenu", "metronomeOptionsAnchor", 150);
   };
 
-  permutationAnchorClick = (event) => {
+  permutationAnchorClick = (event: MouseEvent): void => {
     if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       return;
     }
     this.showMenuBelowAnchor("permutationContextMenu", "permutationAnchor", 150);
   };
 
-  helpAnchorClick = (event) => {
+  helpAnchorClick = (event: MouseEvent): void => {
     this.showMenuBelowAnchor("helpContextMenu", "helpAnchor", 150);
   };
 
-  stickingsAnchorClick = (event) => {
+  stickingsAnchorClick = (event: MouseEvent): void => {
     this.showMenuAtEvent("stickingsContextMenu", event, -150, -100);
   };
 
-  DownloadAnchorClick = (event) => {
+  DownloadAnchorClick = (event: MouseEvent): void => {
     this.showMenuAtEvent("downloadContextMenu", event, -150, -150);
   };
 
-  metronomeOptionsMenuSetSelectedState() {
+  metronomeOptionsMenuSetSelectedState(): void {
     if (this.myGrooveUtils.getMetronomeSolo() ||
       this.class_metronome_auto_speed_up_active ||
       this.myGrooveUtils.getMetronomeOffsetClickStart() != "1") {
@@ -761,7 +706,7 @@ class GrooveWriter {
     }
   };
 
-  metronomeOptionsMenuPopupClick(option_type: string) {
+  metronomeOptionsMenuPopupClick(option_type: string): void {
     switch (option_type) {
       case "Solo":
         var current = this.myGrooveUtils.getMetronomeSolo();
@@ -816,7 +761,7 @@ class GrooveWriter {
     this.metronomeOptionsMenuSetSelectedState();
   };
 
-  metronomeOptionsMenuOffsetClickPopupClick = (option_type) => {
+  metronomeOptionsMenuOffsetClickPopupClick = (option_type: string): void => {
     this.myGrooveUtils.setMetronomeOffsetClickStart(option_type);
 
     var myElements = document.querySelectorAll(".metronomeOptionsOffsetClickContextMenuItem");
@@ -837,11 +782,11 @@ class GrooveWriter {
     this.metronomeOptionsMenuSetSelectedState();
   };
 
-  resetMetronomeOptionsMenuOffsetClick() {
+  resetMetronomeOptionsMenuOffsetClick(): void {
     this.metronomeOptionsMenuOffsetClickPopupClick("1");
   }
 
-  setupPermutationMenu() {
+  setupPermutationMenu(): void {
     if (this.data.timeSig.equals(TimeSignature.COMMON_TIME_44)) {
       this.addClassById("permutationAnchor", "enabled");
       this.addClassById("permutationAnchor", "enabled", false);
@@ -849,7 +794,7 @@ class GrooveWriter {
     }
   }
 
-  permutationPopupClick(perm_type) {
+  permutationPopupClick(perm_type: string): void {
     if (this.class_permutation_type == perm_type)
       return;
 
@@ -893,27 +838,26 @@ class GrooveWriter {
     this.updateSheetMusic();
   };
 
-  muteInstrument(instrument, measure, muteElseUnmute) {
+  muteInstrument(instrument: string, measure: number, muteElseUnmute: boolean): void {
     var buttonName = "unmute" + instrument + "Button" + measure;
     var button = document.getElementById(buttonName);
-    if (muteElseUnmute)
-      button.style.display = "inline-block";
-    else
-      button.style.display = "none";
+    if (button) {
+      if (muteElseUnmute)
+        button.style.display = "inline-block";
+      else
+        button.style.display = "none";
+    }
 
     this.myGrooveUtils.midiNoteHasChanged();
   }
 
-  isInstrumentMuted(instrument, measure) {
+  isInstrumentMuted(instrument: string, measure: number): boolean {
     var buttonName = "unmute" + instrument + "Button" + measure;
     var button = document.getElementById(buttonName);
-    if (button && button.style.display == "inline-block")
-      return true;
-    else
-      return false;
+    return !!button && button.style.display === "inline-block";
   }
 
-  helpMenuPopupClick(help_type) {
+  helpMenuPopupClick(help_type: string): void {
     var win;
 
     switch (help_type) {
@@ -941,7 +885,7 @@ class GrooveWriter {
     }
   };
 
-  toggleAdvancedEdit() {
+  toggleAdvancedEdit(): void {
     this.class_advancedEditIsOn = !this.class_advancedEditIsOn;
     const btn = document.getElementById("advancedEditAnchor");
     if (btn) {
@@ -950,11 +894,11 @@ class GrooveWriter {
     }
   }
 
-  noteLabelClick(event, instrument, measure) {
+  noteLabelClick(event: MouseEvent | null, instrument: string, measure: number): boolean {
     this.class_measure_for_note_label_click = measure;
     const contextMenu = document.getElementById(instrument + "LabelContextMenu");
     if (contextMenu) {
-      if (!event) event = window.event;
+      if (!event) event = window.event as MouseEvent | null;
       if (event && (event.clientX || event.clientY)) {
         contextMenu.style.top = event.clientY - 30 + "px";
         contextMenu.style.left = event.clientX - 35 + "px";
@@ -964,7 +908,7 @@ class GrooveWriter {
     return false;
   }
 
-  noteLabelPopupClick(instrument, action) {
+  noteLabelPopupClick(instrument: string, action: string): boolean {
     var setFunction: ((i: number, mode: string, makeSound: boolean) => void) | null = null;
 
     switch (instrument) {
@@ -1067,12 +1011,12 @@ class GrooveWriter {
     return false;
   };
 
-  noteRightClick(event, type: string, id: number) {
+  noteRightClick(event: MouseEvent | null, type: string, id: number): boolean {
     this.class_which_index_last_clicked = id;
     this.insertNoteContextMenu = document.getElementById(type + "ContextMenu");
 
     if (this.insertNoteContextMenu) {
-      if (!event) event = window.event;
+      if (!event) event = window.event as MouseEvent | null;
       if (event && (event.clientX || event.clientY)) {
         this.insertNoteContextMenu.style.top = event.clientY - 30 + "px";
         this.insertNoteContextMenu.style.left = event.clientX - 75 + "px";
@@ -1086,18 +1030,18 @@ class GrooveWriter {
     return false;
   }
 
-  removeAllPopUpKeyEventListeners() {
+  removeAllPopUpKeyEventListeners(): void {
     document.removeEventListener("keydown", this.handlePopUpKeyEventListeners);
   }
 
-  registerPopUpKeyEventListeners() {
+  registerPopUpKeyEventListeners(): void {
     console.log("Adding listeners for " + this.insertNoteContextMenu.id);
     if (this.insertNoteContextMenu) {
       document.addEventListener("keydown", this.handlePopUpKeyEventListeners);
     }
   }
 
-  handlePopUpKeyEventListeners = (event) => {
+  handlePopUpKeyEventListeners = (event: KeyboardEvent): void => {
     if (!this.insertNoteContextMenu) return;
     const mapForType = POPUP_KEY_SHORTCUT_MAPPING.get(this.insertNoteContextMenu.id);
     const new_setting = mapForType?.note_mapping.get(event.key);
@@ -1107,7 +1051,7 @@ class GrooveWriter {
     }
   };
 
-  noteLeftClick = (event, type, id) => {
+  noteLeftClick = (event: MouseEvent, type: string, id: number): void => {
     if (this.class_advancedEditIsOn === true) {
       this.noteRightClick(event, type, id);
     } else {
@@ -1138,7 +1082,7 @@ class GrooveWriter {
     }
   };
 
-  private _setDrumStateByType(type: string, id: number, new_setting: string) {
+  private _setDrumStateByType(type: string, id: number, new_setting: string): void {
     switch (type) {
       case "sticking": this.set_sticking_state(id, new_setting, true); break;
       case "hh":       this.set_hh_state(id, new_setting, true); break;
@@ -1151,13 +1095,13 @@ class GrooveWriter {
     }
   }
 
-  notePopupClick(type: string, new_setting: string) {
+  notePopupClick(type: string, new_setting: string): void {
     this._setDrumStateByType(type, this.class_which_index_last_clicked, new_setting);
     this.closeNoteContextMenu();
     this.updateSheetMusic();
   };
 
-  closeNoteContextMenu() {
+  closeNoteContextMenu(): void {
     if (this.insertNoteContextMenu) {
       this.myGrooveUtils.hideContextMenu(this.insertNoteContextMenu);
     }
@@ -1165,7 +1109,7 @@ class GrooveWriter {
     this.insertNoteContextMenu = null;
   }
 
-  noteOnMouseEnter(event, instrument: string, id: number) {
+  noteOnMouseEnter(event: MouseEvent, instrument: string, id: number): boolean {
     var action = "";
     if (event.ctrlKey)
       action = "on";
@@ -1221,11 +1165,6 @@ class GrooveWriter {
     return (note.modifier || '') + note.note;
   }
 
-  _isNoteOn(id: string): boolean {
-    const el = document.getElementById(id);
-    return !!el && el.classList.contains('note-on');
-  }
-
   // A note is on iff all of its html_id_prefixes are on. Variants that share
   // a prefix (HH_OPEN/CLOSE/ACCENT/NORMAL all use hh_cross) are distinguished
   // by a secondary prefix.
@@ -1233,7 +1172,7 @@ class GrooveWriter {
     const prefixes = getAsSet(note.htmlAttrs.html_id_prefix);
     if (prefixes.size === 0) return false;
     for (const prefix of prefixes) {
-      if (!this._isNoteOn(prefix + id)) return false;
+      if (!this.isNoteOn(prefix + id)) return false;
     }
     return true;
   }
@@ -1329,21 +1268,21 @@ class GrooveWriter {
     return new Array(num_notes).fill(false);
   }
 
-  get_kick16th_permutation_array(section: number) {
+  get_kick16th_permutation_array(section: number): Array<boolean | string> {
     if (this.usingTriplets()) {
       return this.get_kick16th_triplets_permutation_array(section);
     }
     return this.get_kick16th_strait_permutation_array(section);
   }
 
-  get_kick16th_permutation_array_minus_some(section) {
+  get_kick16th_permutation_array_minus_some(section: number): Array<boolean | string> {
     if (this.usingTriplets()) {
       return this.get_kick16th_permutation_array(section);
     }
     return this.get_kick16th_minus_some_strait_permutation_array(section);
   }
 
-  get_snare_permutation_array(section) {
+  get_snare_permutation_array(section: number): Array<boolean | string> {
     var snare_array = this.get_kick16th_permutation_array(section);
     for (var i = 0; i < snare_array.length; i++) {
       if (snare_array[i] !== false)
@@ -1353,7 +1292,7 @@ class GrooveWriter {
   }
 
   // Snare permutation where accent moves across 16th notes and other notes are ghosted
-  get_snare_accent_permutation_array(section) {
+  get_snare_accent_permutation_array(section: number): Array<boolean | string> {
     var snare_array = this.get_kick16th_permutation_array(section);
 
     if (section > 0) {
@@ -1368,7 +1307,7 @@ class GrooveWriter {
   }
 
   // Snare permutation where accented notes are singles and non-accents are diddled
-  get_snare_accent_with_diddle_permutation_array(section) {
+  get_snare_accent_with_diddle_permutation_array(section: number): Array<boolean | string> {
     var snare_array = this.get_kick16th_permutation_array(section);
 
     if (section > 0) {
@@ -1385,7 +1324,7 @@ class GrooveWriter {
     return snare_array;
   }
 
-  get_numSectionsFor_permutation_array() {
+  get_numSectionsFor_permutation_array(): number {
     return 16;
   }
 
@@ -1398,7 +1337,7 @@ class GrooveWriter {
     return shouldDisplayPermutation(sectionNum, isChecked, exists, this.usingTriplets());
   }
 
-  get_numberOfActivePermutationSections() {
+  get_numberOfActivePermutationSections(): number {
     var max_num = this.get_numSectionsFor_permutation_array();
     var total_on = 0;
 
@@ -1411,7 +1350,7 @@ class GrooveWriter {
   }
 
   // Extracts note array of a single measure from the clickable UI and scales it to 32 (or 48) elements.
-  get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI) {
+  get32NoteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, startIndexForClickableUI: number): number {
     var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
 
     for (var i = 0; i < this.data.notesPerMeasure; i++) {
@@ -1434,7 +1373,7 @@ class GrooveWriter {
     return Snare_Array.length;
   }
 
-  muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, measureIndex) {
+  muteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, measureIndex: number): void {
     if (this.isInstrumentMuted("hh", measureIndex + 1))
       HH_Array.fill(false);
     if (this.isInstrumentMuted("snare", measureIndex + 1))
@@ -1455,7 +1394,7 @@ class GrooveWriter {
     );
   }
 
-  merge_kick_arrays(primary_kick_array, secondary_kick_array) {
+  merge_kick_arrays(primary_kick_array: Array<any>, secondary_kick_array: Array<any>): Array<any> {
     return primary_kick_array.map((primary, i) => {
       const secondary = secondary_kick_array[i];
       if (primary === false) return secondary;
@@ -1474,15 +1413,15 @@ class GrooveWriter {
     });
   }
 
-  createMidiUrlFromClickableUI(MIDI_type) {
+  createMidiUrlFromClickableUI(MIDI_type: string): string {
     var Sticking_Array = this.get_empty_note_array_in_32nds();
     var HH_Array = this.get_empty_note_array_in_32nds();
     var Snare_Array = this.get_empty_note_array_in_32nds();
     var Kick_Array = this.get_empty_note_array_in_32nds();
     var Toms_Array = [this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds(), this.get_empty_note_array_in_32nds()];
 
-    var i,
-      new_snare_array,
+    var i: number,
+      new_snare_array: Array<boolean | string>,
       num_notes_for_swing = 16;
 
     var metronomeFrequency = this.getMetronomeFrequency();
@@ -1507,7 +1446,7 @@ class GrooveWriter {
 
         for (i = 0; i < numSections; i++) {
           if (this.shouldDisplayPermutationForSection(i)) {
-            var new_kick_array;
+            var new_kick_array: Array<any>;
 
             if ((document.getElementById("PermuationOptionsSkipSomeFirstNotes") && document.getElementById("PermuationOptionsSkipSomeFirstNotes") as HTMLInputElement).checked)
               new_kick_array = this.get_kick16th_permutation_array_minus_some(i);
@@ -1582,16 +1521,16 @@ class GrooveWriter {
     return "data:audio/midi;base64," + btoa(midiFile.toBytes());
   }
 
-  MIDISaveAs() {
+  MIDISaveAs(): void {
     var midi_url = this.createMidiUrlFromClickableUI("general_MIDI");
     document.location = midi_url;
   };
 
-  refresh_ABC = () => {
+  refresh_ABC = (): void => {
     this.updateSheetMusic();
   }
 
-  undoCommand() {
+  undoCommand(): void {
     if (this.class_undo_stack.length > 1) {
       var undoURL = this.class_undo_stack.pop();
       this.AddItemToUndoOrRedoStack(undoURL, this.class_redo_stack);
@@ -1600,7 +1539,7 @@ class GrooveWriter {
     }
   };
 
-  redoCommand() {
+  redoCommand(): void {
     if (this.class_redo_stack.length > 0) {
       var redoURL = this.class_redo_stack.pop();
       this.AddItemToUndoOrRedoStack(redoURL, this.class_undo_stack);
@@ -1620,7 +1559,7 @@ class GrooveWriter {
     return true;
   };
 
-  AddFullURLToUndoStack(fullURL: string) {
+  AddFullURLToUndoStack(fullURL: string): void {
     var urlFragment;
     var searchData = fullURL.indexOf("?");
     urlFragment = fullURL.slice(searchData);
@@ -1629,7 +1568,7 @@ class GrooveWriter {
     }
   };
 
-  updateCurrentURL() {
+  updateCurrentURL(): void {
     var newURL = this.get_FullURLForPage();
     var newTitle = "";
 
@@ -1668,7 +1607,7 @@ class GrooveWriter {
     }
   };
 
-  generate_ABC(renderWidth: number) {
+  generate_ABC(renderWidth: number): string {
     return this.data.getAbcHeader(this.class_permutation_type != 'none', renderWidth)
       + this.data.getAbcNotation();
   }
@@ -1676,7 +1615,7 @@ class GrooveWriter {
   // this is called by a bunch of places anytime we modify the musical notes on the page
   // this will recreate the ABC code and will then use the ABC to rerender the sheet music
   // on the page.
-  updateSheetMusic() {
+  updateSheetMusic(): void {
     this.syncUIToMeasures();
     var renderWidth = 600;
     var svgTarget = document.getElementById("svgTarget");
@@ -1697,7 +1636,7 @@ class GrooveWriter {
   }
 
   // called by generate_ABC to remake the sheet music on the page
-  displayNewSVG() {
+  displayNewSVG(): void {
     var svgTarget = document.getElementById("svgTarget"),
       diverr = document.getElementById("diverr");
 
@@ -1710,7 +1649,7 @@ class GrooveWriter {
 
   // Render an SVG that is good for download.
   // Constant size at 2000x200
-  downloadImages(imageType) {
+  downloadImages(imageType: string): void {
     var abc_source = this.generate_ABC(800);
     var svg_obj = this.myGrooveUtils.renderABCtoSVG(abc_source);
     var filename;
@@ -1748,7 +1687,7 @@ class GrooveWriter {
     }
   }
 
-  PNGSaveAs() {
+  PNGSaveAs(): void {
     Pablo.support.image.png(function (acceptable) {
       if (acceptable) {
         this.downloadImages('png');
@@ -1758,11 +1697,11 @@ class GrooveWriter {
     });
   }
 
-  SVGSaveAs() {
+  SVGSaveAs(): void {
     this.downloadImages('svg');
   }
 
-  ShowHideABCResults() {
+  ShowHideABCResults(): boolean {
     var ABCResults = document.getElementById("ABC_Results");
     if (ABCResults) {
       ABCResults.style.display = ABCResults.style.display === "block" ? "none" : "block";
@@ -1770,11 +1709,11 @@ class GrooveWriter {
     return false;
   }
 
-  updateUrl() {
+  updateUrl(): void {
     this.updateCurrentURL();
   }
 
-  refreshMeasureGrid(wasStickingsVisible: boolean = false, wasTomsVisible: boolean = false) {
+  refreshMeasureGrid(wasStickingsVisible: boolean = false, wasTomsVisible: boolean = false): void {
     this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
     this.renderMeasureContainer();
     this.applyMeasuresToUI();
@@ -1816,11 +1755,11 @@ class GrooveWriter {
     return true;
   }
 
-  closeMeasureButtonClick(measureNum: number) {
+  closeMeasureButtonClick(measureNum: number): void {
     this.removeMeasure(measureNum - 1);
   };
 
-  addMeasureButtonClick = (event) => {
+  addMeasureButtonClick = (event: MouseEvent): void => {
     this.addMeasure();
 
     var add_measure_button = document.getElementById("addMeasureButton");
@@ -1833,7 +1772,7 @@ class GrooveWriter {
         "There are also many notation features that would be useful for score writing that are not part of Groove Scribe");
   };
 
-  showHideCSS_ClassDisplay(className, force, showElseHide, showState): boolean {
+  showHideCSS_ClassDisplay(className: string, force: boolean, showElseHide: boolean, showState: string): boolean {
     var myElements = document.querySelectorAll(className);
     var newStateIsOn = true;
 
@@ -1858,7 +1797,7 @@ class GrooveWriter {
     return newStateIsOn;
   }
 
-  showHideCSS_ClassVisibility(className, force, showElseHide): boolean {
+  showHideCSS_ClassVisibility(className: string, force: boolean, showElseHide: boolean): boolean {
     var myElements = document.querySelectorAll(className);
     var newStateIsOn = false;
     for (var i = 0; i < myElements.length; i++) {
@@ -1885,7 +1824,7 @@ class GrooveWriter {
     return newStateIsOn;
   }
 
-  clearAllNotes() {
+  clearAllNotes(): void {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
       this.set_sticking_state(i, 'off');
       this.set_hh_state(i, 'off');
@@ -1897,7 +1836,7 @@ class GrooveWriter {
     this.updateSheetMusic();
   }
 
-  isTomsVisible() {
+  isTomsVisible(): boolean {
     var myElements = document.querySelectorAll(".toms-container");
     for (var i = 0; i < myElements.length; i++) {
       if ((myElements[i] as HTMLElement).style.visibility == "visible")
@@ -1907,7 +1846,7 @@ class GrooveWriter {
     return false;
   }
 
-  showHideToms(force, showElseHide, dontRefreshScreen) {
+  showHideToms(force: boolean, showElseHide: boolean, dontRefreshScreen: boolean): boolean {
     const OnElseOff = this.showHideCSS_ClassVisibility(".toms-container", force, showElseHide);
     this.showHideCSS_ClassVisibility(".tom-label", force, showElseHide);
     if (OnElseOff)
@@ -1921,7 +1860,7 @@ class GrooveWriter {
     return false;
   };
 
-  isStickingsVisible() {
+  isStickingsVisible(): boolean {
     var myElements = document.querySelectorAll(".stickings-container");
     for (var i = 0; i < myElements.length; i++) {
       if ((myElements[i] as HTMLElement).style.display == "block")
@@ -1930,7 +1869,7 @@ class GrooveWriter {
     return false;
   }
 
-  stickingsShowHide(force, showElseHide, dontRefreshScreen) {
+  stickingsShowHide(force: boolean, showElseHide: boolean, dontRefreshScreen: boolean): boolean {
     var OnElseOff = this.showHideCSS_ClassDisplay(".stickings-container", force, showElseHide, "block");
     this.showHideCSS_ClassDisplay(".stickings-label", force, showElseHide, "block");
     if (OnElseOff) {
@@ -1946,12 +1885,12 @@ class GrooveWriter {
     return false;
   };
 
-  stickingsShowHideToggle() {
+  stickingsShowHideToggle(): void {
     var stickingsAreCurrentlyShown = this.isStickingsVisible();
     this.stickingsShowHide(true, !stickingsAreCurrentlyShown, false);
   }
 
-  stickingsReverseRL() {
+  stickingsReverseRL(): void {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
       var cur_state = this.get_sticking_state(i).url;
       if (cur_state === "R") {
@@ -1963,24 +1902,11 @@ class GrooveWriter {
     this.updateSheetMusic();
   }
 
-  printMusic() {
-    var oldMethod = true;
-    if ((this.browserInfo.browser == "Chrome" && this.browserInfo.platform == "windows")) {
-      oldMethod = false;
-    }
-
-    if (oldMethod) {
-      window.print();
-    } else {
-      var win = window.open("", this.class_app_title + " Print");
-      win.document.body.innerHTML = "<title>" + this.class_app_title + "</title>\n<center>\n";
-      win.document.body.innerHTML += document.getElementById("svgTarget").innerHTML;
-      win.document.body.innerHTML += "\n</center>";
-      win.print();
-    }
+  printMusic(): void {
+    window.print();
   };
 
-  setupWriterHotKeys() {
+  setupWriterHotKeys(): void {
     document.addEventListener("keydown", (e) => {
       const target = e.target as HTMLInputElement;
       if (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA")) {
@@ -2015,7 +1941,7 @@ class GrooveWriter {
     });
   }
 
-  swapViewEditMode(dontUpdateURL?: boolean) {
+  swapViewEditMode(dontUpdateURL?: boolean): void {
     this.data.viewMode = !this.data.viewMode;
     this.showHideCSS_ClassDisplay(".edit-block", true, !this.data.viewMode, "block");
     const view_edit_button = document.getElementById("view-edit-switch");
@@ -2027,7 +1953,7 @@ class GrooveWriter {
     }
   };
 
-  runsOnPageLoad() {
+  runsOnPageLoad(): void {
     this.setupWriterHotKeys();
     this.setTimeSigLabel();
 
@@ -2079,12 +2005,6 @@ class GrooveWriter {
 
     window.onresize = this.refresh_ABC;
 
-    this.browserInfo = this.myGrooveUtils.getBrowserInfo();
-    if (this.browserInfo.browser == "MSIE" && this.browserInfo.version < 10) {
-      window.alert("This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".\n" + 'This version of IE is unsupported.   Please use Chrome or Firefox instead');
-    } else if (this.browserInfo.browser == "Safari" && this.browserInfo.platform == "windows" && this.browserInfo.version < 535) {
-      window.alert("This browser has been detected as: " + this.browserInfo.browser + " ver: " + this.browserInfo.version + ".\n" + 'This version of Safari is unsupported.   Please use Chrome instead');
-    }
     if (this.data.debugMode) {
       var debugArea = document.getElementById("debugDisplayArea");
       if (debugArea) {
@@ -2105,7 +2025,7 @@ class GrooveWriter {
     this.myGrooveUtils.tempoChangeCallback = this.tempoChangeCallback;
   };
 
-  metronomeAutoSpeedUpTempoUpdate() {
+  metronomeAutoSpeedUpTempoUpdate(): void {
     var totalTempoIncreaseAmount = 1;
     if (document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount"))
       totalTempoIncreaseAmount = parseInt((document.getElementById("metronomeAutoSpeedupTempoIncreaseAmount") as HTMLInputElement).value, 10);
@@ -2154,11 +2074,11 @@ class GrooveWriter {
       this.myGrooveUtils.setTempo(this.myGrooveUtils.getTempo() + tempoDiffInt);
   };
 
-  get_FullURLForPage(url_destination?) {
-    return this.data.toUrl();
+  get_FullURLForPage(url_destination?: string): string {
+    return this.data.toUrl(url_destination);
   }
 
-  show_MetronomeAutoSpeedupConfiguration() {
+  show_MetronomeAutoSpeedupConfiguration(): void {
     var popup = document.getElementById("metronomeAutoSpeedupConfiguration");
 
     if (popup) {
@@ -2169,20 +2089,20 @@ class GrooveWriter {
     document.getElementById('metronomeAutoSpeedupTempoIncreaseIntervalOutput').innerHTML = (document.getElementById('metronomeAutoSpeedupTempoIncreaseInterval') as HTMLInputElement).value;
   }
 
-  close_MetronomeAutoSpeedupConfiguration(type) {
+  close_MetronomeAutoSpeedupConfiguration(type?: string): void {
     var popup = document.getElementById("metronomeAutoSpeedupConfiguration");
 
     if (popup)
       popup.style.display = "none";
   }
 
-  timeSigPopupOpen(type) {
+  timeSigPopupOpen(type?: string): void {
     var popup = document.getElementById("timeSigPopup");
     if (popup)
       popup.style.display = "block";
   }
 
-  setTimeDivisionSelectionOnOrOff() {
+  setTimeDivisionSelectionOnOrOff(): void {
     if ((8 * this.data.timeSig.top / this.data.timeSig.bottom.value) % 1 != 0) {
       this.addClassById("subdivision_8ths", "disabled", true);
     } else {
@@ -2200,11 +2120,11 @@ class GrooveWriter {
     }
   };
 
-  setTimeSigLabel() {
+  setTimeSigLabel(): void {
     document.getElementById("timeSigLabel").innerHTML = '<sup>' + this.data.timeSig.top + "</sup>/<sub>" + this.data.timeSig.bottom.value + "</sub>";
   }
 
-  timeSigPopupClose(type, callback) {
+  timeSigPopupClose(type: string, callback?: () => void): void {
     var popup = document.getElementById("timeSigPopup");
 
     if (popup)
@@ -2226,15 +2146,15 @@ class GrooveWriter {
     }
   };
 
-  updateRangeLabel(event, idToUpdate) {
+  updateRangeLabel(event: Event, idToUpdate: string): void {
     var element = document.getElementById(idToUpdate);
 
     if (element) {
-      element.innerHTML = event.currentTarget.value;
+      element.innerHTML = (event.currentTarget as HTMLInputElement).value;
     }
   };
 
-  fillInFullURLInFullURLPopup() {
+  fillInFullURLInFullURLPopup(): void {
     (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;
     (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;
 
@@ -2250,7 +2170,7 @@ class GrooveWriter {
     }
   }
 
-  show_FullURLPopup = function () {
+  show_FullURLPopup = (): void => {
     new ShareButton({
       ui: {
         flyout: 'bottom center',
@@ -2304,20 +2224,20 @@ class GrooveWriter {
     this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
   };
 
-  copyShareURLToClipboard() {
+  copyShareURLToClipboard(): void {
     var copyText = document.getElementById("fullURLPopupTextField") as HTMLInputElement;
     copyText.select();
     copyText.setSelectionRange(0, 99999);
     document.execCommand("copy");
   }
 
-  close_FullURLPopup() {
+  close_FullURLPopup(): void {
     var popup = document.getElementById("fullURLPopup");
     if (popup)
       popup.style.display = "none";
   };
 
-  fillInShortenedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
+  fillInShortenedURLInFullURLPopup(fullURL: string, cssIdOfTextFieldToFill: string): void {
     (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = false;
 
     var params = {
@@ -2345,7 +2265,7 @@ class GrooveWriter {
     xhr.send(JSON.stringify(params));
   }
 
-  fillInEmbedURLInFullURLPopup(fullURL, cssIdOfTextFieldToFill) {
+  fillInEmbedURLInFullURLPopup(fullURL: string, cssIdOfTextFieldToFill: string): void {
     (document.getElementById("shortenerCheckbox") as HTMLInputElement).checked = false;
     (document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked = true;
 
@@ -2357,7 +2277,7 @@ class GrooveWriter {
     textField.select();
   }
 
-  shortenerCheckboxChanged() {
+  shortenerCheckboxChanged(): void {
     if ((document.getElementById("shortenerCheckbox") as HTMLInputElement).checked) {
       this.fillInShortenedURLInFullURLPopup(this.get_FullURLForPage(), 'fullURLPopupTextField');
     } else {
@@ -2365,7 +2285,7 @@ class GrooveWriter {
     }
   };
 
-  embedCodeCheckboxChanged() {
+  embedCodeCheckboxChanged(): void {
     if ((document.getElementById("embedCodeCheckbox") as HTMLInputElement).checked) {
       this.fillInEmbedURLInFullURLPopup(this.get_FullURLForPage("display"), 'fullURLPopupTextField');
     } else {
@@ -2375,7 +2295,7 @@ class GrooveWriter {
 
   // Reads DOM click state and writes tab strings back into this.data.measures
   // so ABC/SVG generation reflects interactive edits.
-  syncUIToMeasures() {
+  syncUIToMeasures(): void {
     const npm = this.data.notesPerMeasure;
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
       const measure = this.data.measures[m];
@@ -2392,7 +2312,7 @@ class GrooveWriter {
   }
 
   // Propagates parsed measure data onto the clickable UI note-on/off classes.
-  applyMeasuresToUI() {
+  applyMeasuresToUI(): void {
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
       const measure = this.data.measures[m];
       if (!measure) continue;
@@ -2411,7 +2331,7 @@ class GrooveWriter {
     }
   }
 
-  set_Default_notes(encodedURLData) {
+  set_Default_notes(encodedURLData: string): void {
     this.data.fromUrl(encodedURLData);
     this.renderMeasureContainer();
     this.applyMeasuresToUI();
@@ -2431,24 +2351,24 @@ class GrooveWriter {
     this.updateSheetMusic();
   }
 
-  loadNewGroove(encodedURLData) {
+  loadNewGroove(encodedURLData: string): void {
     this.set_Default_notes(encodedURLData);
   };
 
-  getABCDataWithLineEndings() {
+  getABCDataWithLineEndings(): string {
     var myABC = (document.getElementById("ABCsource") as HTMLInputElement).value;
     myABC = myABC.replace(/\r?\n/g, "\r\n");
     return myABC;
   }
 
-  saveABCtoFile() {
+  saveABCtoFile(): void {
     var myABC = this.getABCDataWithLineEndings();
     var myURL = 'data:text/plain;charset=utf-8;base64,' + btoa(myABC);
     console.log("Use \"Save As\" to save the new page to a local file");
     window.open(myURL);
   };
 
-  expandAuthoringViewWhenNecessary(numNotesPerMeasure, numberOfMeasures) {
+  expandAuthoringViewWhenNecessary(numNotesPerMeasure: number, numberOfMeasures: number): void {
     if (numNotesPerMeasure > 16 ||
       (numNotesPerMeasure > 4 && this.data.numberOfMeasures > 1) ||
       (this.data.numberOfMeasures > 2)) {
@@ -2461,7 +2381,7 @@ class GrooveWriter {
   // Switch the note subdivision (e.g. 8ths <-> 16ths, 8ths <-> triplets) and
   // relayout the note grid. When triplet-ness is preserved, existing notes are
   // scaled to the new grid; otherwise the groove is reset to sensible defaults.
-  changeDivision(newDivision: Subdivision | number) {
+  changeDivision(newDivision: Subdivision | number): void {
     const newDivValue = typeof newDivision === 'number' ? newDivision : newDivision.value;
     const newSubdivision = Subdivision.of(newDivValue);
     const isNewDivisionTriplets = newSubdivision.isTriplet();
@@ -2523,7 +2443,7 @@ class GrooveWriter {
 
   // Copy notes from src to dst, scaling positions by the ratio of notesPerMeasure.
   // Both measures must have the same triplet-ness so the scale factor divides evenly.
-  static rescaleMeasure(src: Measure, dst: Measure) {
+  static rescaleMeasure(src: Measure, dst: Measure): void {
     const drums = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
     const srcLen = src.notesPerMeasure;
     const dstLen = dst.notesPerMeasure;
@@ -2541,7 +2461,7 @@ class GrooveWriter {
     }
   }
 
-  renderMeasureContainer() {
+  renderMeasureContainer(): void {
     const container = document.getElementById("measureContainer");
     if (!container) return;
     let html = "";
@@ -2778,8 +2698,8 @@ class GrooveWriter {
     return newHTML;
   }
 
-  permutationOptionClick(event) {
-    var optionId = event.target.id;
+  permutationOptionClick(event: Event): void {
+    var optionId = (event.target as HTMLElement).id;
     var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
@@ -2793,8 +2713,8 @@ class GrooveWriter {
     this.refresh_ABC();
   };
 
-  permutationSubOptionClick(event) {
-    var optionId = event.target.id;
+  permutationSubOptionClick(event: Event): void {
+    var optionId = (event.target as HTMLElement).id;
     var checkbox = document.getElementById(optionId) as HTMLInputElement;
     var OnElseOff = checkbox.checked;
 
@@ -2808,7 +2728,7 @@ class GrooveWriter {
     this.refresh_ABC();
   };
 
-  HTMLforPermutationOptions() {
+  HTMLforPermutationOptions(): string {
     if (this.class_permutation_type == "none")
       return "";
 
@@ -2816,7 +2736,7 @@ class GrooveWriter {
       id: "PermuationOptionsOstinato",
       subid: "PermuationOptionsOstinato_sub",
       name: "Ostinato",
-      SubOptions: [],
+      SubOptions: [] as string[],
       defaultOn: false
     }, {
       id: "PermuationOptionsSingles",
@@ -2834,7 +2754,7 @@ class GrooveWriter {
       id: "PermuationOptionsTriples",
       subid: "PermuationOptionsTriples_sub",
       name: "Triples",
-      SubOptions: [],
+      SubOptions: [] as string[],
       defaultOn: true
     }
     ];
@@ -2854,7 +2774,7 @@ class GrooveWriter {
         id: "PermuationOptionsQuads",
         subid: "PermuationOptionsQuads_sub",
         name: "Quads",
-        SubOptions: [],
+        SubOptions: [] as string[],
         defaultOn: false
       });
     }
@@ -2865,7 +2785,7 @@ class GrooveWriter {
           id: "PermuationOptionsAccentGrid",
           subid: "",
           name: "Use Accent Grid",
-          SubOptions: [],
+          SubOptions: [] as string[],
           defaultOn: false
         });
         break;
@@ -2875,7 +2795,7 @@ class GrooveWriter {
             id: "PermuationOptionsSkipSomeFirstNotes",
             subid: "",
             name: "Simplify multiple kicks",
-            SubOptions: [],
+            SubOptions: [] as string[],
             defaultOn: false
           });
         break;
