@@ -94,12 +94,12 @@ describe('State setters and getters', () => {
 
   test('set_sticking_state("right") sets sticking to R', () => {
     writer.set_sticking_state(0, 'right');
-    expect(writer.get_sticking_state(0, 'ABC')).toBe('"R"x');
+    expect(writer.get_sticking_state(0).abc).toBe('"R"x');
   });
 
   test('set_sticking_state("left") sets sticking to L', () => {
     writer.set_sticking_state(0, 'left');
-    expect(writer.get_sticking_state(0, 'ABC')).toBe('"L"x');
+    expect(writer.get_sticking_state(0).abc).toBe('"L"x');
   });
 
   test('accepts string ids', () => {
@@ -247,24 +247,15 @@ describe('All drum modes round-trip through set/get state', () => {
     expect(state.url).toBe('X');
   });
 
-  test('get_kick_state returnType "ABC" returns bare abc string', () => {
+  test('getDrumState reads any drum uniformly', () => {
     writer.set_kick_state(0, 'normal');
-    expect(writer.get_kick_state(0, 'ABC')).toBe('F');
-  });
+    expect(writer.getDrumState(0, DrumType.KICK)).toEqual({ abc: 'F', url: 'o' });
 
-  test('get_kick_state returnType "URL" returns bare url char', () => {
-    writer.set_kick_state(0, 'normal');
-    expect(writer.get_kick_state(0, 'URL')).toBe('o');
-  });
-
-  test('get_sticking_state returnType "ABC" returns bare abc string', () => {
     writer.set_sticking_state(0, 'right');
-    expect(writer.get_sticking_state(0, 'ABC')).toBe('"R"x');
-  });
+    expect(writer.getDrumState(0, DrumType.STICKINGS)).toEqual({ abc: '"R"x', url: 'R' });
 
-  test('get_sticking_state returnType "URL" returns bare url char', () => {
-    writer.set_sticking_state(0, 'right');
-    expect(writer.get_sticking_state(0, 'URL')).toBe('R');
+    writer.set_snare_state(0, 'accent');
+    expect(writer.getDrumState(0, DrumType.SNARE)).toEqual({ abc: '!accent!c', url: 'O' });
   });
 
   test('empty state returns abc=false, url=-', () => {

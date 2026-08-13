@@ -1416,7 +1416,7 @@ class GrooveWriter {
 
       } else if (instrument == "kick" && action == "hh_foot_nums_on") {
         const num_notes_per_count = this.data.notesPerBeat;
-        var cur_state = this.get_kick_state(i, "ABC");
+        var cur_state = this.get_kick_state(i).abc;
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
           kick_is_on = true;
@@ -1424,7 +1424,7 @@ class GrooveWriter {
 
       } else if (instrument == "kick" && action == "hh_foot_ands_on") {
         const num_notes_per_count = this.data.notesPerBeat;
-        var cur_state = this.get_kick_state(i, "ABC");
+        var cur_state = this.get_kick_state(i).abc;
         var kick_is_on = false;
         if (cur_state == constant_ABC_KI_SandK || cur_state == constant_ABC_KI_Normal)
           kick_is_on = true;
@@ -1800,31 +1800,30 @@ class GrooveWriter {
     return { abc: this._abcFor(note) as string, url: note.getFirstTabChar() };
   }
 
-  get_hh_state(id: number | string): { abc: string | false, url: string } {
-    return this._stateFor(this._getOnNote(DrumType.HIHAT, id));
-  }
-
-  get_snare_state(id: number | string): { abc: string | false, url: string } {
-    return this._stateFor(this._getOnNote(DrumType.SNARE, id));
-  }
-
-  get_kick_state(id: number | string, returnType?: string): any {
-    const state = this._stateFor(this._getOnNote(DrumType.KICK, id));
-    if (returnType === 'ABC') return state.abc;
-    if (returnType === 'URL') return state.url;
-    return state;
-  }
-
-  get_tom_state(id: number | string, tom_num: number): { abc: string | false, url: string } {
-    const drumType = tom_num === 1 ? DrumType.TOM1 : DrumType.TOM4;
+  // Read the currently-rendered note at `id` for a drum and return both
+  // representations. All the get_*_state helpers below are thin aliases.
+  getDrumState(id: number | string, drumType: DrumType): { abc: string | false, url: string } {
     return this._stateFor(this._getOnNote(drumType, id));
   }
 
-  get_sticking_state(id: number | string, returnType?: string): any {
-    const state = this._stateFor(this._getOnNote(DrumType.STICKINGS, id));
-    if (returnType === 'ABC') return state.abc;
-    if (returnType === 'URL') return state.url;
-    return state;
+  get_hh_state(id: number | string): { abc: string | false, url: string } {
+    return this.getDrumState(id, DrumType.HIHAT);
+  }
+
+  get_snare_state(id: number | string): { abc: string | false, url: string } {
+    return this.getDrumState(id, DrumType.SNARE);
+  }
+
+  get_kick_state(id: number | string): { abc: string | false, url: string } {
+    return this.getDrumState(id, DrumType.KICK);
+  }
+
+  get_tom_state(id: number | string, tom_num: number): { abc: string | false, url: string } {
+    return this.getDrumState(id, tom_num === 1 ? DrumType.TOM1 : DrumType.TOM4);
+  }
+
+  get_sticking_state(id: number | string): { abc: string | false, url: string } {
+    return this.getDrumState(id, DrumType.STICKINGS);
   }
 
   // Helpers: check if a drum is currently on (based on rendered UI state).
@@ -2729,7 +2728,7 @@ class GrooveWriter {
   // Swap Right and Left stickings if any are shown
   stickingsReverseRL() {
     for (var i = 0; i < this.data.numberOfMeasures * this.data.notesPerMeasure; i++) {
-      var cur_state = this.get_sticking_state(i, "URL");
+      var cur_state = this.get_sticking_state(i).url;
       if (cur_state === "R") {
         this.set_sticking_state(i, "left", false);
       } else if (cur_state === "L") {
@@ -3373,25 +3372,12 @@ class GrooveWriter {
       const measure = this.data.measures[m];
       if (!measure) continue;
       const start = m * npm;
-      const cols: { drum: DrumType, chars: string[] }[] = [
-        { drum: DrumType.STICKINGS, chars: [] },
-        { drum: DrumType.HIHAT, chars: [] },
-        { drum: DrumType.SNARE, chars: [] },
-        { drum: DrumType.KICK, chars: [] },
-        { drum: DrumType.TOM1, chars: [] },
-        { drum: DrumType.TOM4, chars: [] },
-      ];
-      for (let i = 0; i < npm; i++) {
-        const id = start + i;
-        cols[0].chars.push(this.get_sticking_state(id).url || '-');
-        cols[1].chars.push(this.get_hh_state(id).url || '-');
-        cols[2].chars.push(this.get_snare_state(id).url || '-');
-        cols[3].chars.push(this.get_kick_state(id).url || '-');
-        cols[4].chars.push(this.get_tom_state(id, 1).url || '-');
-        cols[5].chars.push(this.get_tom_state(id, 4).url || '-');
-      }
-      for (const col of cols) {
-        measure.setDataFromString(col.drum, col.chars.join(''));
+      for (const drum of DrumType.ALL) {
+        const chars: string[] = [];
+        for (let i = 0; i < npm; i++) {
+          chars.push(this.getDrumState(start + i, drum).url || '-');
+        }
+        measure.setDataFromString(drum, chars.join(''));
       }
     }
   }
@@ -3400,19 +3386,18 @@ class GrooveWriter {
   // note-on classes off these DOM elements, so without this call MIDI
   // generation sees an empty grid and produces a silent track.
   applyMeasuresToUI() {
-    const drumTypes = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
     for (let m = 0; m < this.data.numberOfMeasures; m++) {
       const measure = this.data.measures[m];
       if (!measure) continue;
-      for (const drumType of drumTypes) {
-        const arr = measure.getArray(drumType);
+      const start = m * this.data.notesPerMeasure;
+      for (const drum of DrumType.ALL) {
+        const arr = measure.getArray(drum);
         for (let i = 0; i < arr.length; i++) {
-          const id = i + m * this.data.notesPerMeasure;
-          const note = arr[i] ? tabCharToAbcNote(drumType, arr[i]) : null;
+          const note = arr[i] ? tabCharToAbcNote(drum, arr[i]) : null;
           if (note) {
-            this.setDrumNote(id, note, false);
+            this.setDrumNote(start + i, note, false);
           } else {
-            this.setDrumNote(id, AbcNote.OFF, false, drumType);
+            this.setDrumNote(start + i, AbcNote.OFF, false, drum);
           }
         }
       }
