@@ -2498,6 +2498,7 @@ class GrooveWriter {
     else
       this.addClassById("showHideTomsButton", "ClickToHide", false);
 
+    this.data.showToms = OnElseOff;
     this.updateNavHighlights();
 
     if (!dontRefreshScreen)
@@ -2524,6 +2525,7 @@ class GrooveWriter {
       this.addClassById("stickingsButton", "ClickToHide", false);
     }
 
+    this.data.showStickings = OnElseOff;
     this.updateNavHighlights();
 
     if (!dontRefreshScreen) {
@@ -3381,6 +3383,8 @@ class GrooveWriter {
     this.data.showTempo = this.isShowTempoChecked();
     const embedShowTempo = document.getElementById("embedShowTempo") as HTMLInputElement | null;
     if (embedShowTempo) embedShowTempo.checked = this.data.showTempo;
+    this.data.showToms = this.isTomsVisible();
+    this.data.showStickings = this.isStickingsVisible();
 
     const npm = this.data.notesPerMeasure;
     const hasStaffInDOM = !!document.querySelector(".staff-container");

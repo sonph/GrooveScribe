@@ -876,6 +876,12 @@ class GrooveData {
     this.measureText = decoded.measureText;
     this.subText = decoded.subText;
 
+    const hasTomTabs = (decoded.drumTabs.has(DrumType.TOM1.name) && decoded.drumTabs.get(DrumType.TOM1.name)!.split('').some(c => c !== '-' && c !== '|'))
+      || (decoded.drumTabs.has(DrumType.TOM4.name) && decoded.drumTabs.get(DrumType.TOM4.name)!.split('').some(c => c !== '-' && c !== '|'));
+    const hasStickingTabs = decoded.drumTabs.has(DrumType.STICKINGS.name) && decoded.drumTabs.get(DrumType.STICKINGS.name)!.split('').some(c => c !== '-' && c !== '|');
+    this.showToms = hasTomTabs;
+    this.showStickings = hasStickingTabs;
+
     const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
     const allEmpty = measures.length === 0 || measures.every(m => m.isEmpty());
     if (!allEmpty) {

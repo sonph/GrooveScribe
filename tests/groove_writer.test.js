@@ -1985,5 +1985,24 @@ describe('Notion Embedding Options Measure Table', () => {
       expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
       expect(convertedUrlElem.value).toContain('H2=|c-------|');
     });
+
+    test('convert() encodes Toms (T1, T4) into embeddable link when toms are shown and notes exist', () => {
+      document.body.innerHTML = `
+        <div id="measureContainer">${writer.HTMLforStaffContainer(1, 0)}</div>
+        <div id="musicalInput"></div>
+        <input type="text" id="convertedUrl" />
+        <div id="status"></div>
+      `;
+      writer.set_Default_notes('TimeSig=4/4&Div=8&Tempo=80&H=|xxxxxxxx|');
+      writer.showHideToms(true, true, true);
+      writer.set_tom_state(2, 1, 'normal', false);
+      writer.set_tom_state(6, 4, 'normal', false);
+      writer.convert(false, false);
+
+      const convertedUrlElem = document.getElementById('convertedUrl');
+      expect(convertedUrlElem.value).toContain('https://sonpham.me/GrooveScribe/render.html');
+      expect(convertedUrlElem.value).toContain('T1=|--o-----|');
+      expect(convertedUrlElem.value).toContain('T4=|------o-|');
+    });
   });
 });
