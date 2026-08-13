@@ -1769,4 +1769,15 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(document.getElementById('staff-container2')).toBeNull();
     expect(document.querySelector('tr[data-measure="1"] .embed-repeat-start').checked).toBe(true);
   });
+
+  test('set_Default_notes populates default groove when loading URL with empty measures', () => {
+    const emptyMultiMeasureUrl = 'Mode=edit&TimeSig=4/4&Div=8&Comments=comments&Tempo=86&ShowTempo=1&RepeatBegins=1&RepeatEnds=1;2&RepeatEndings=2:1&MeasureText=1:e:end&H=|--------|--------|--------|&S=|--------|--------|--------|&K=|--------|--------|--------|';
+    writer.set_Default_notes(emptyMultiMeasureUrl);
+    expect(writer.data.numberOfMeasures).toBe(3);
+    for (let m = 0; m < 3; m++) {
+      expect(writer.data.measures[m].toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+      expect(writer.data.measures[m].toString(DrumType.KICK)).toBe('o---o---');
+      expect(writer.data.measures[m].toString(DrumType.SNARE)).toBe('--O---O-');
+    }
+  });
 });

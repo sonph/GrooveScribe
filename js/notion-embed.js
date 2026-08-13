@@ -77,7 +77,7 @@ function renderEmbedMeasureTable(numMeasures) {
             '</tr>';
     }
     tbody.innerHTML = html;
-    convert();
+    convert(false, false);
 }
 function getEmbedTableData() {
     const tbody = document.getElementById("embedMeasureTableBody");

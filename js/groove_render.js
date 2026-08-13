@@ -311,19 +311,68 @@ class TimeSignature {
 }
 TimeSignature.COMMON_TIME_44 = new TimeSignature(4, Subdivision.QUARTER);
 class Measure {
-    constructor(timeSig, tabSubdivision) {
+    static getHiHatDefaultStep(subdivision) {
+        switch (subdivision.value) {
+            case 8:
+                return 1;
+            case 16:
+                return 2;
+            case 12:
+                return 3;
+            case 24:
+                return 3;
+            case 32:
+                return 4;
+            case 48:
+                return 6;
+            default:
+                return subdivision.isTriplet() ? 3 : Math.max(1, Math.floor(subdivision.value / 8));
+        }
+    }
+    constructor(timeSig, tabSubdivision, populateDefault = true) {
         this.timeSig = timeSig;
         this.tabSubdivision = tabSubdivision;
         const notesPerBeat = timeSig.bottom.divideBy(tabSubdivision);
         this.notesPerMeasure = notesPerBeat * timeSig.top;
         // Stores tab note string or `null`. Use getArray(DrumType) instead of accessing this directly.
         this.arrays = new Map();
-        this.arrays.set(DrumType.STICKINGS.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
-        this.arrays.set(DrumType.HIHAT.name, Measure.fillArray(Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.HH_NORMAL.getFirstTabChar(), 0, 2));
-        this.arrays.set(DrumType.SNARE.name, Measure.fillArray(Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.SN_ACCENT.getFirstTabChar(), notesPerBeat, notesPerBeat * 2));
-        this.arrays.set(DrumType.KICK.name, Measure.fillArray(Measure.createEmptyArrayOfLength(this.notesPerMeasure), AbcNote.KI_NORMAL.getFirstTabChar(), 0, notesPerBeat * 2));
-        this.arrays.set(DrumType.TOM1.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
-        this.arrays.set(DrumType.TOM4.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
+        for (const drum of DrumType.ALL) {
+            this.arrays.set(drum.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
+        }
+        if (populateDefault) {
+            this.populateDefaultGroove();
+        }
+    }
+    populateDefaultGroove() {
+        const notesPerBeat = this.timeSig.bottom.divideBy(this.tabSubdivision);
+        const hiHatStep = Measure.getHiHatDefaultStep(this.tabSubdivision);
+        // Hi-hat: on each beat and in between
+        Measure.fillArray(this.getArray(DrumType.HIHAT), AbcNote.HH_NORMAL.getFirstTabChar() || 'x', 0, hiHatStep);
+        // Kick: odd beats (1, 3, 5, etc.) -> beat index 0, 2, 4, ...
+        const kickArray = this.getArray(DrumType.KICK);
+        for (let beat = 0; beat < this.timeSig.top; beat += 2) {
+            const pos = beat * notesPerBeat;
+            if (pos < this.notesPerMeasure) {
+                kickArray[pos] = AbcNote.KI_NORMAL.getFirstTabChar() || 'o';
+            }
+        }
+        // Snare: even beats (2, 4, 6, etc.) -> beat index 1, 3, 5, ...
+        const snareArray = this.getArray(DrumType.SNARE);
+        for (let beat = 1; beat < this.timeSig.top; beat += 2) {
+            const pos = beat * notesPerBeat;
+            if (pos < this.notesPerMeasure) {
+                snareArray[pos] = AbcNote.SN_ACCENT.getFirstTabChar() || 'O';
+            }
+        }
+    }
+    isEmpty() {
+        for (const drum of DrumType.ALL) {
+            const arr = this.arrays.get(drum.name);
+            if (arr && arr.some(x => x !== null && x !== '-' && x !== '')) {
+                return false;
+            }
+        }
+        return true;
     }
     // String should be without the bar separators `|`.
     setDataFromString(drumType, string) {
@@ -467,7 +516,7 @@ function decodeGrooveUrl(paramsString) {
         viewMode: params.get('Mode') === 'view',
         debugMode: params.get('Debug') === '1',
         timeSig: params.get('TimeSig') ? TimeSignature.fromString(params.get('TimeSig')) : TimeSignature.COMMON_TIME_44,
-        subdivision: params.get('Div') ? Subdivision.of(parseInt(params.get('Div'))) : Subdivision.SIXTEENTH,
+        subdivision: params.get('Div') ? Subdivision.of(parseInt(params.get('Div'))) : Subdivision.EIGHTH,
         metronomeFrequency: Math.max(parseInt(params.get('MetronomeFreq')) || 0, 0),
         title: params.get('Title') || '',
         author: params.get('Author') || '',
@@ -493,7 +542,7 @@ function buildMeasuresFromTabs(drumTabs, timeSig, subdivision) {
         const measureData = GrooveData.splitTabIntoMeasureStrings(data);
         for (let i = 0; i < measureData.length; i++) {
             if (measures[i] === undefined) {
-                measures.push(new Measure(timeSig, subdivision));
+                measures.push(new Measure(timeSig, subdivision, true));
             }
             measures[i].setDataFromString(drum, measureData[i]);
         }
@@ -574,7 +623,7 @@ function encodeGrooveQueryString(state) {
     return '?' + parts.join('&');
 }
 class GrooveData {
-    constructor(timeSig = TimeSignature.COMMON_TIME_44, subdivision = Subdivision.SIXTEENTH, numberOfMeasures = 1) {
+    constructor(timeSig = TimeSignature.COMMON_TIME_44, subdivision = Subdivision.EIGHTH, numberOfMeasures = 1) {
         this.timeSig = timeSig;
         this.subdivision = subdivision;
         this.measures = [];
@@ -630,12 +679,17 @@ class GrooveData {
         this.measureText = decoded.measureText;
         this.subText = decoded.subText;
         const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
-        if (measures.length !== 0) {
+        const allEmpty = measures.length === 0 || measures.every(m => m.isEmpty());
+        if (!allEmpty) {
             this.measures = measures;
         }
         else {
-            // Preserve legacy fallback: URL with no drum data triggers default groove.
-            this.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+            // Upon loading, if all the arrays are empty, then load an initial groove.
+            const numMeasures = measures.length > 0 ? measures.length : 1;
+            this.measures = [];
+            for (let i = 0; i < numMeasures; i++) {
+                this.measures.push(new Measure(this.timeSig, this.subdivision, true));
+            }
         }
         return this;
     }

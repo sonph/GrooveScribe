@@ -90,7 +90,7 @@ function renderEmbedMeasureTable(numMeasures?: number | null): void {
     '</tr>';
   }
   tbody.innerHTML = html;
-  convert();
+  convert(false, false);
 }
 
 function getEmbedTableData(): EmbedTableData | null {

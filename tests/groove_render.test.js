@@ -85,4 +85,62 @@ describe('groove_render.js isolated execution', () => {
     expect(data.toQueryString()).toContain('Comments=Priority%20Comment');
     expect(data.toQueryString()).not.toContain('Legacy%20SubText');
   });
+
+  test('loads initial groove for 1/8 subdivision when arrays are empty', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=8');
+    expect(data.measures.length).toBe(1);
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('xxxxxxxx'); // one every space
+    expect(m.toString(DrumType.KICK)).toBe('o---o---'); // odd beats 1, 3
+    expect(m.toString(DrumType.SNARE)).toBe('--O---O-'); // even beats 2, 4
+  });
+
+  test('loads initial groove for 1/16 subdivision when arrays are empty', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=16');
+    expect(data.measures.length).toBe(1);
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('x-x-x-x-x-x-x-x-'); // one every 2 spaces
+    expect(m.toString(DrumType.KICK)).toBe('o-------o-------'); // odd beats 1, 3
+    expect(m.toString(DrumType.SNARE)).toBe('----O-------O---'); // even beats 2, 4
+  });
+
+  test('loads initial groove for 1/8 triplet (Div 12) when arrays are empty', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=12');
+    expect(data.measures.length).toBe(1);
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('x--x--x--x--'); // one every 3 spaces
+    expect(m.toString(DrumType.KICK)).toBe('o-----o-----'); // odd beats 1, 3
+    expect(m.toString(DrumType.SNARE)).toBe('---O-----O--'); // even beats 2, 4
+  });
+
+  test('loads initial groove for 1/16 triplet (Div 24) when arrays are empty', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=24');
+    expect(data.measures.length).toBe(1);
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('x--x--x--x--x--x--x--x--'); // one every 3 spaces
+    expect(m.toString(DrumType.KICK)).toBe('o-----------o-----------'); // odd beats 1, 3
+    expect(m.toString(DrumType.SNARE)).toBe('------O-----------O-----'); // even beats 2, 4
+  });
+
+  test('loads initial groove for 3/4 and 6/8 time signatures when arrays are empty', () => {
+    const data34 = new GrooveData().fromUrl('TimeSig=3/4&Div=8');
+    const m34 = data34.measures[0];
+    expect(m34.toString(DrumType.HIHAT)).toBe('xxxxxx');
+    expect(m34.toString(DrumType.KICK)).toBe('o---o-'); // odd beats 1, 3
+    expect(m34.toString(DrumType.SNARE)).toBe('--O---'); // even beat 2
+
+    const data68 = new GrooveData().fromUrl('TimeSig=6/8&Div=16');
+    const m68 = data68.measures[0];
+    expect(m68.toString(DrumType.HIHAT)).toBe('x-x-x-x-x-x-');
+    expect(m68.toString(DrumType.KICK)).toBe('o---o---o---'); // odd beats 1, 3, 5
+    expect(m68.toString(DrumType.SNARE)).toBe('--O---O---O-'); // even beats 2, 4, 6
+  });
+
+  test('populates initial groove when URL explicitly contains empty dash arrays', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=8&H=|--------|&S=|--------|&K=|--------|');
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+    expect(m.toString(DrumType.KICK)).toBe('o---o---');
+    expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
+  });
 });
