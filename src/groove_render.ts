@@ -123,7 +123,7 @@ class AbcNote {
   static STICK_L = new AbcNote(DrumType.STICKINGS, '"L"x', setOf('L'), null, noteAttrs('sticking_left'));
   static STICK_BOTH = new AbcNote(DrumType.STICKINGS, '"R/L"x', setOf('b', 'B'), null, noteAttrs('sticking_both'));
   static STICK_COUNT = new AbcNote(DrumType.STICKINGS, '"count"x', setOf('c'), null, noteAttrs('sticking_count'), 39);
-  static STICK_OFF = new AbcNote(DrumType.STICKINGS, '""x', setOf('-'));
+  static STICK_OFF = new AbcNote(DrumType.STICKINGS, '""x', setOf('-'), null, noteAttrs(''), null);
   static STICKINGS_ALL = [
     this.STICK_R,
     this.STICK_L,
@@ -237,7 +237,7 @@ class AbcNote {
   }
 
   isOff(): boolean {
-    return this.note === AbcNote.OFF.note;
+    return this.note === AbcNote.OFF.note || this.note === '""x' || this.note === '';
   }
 
   static createAbcNoteToTabCharMap() {

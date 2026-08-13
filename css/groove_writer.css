@@ -251,6 +251,27 @@
 	.notes-row-container {
 		display: inline-block;
 	}
+	.stickings-row-container {
+		display: block;
+	}
+	.staff-container .note-on {
+		color: rgb(0, 0, 0);
+	}
+	.staff-container .note-off{
+		color: #CCCCCC;
+		border-color: #999;
+	}
+	.staff-container .note-hidden{
+		color: transparent;
+		background-color: transparent;
+		border-color: transparent;
+	}
+	.staff-container .snare_circle.note-on,
+	.staff-container .kick_circle.note-on,
+	.staff-container [class^="tom_circle"].note-on {
+		background-color: #000;
+		border-color: #999;
+	}
 	.heading1 {
 		font-size: 30px;
 		font-weight: bold;

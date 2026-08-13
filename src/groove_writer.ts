@@ -570,10 +570,12 @@ class GrooveWriter {
   }
 
   playSingleNote(note_val: number): void {
-    if (MIDI.WebAudio) {
-      MIDI.WebAudio.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
-    } else if (MIDI.AudioTag) {
-      MIDI.AudioTag.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
+    if (typeof MIDI !== "undefined" && MIDI) {
+      if (MIDI.WebAudio) {
+        MIDI.WebAudio.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
+      } else if (MIDI.AudioTag) {
+        MIDI.AudioTag.noteOn(9, note_val, MIDI_VELOCITY_NORMAL, 0);
+      }
     }
   }
 
@@ -659,14 +661,15 @@ class GrooveWriter {
 
   sticking_rotate_state(id: number): void {
     const sticking_state = this.getDrumNote(id, DrumType.STICKINGS);
+    const key = sticking_state ? sticking_state.note : AbcNote.STICK_OFF.note;
     const newState = {
       [AbcNote.STICK_OFF.note]: AbcNote.STICK_R,
       [AbcNote.STICK_R.note]: AbcNote.STICK_L,
       [AbcNote.STICK_L.note]: AbcNote.STICK_BOTH,
       [AbcNote.STICK_BOTH.note]: AbcNote.STICK_COUNT,
       [AbcNote.STICK_COUNT.note]: AbcNote.STICK_OFF,
-    }[sticking_state.note];
-    this.setDrumNote(id, newState, true);
+    }[key] || AbcNote.STICK_R;
+    this.setDrumNote(id, newState, true, DrumType.STICKINGS);
   }
 
 
@@ -1443,6 +1446,9 @@ class GrooveWriter {
   }
   is_tom_on(id: number | string, tom_num: number): boolean {
     return this.get_tom_state(id, tom_num).abc !== false;
+  }
+  is_sticking_on(id: number | string): boolean {
+    return this.get_sticking_state(id).abc !== false;
   }
 
   set_hh_state(id: number | string, mode: string, makeSound: boolean = false): void {
@@ -3600,11 +3606,11 @@ class GrooveWriter {
     for (var i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
 
       newHTML += ('\
-														<div id="sticking' + i + '" class="sticking">\n\
-															<div class="sticking_right note_part"  id="sticking_right' + i + '"  onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'sticking\'">R</div>\n\
-															<div class="sticking_left note_part"   id="sticking_left' + i + '"   onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')">L</div>\n\
-															<div class="sticking_both note_part"   id="sticking_both' + i + '"   onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')">R/L</div>\n\
-															<div class="sticking_count note_part"   id="sticking_count' + i + '"   onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')">C</div>\n\
+														<div id="sticking' + i + '" class="sticking" onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'sticking\', ' + i + ')">\n\
+															<div class="sticking_right note_part"  id="sticking_right' + i + '">R</div>\n\
+															<div class="sticking_left note_part"   id="sticking_left' + i + '">L</div>\n\
+															<div class="sticking_both note_part"   id="sticking_both' + i + '">R/L</div>\n\
+															<div class="sticking_count note_part"   id="sticking_count' + i + '">C</div>\n\
 														</div>\n\
 													');
 

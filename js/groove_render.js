@@ -104,7 +104,7 @@ class AbcNote {
         return this.htmlAttrs?.html_id_prefix || null;
     }
     isOff() {
-        return this.note === _b.OFF.note;
+        return this.note === _b.OFF.note || this.note === '""x' || this.note === '';
     }
     static createAbcNoteToTabCharMap() {
         const m = new Map();
@@ -149,7 +149,7 @@ AbcNote.STICK_R = new _b(DrumType.STICKINGS, '"R"x', setOf('R'), null, noteAttrs
 AbcNote.STICK_L = new _b(DrumType.STICKINGS, '"L"x', setOf('L'), null, noteAttrs('sticking_left'));
 AbcNote.STICK_BOTH = new _b(DrumType.STICKINGS, '"R/L"x', setOf('b', 'B'), null, noteAttrs('sticking_both'));
 AbcNote.STICK_COUNT = new _b(DrumType.STICKINGS, '"count"x', setOf('c'), null, noteAttrs('sticking_count'), 39);
-AbcNote.STICK_OFF = new _b(DrumType.STICKINGS, '""x', setOf('-'));
+AbcNote.STICK_OFF = new _b(DrumType.STICKINGS, '""x', setOf('-'), null, noteAttrs(''), null);
 AbcNote.STICKINGS_ALL = [
     _b.STICK_R,
     _b.STICK_L,

@@ -322,21 +322,24 @@
 	.notes-row-container {
 		display: inline-block;
 	}
-	.notes-row-container .note-on {
+	.stickings-row-container {
+		display: block;
+	}
+	.staff-container .note-on {
 		color: rgb(0, 0, 0);
 	}
-	.notes-row-container .note-off{
+	.staff-container .note-off{
 		color: #CCCCCC;
 		border-color: #999;
 	}
-	.notes-row-container .note-hidden{
+	.staff-container .note-hidden{
 		color: transparent;
 		background-color: transparent;
 		border-color: transparent;
 	}
-	.notes-row-container .snare_circle.note-on,
-	.notes-row-container .kick_circle.note-on,
-	.notes-row-container [class^="tom_circle"].note-on {
+	.staff-container .snare_circle.note-on,
+	.staff-container .kick_circle.note-on,
+	.staff-container [class^="tom_circle"].note-on {
 		background-color: #000;
 		border-color: #999;
 	}

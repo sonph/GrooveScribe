@@ -113,11 +113,55 @@ describe('State setters and getters', () => {
   test('set_sticking_state("right") sets sticking to R', () => {
     writer.set_sticking_state(0, 'right');
     expect(writer.get_sticking_state(0).abc).toBe('"R"x');
+    expect(writer.is_sticking_on(0)).toBe(true);
+    expect(document.getElementById('sticking_right0').classList.contains('note-on')).toBe(true);
+    expect(document.getElementById('sticking_left0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('sticking_both0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('sticking_count0').classList.contains('note-hidden')).toBe(true);
   });
 
   test('set_sticking_state("left") sets sticking to L', () => {
     writer.set_sticking_state(0, 'left');
     expect(writer.get_sticking_state(0).abc).toBe('"L"x');
+    expect(writer.is_sticking_on(0)).toBe(true);
+    expect(document.getElementById('sticking_left0').classList.contains('note-on')).toBe(true);
+    expect(document.getElementById('sticking_right0').classList.contains('note-hidden')).toBe(true);
+  });
+
+  test('sticking off shows sticking_right as placeholder with note-off and others hidden', () => {
+    writer.set_sticking_state(0, 'left');
+    writer.set_sticking_state(0, 'off');
+    expect(writer.is_sticking_on(0)).toBe(false);
+    expect(document.getElementById('sticking_right0').classList.contains('note-off')).toBe(true);
+    expect(document.getElementById('sticking_left0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('sticking_both0').classList.contains('note-hidden')).toBe(true);
+    expect(document.getElementById('sticking_count0').classList.contains('note-hidden')).toBe(true);
+  });
+
+  test('sticking_rotate_state rotates from off -> R -> L -> both -> count -> off', () => {
+    writer.set_sticking_state(0, 'off');
+    expect(writer.is_sticking_on(0)).toBe(false);
+
+    writer.sticking_rotate_state(0);
+    expect(writer.get_sticking_state(0).url).toBe('R');
+    expect(document.getElementById('sticking_right0').classList.contains('note-on')).toBe(true);
+
+    writer.sticking_rotate_state(0);
+    expect(writer.get_sticking_state(0).url).toBe('L');
+    expect(document.getElementById('sticking_left0').classList.contains('note-on')).toBe(true);
+
+    writer.sticking_rotate_state(0);
+    expect(writer.get_sticking_state(0).url).toBe('b');
+    expect(document.getElementById('sticking_both0').classList.contains('note-on')).toBe(true);
+
+    writer.sticking_rotate_state(0);
+    expect(writer.get_sticking_state(0).url).toBe('c');
+    expect(document.getElementById('sticking_count0').classList.contains('note-on')).toBe(true);
+
+    writer.sticking_rotate_state(0);
+    expect(writer.get_sticking_state(0).abc).toBe(false);
+    expect(writer.is_sticking_on(0)).toBe(false);
+    expect(document.getElementById('sticking_right0').classList.contains('note-off')).toBe(true);
   });
 
   test('accepts string ids', () => {
@@ -394,19 +438,29 @@ describe('Note context menu and interactive editing lifecycle', () => {
   });
 
   test('noteLeftClick toggles note on and off across drum types', () => {
-    ['hh', 'hh2', 'snare', 'kick', 'tom1', 'tom4'].forEach(drum => {
+    ['hh', 'hh2', 'snare', 'kick', 'tom1', 'tom4', 'sticking'].forEach(drum => {
       const isNoteOn = (drum === 'hh2') ? () => writer.is_hh2_on(2) :
                        (drum === 'tom1') ? () => writer.is_tom_on(2, 1) :
                        (drum === 'tom4') ? () => writer.is_tom_on(2, 4) :
                        (drum === 'snare') ? () => writer.is_snare_on(2) :
                        (drum === 'kick') ? () => writer.is_kick_on(2) :
+                       (drum === 'sticking') ? () => writer.is_sticking_on(2) :
                        () => writer.is_hh_on(2);
 
       expect(isNoteOn()).toBe(false);
       writer.noteLeftClick({ preventDefault: () => {} }, drum, 2);
       expect(isNoteOn()).toBe(true);
-      writer.noteLeftClick({ preventDefault: () => {} }, drum, 2);
-      expect(isNoteOn()).toBe(false);
+      if (drum === 'sticking') {
+        // Rotating from R through all states back to off
+        writer.noteLeftClick({ preventDefault: () => {} }, drum, 2); // -> L
+        writer.noteLeftClick({ preventDefault: () => {} }, drum, 2); // -> both
+        writer.noteLeftClick({ preventDefault: () => {} }, drum, 2); // -> count
+        writer.noteLeftClick({ preventDefault: () => {} }, drum, 2); // -> off
+        expect(isNoteOn()).toBe(false);
+      } else {
+        writer.noteLeftClick({ preventDefault: () => {} }, drum, 2);
+        expect(isNoteOn()).toBe(false);
+      }
     });
   });
 
