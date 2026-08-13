@@ -7,10 +7,6 @@ declare var Abc: any;
 declare var Pablo: any;
 declare var ShareButton: any;
 
-var global_num_GrooveUtilsCreated = 0;
-var global_grooveUtilsScriptSrc = "";
-// if (document.currentScript)
-// global_grooveUtilsScriptSrc = document.currentScript.src;
 var global_midiInitialized = false;
 
 // global constants
@@ -82,6 +78,74 @@ const constant_ABC_T2_Normal = "d";
 const constant_ABC_T3_Normal = "B";
 const constant_ABC_T4_Normal = "A";
 const constant_ABC_OFF = false;
+
+// MIDI note lookup for a hi-hat ABC token. Returns null for OFF/unknown.
+// midi_output_type "general_MIDI" collapses variants to the normal note + varied velocity;
+// "Custom" uses distinct sample IDs for accent/etc.
+function hihatMidiFor(abcVal, midi_output_type: string): { note: number; velocity: number } | null {
+  switch (abcVal) {
+    case constant_ABC_HH_Normal: case constant_ABC_HH_Close:
+      return { note: MIDI_HIHAT_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Accent:
+      return midi_output_type == "general_MIDI"
+        ? { note: MIDI_HIHAT_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
+        : { note: MIDI_HIHAT_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Open: return { note: MIDI_HIHAT_OPEN, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Ride: return { note: MIDI_HIHAT_RIDE, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Ride_Bell: return { note: MIDI_HIHAT_RIDE_BELL, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Cow_Bell: return { note: MIDI_HIHAT_COW_BELL, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Crash: return { note: MIDI_HIHAT_CRASH, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Stacker: return { note: MIDI_HIHAT_STACKER, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Metronome_Normal: return { note: MIDI_HIHAT_METRONOME_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_HH_Metronome_Accent: return { note: MIDI_HIHAT_METRONOME_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
+    default: return null;
+  }
+}
+
+// MIDI note lookup for a snare ABC token. See hihatMidiFor() for midi_output_type semantics.
+function snareMidiFor(abcVal, midi_output_type: string): { note: number; velocity: number } | null {
+  const isGM = midi_output_type == "general_MIDI";
+  switch (abcVal) {
+    case constant_ABC_SN_Normal: return { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_SN_Flam:
+      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
+                  : { note: MIDI_SNARE_FLAM, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_SN_Drag:
+      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
+                  : { note: MIDI_SNARE_DRAG, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_SN_Accent:
+      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_ACCENT }
+                  : { note: MIDI_SNARE_ACCENT, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_SN_Ghost:
+      return isGM ? { note: MIDI_SNARE_NORMAL, velocity: MIDI_VELOCITY_GHOST }
+                  : { note: MIDI_SNARE_GHOST, velocity: MIDI_VELOCITY_GHOST };
+    case constant_ABC_SN_XStick: return { note: MIDI_SNARE_XSTICK, velocity: MIDI_VELOCITY_NORMAL };
+    case constant_ABC_SN_Buzz: return { note: MIDI_SNARE_BUZZ, velocity: MIDI_VELOCITY_NORMAL };
+    default: return null;
+  }
+}
+
+// MIDI note lookup for a kick ABC token. `kick` is the bass drum, `splash` is the hi-hat foot;
+// SandK ("Splash and Kick") plays both simultaneously.
+function kickMidiFor(abcVal): { kick: number | null; splash: number | null } {
+  switch (abcVal) {
+    case constant_ABC_KI_Splash: return { kick: null, splash: MIDI_HIHAT_FOOT };
+    case constant_ABC_KI_SandK: return { kick: MIDI_KICK_NORMAL, splash: MIDI_HIHAT_FOOT };
+    case constant_ABC_KI_Normal: return { kick: MIDI_KICK_NORMAL, splash: null };
+    default: return { kick: null, splash: null };
+  }
+}
+
+// MIDI note lookup for a tom ABC token. Returns null for OFF/unknown.
+function tomMidiFor(abcVal): number | null {
+  switch (abcVal) {
+    case constant_ABC_T1_Normal: return MIDI_TOM1_NORMAL;
+    case constant_ABC_T2_Normal: return MIDI_TOM2_NORMAL;
+    case constant_ABC_T3_Normal: return MIDI_TOM3_NORMAL;
+    case constant_ABC_T4_Normal: return MIDI_TOM4_NORMAL;
+    default: return null;
+  }
+}
 
 // make these global so that they are shared among all the GrooveUtils classes invoked
 var global_current_midi_start_time: any = 0;
@@ -1820,16 +1884,6 @@ class GrooveUtils {
   };
 
   getGrooveUtilsBaseLocation() {
-    if (this.midiBaseLocation.length > 0)
-      return this.midiBaseLocation;
-
-    if (global_grooveUtilsScriptSrc !== "") {
-      var lastSlash = global_grooveUtilsScriptSrc.lastIndexOf("/");
-      // lets find the slash before it since we need to go up a directory
-      lastSlash = global_grooveUtilsScriptSrc.lastIndexOf("/", lastSlash - 1);
-      this.midiBaseLocation = global_grooveUtilsScriptSrc.slice(0, lastSlash + 1);
-    }
-
     return this.midiBaseLocation;
   };
 
@@ -2034,51 +2088,9 @@ class GrooveUtils {
       }
 
       if (!this.metronomeSolo) { // midiSolo means to play just the metronome
-        var hh_velocity = MIDI_VELOCITY_NORMAL;
-        var hh_note: any = false;
-        switch (HH_Array[i]) {
-          case constant_ABC_HH_Normal: // normal
-          case constant_ABC_HH_Close: // normal
-            hh_note = MIDI_HIHAT_NORMAL;
-            break;
-          case constant_ABC_HH_Accent: // accent
-            if (midi_output_type == "general_MIDI") {
-              hh_note = MIDI_HIHAT_NORMAL;
-              hh_velocity = MIDI_VELOCITY_ACCENT;
-            } else {
-              hh_note = MIDI_HIHAT_ACCENT;
-            }
-            break;
-          case constant_ABC_HH_Open: // open
-            hh_note = MIDI_HIHAT_OPEN;
-            break;
-          case constant_ABC_HH_Ride: // ride
-            hh_note = MIDI_HIHAT_RIDE;
-            break;
-          case constant_ABC_HH_Ride_Bell: // ride bell
-            hh_note = MIDI_HIHAT_RIDE_BELL;
-            break;
-          case constant_ABC_HH_Cow_Bell: // cow bell
-            hh_note = MIDI_HIHAT_COW_BELL;
-            break;
-          case constant_ABC_HH_Crash: // crash
-            hh_note = MIDI_HIHAT_CRASH;
-            break;
-          case constant_ABC_HH_Stacker: // stacker
-            hh_note = MIDI_HIHAT_STACKER;
-            break;
-          case constant_ABC_HH_Metronome_Normal: // Metronome beep
-            hh_note = MIDI_HIHAT_METRONOME_NORMAL;
-            break;
-          case constant_ABC_HH_Metronome_Accent: // Metronome beep
-            hh_note = MIDI_HIHAT_METRONOME_ACCENT;
-            break;
-          case false:
-            break;
-          default:
-            console.log("Bad case in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
-            break;
-        }
+        const hhLookup = hihatMidiFor(HH_Array[i], midi_output_type);
+        const hh_note: any = hhLookup ? hhLookup.note : false;
+        const hh_velocity = hhLookup ? hhLookup.velocity : MIDI_VELOCITY_NORMAL;
 
         if (hh_note !== false) {
           // need to end hi-hat open notes else the hh open sounds horrible
@@ -2095,59 +2107,9 @@ class GrooveUtils {
             prev_hh_note = hh_note;
         }
 
-        var snare_velocity = MIDI_VELOCITY_NORMAL;
-        var snare_note: any = false;
-        switch (Snare_Array[i]) {
-          case constant_ABC_SN_Normal: // normal
-            snare_note = MIDI_SNARE_NORMAL;
-            break;
-          case constant_ABC_SN_Flam: // flam
-            if (midi_output_type == "general_MIDI") {
-              snare_note = MIDI_SNARE_NORMAL;
-              snare_velocity = MIDI_VELOCITY_ACCENT;
-            } else {
-              snare_note = MIDI_SNARE_FLAM;
-              snare_velocity = MIDI_VELOCITY_NORMAL;
-            }
-            break;
-          case constant_ABC_SN_Drag: // drag
-            if (midi_output_type == "general_MIDI") {
-              snare_note = MIDI_SNARE_NORMAL;
-              snare_velocity = MIDI_VELOCITY_ACCENT;
-            } else {
-              snare_note = MIDI_SNARE_DRAG;
-              snare_velocity = MIDI_VELOCITY_NORMAL;
-            }
-            break;
-          case constant_ABC_SN_Accent: // accent
-            if (midi_output_type == "general_MIDI") {
-              snare_note = MIDI_SNARE_NORMAL;
-              snare_velocity = MIDI_VELOCITY_ACCENT;
-            } else {
-              snare_note = MIDI_SNARE_ACCENT; // custom note
-            }
-            break;
-          case constant_ABC_SN_Ghost: // ghost
-            if (midi_output_type == "general_MIDI") {
-              snare_note = MIDI_SNARE_NORMAL;
-              snare_velocity = MIDI_VELOCITY_GHOST;
-            } else {
-              snare_note = MIDI_SNARE_GHOST;
-              snare_velocity = MIDI_VELOCITY_GHOST;
-            }
-            break;
-          case constant_ABC_SN_XStick: // xstick
-            snare_note = MIDI_SNARE_XSTICK;
-            break;
-          case constant_ABC_SN_Buzz: // xstick
-            snare_note = MIDI_SNARE_BUZZ;
-            break;
-          case false:
-            break;
-          default:
-            console.log("Bad case in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
-            break;
-        }
+        const snLookup = snareMidiFor(Snare_Array[i], midi_output_type);
+        const snare_note: any = snLookup ? snLookup.note : false;
+        const snare_velocity = snLookup ? snLookup.velocity : MIDI_VELOCITY_NORMAL;
 
         if (snare_note !== false) {
           //if(prev_snare_note != false)
@@ -2157,25 +2119,9 @@ class GrooveUtils {
           //prev_snare_note = snare_note;
         }
 
-        var kick_note: any = false;
-        var kick_splash_note: any = false;
-        switch (Kick_Array[i]) {
-          case constant_ABC_KI_Splash: // just HH Foot
-            kick_splash_note = MIDI_HIHAT_FOOT;
-            break;
-          case constant_ABC_KI_SandK: // Kick & HH Foot
-            kick_splash_note = MIDI_HIHAT_FOOT;
-            kick_note = MIDI_KICK_NORMAL;
-            break;
-          case constant_ABC_KI_Normal: // just Kick
-            kick_note = MIDI_KICK_NORMAL;
-            break;
-          case false:
-            break;
-          default:
-            console.log("Bad case in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
-            break;
-        }
+        const kickLookup = kickMidiFor(Kick_Array[i]);
+        const kick_note: any = kickLookup.kick !== null ? kickLookup.kick : false;
+        const kick_splash_note: any = kickLookup.splash !== null ? kickLookup.splash : false;
         if (kick_note !== false) {
           //if(prev_kick_note != false)
           //	midiTrack.addNoteOff(midi_channel, prev_kick_note, 0);
@@ -2198,31 +2144,10 @@ class GrooveUtils {
 
         if (Toms_Array) {
           for (var which_array = 0; which_array < constant_NUMBER_OF_TOMS; which_array++) {
-            var tom_note: any = false;
-            if (Toms_Array[which_array][i] !== undefined) {
-              switch (Toms_Array[which_array][i]) {
-                case constant_ABC_T1_Normal: // Tom 1
-                  tom_note = MIDI_TOM1_NORMAL;  // midi code High tom 2
-                  break;
-                case constant_ABC_T2_Normal: // Midi code Mid tom 1
-                  tom_note = MIDI_TOM2_NORMAL;
-                  break;
-                case constant_ABC_T3_Normal: // Midi code Mid tom 2
-                  tom_note = MIDI_TOM3_NORMAL;
-                  break;
-                case constant_ABC_T4_Normal: // Midi code Low Tom 1
-                  tom_note = MIDI_TOM4_NORMAL;
-                  break;
-                case false:
-                  break;
-                default:
-                  console.log("Bad case in GrooveUtils.MIDI_from_HH_Snare_Kick_Arrays");
-                  break;
-              }
-            }
-            if (tom_note !== false) {
-              midiTrack.addNoteOn(midi_channel, tom_note, delay_for_next_note, MIDI_VELOCITY_NORMAL);
-              delay_for_next_note = 0; // zero the delay
+            const tomLookup = tomMidiFor(Toms_Array[which_array]?.[i]);
+            if (tomLookup !== null) {
+              midiTrack.addNoteOn(midi_channel, tomLookup, delay_for_next_note, MIDI_VELOCITY_NORMAL);
+              delay_for_next_note = 0;
             }
           }
         }
@@ -2934,3 +2859,33 @@ class GrooveUtils {
 globalThis.abcNoteToTabChar = abcNoteToTabChar;
 globalThis.tabCharToAbcNote = tabCharToAbcNote;
 (globalThis as any).getAsSet = getAsSet;
+(globalThis as any).hihatMidiFor = hihatMidiFor;
+(globalThis as any).snareMidiFor = snareMidiFor;
+(globalThis as any).kickMidiFor = kickMidiFor;
+(globalThis as any).tomMidiFor = tomMidiFor;
+// Re-export ABC constants for tests
+(globalThis as any).constant_ABC_HH_Normal = constant_ABC_HH_Normal;
+(globalThis as any).constant_ABC_HH_Accent = constant_ABC_HH_Accent;
+(globalThis as any).constant_ABC_HH_Open = constant_ABC_HH_Open;
+(globalThis as any).constant_ABC_HH_Close = constant_ABC_HH_Close;
+(globalThis as any).constant_ABC_HH_Ride = constant_ABC_HH_Ride;
+(globalThis as any).constant_ABC_HH_Ride_Bell = constant_ABC_HH_Ride_Bell;
+(globalThis as any).constant_ABC_HH_Cow_Bell = constant_ABC_HH_Cow_Bell;
+(globalThis as any).constant_ABC_HH_Crash = constant_ABC_HH_Crash;
+(globalThis as any).constant_ABC_HH_Stacker = constant_ABC_HH_Stacker;
+(globalThis as any).constant_ABC_HH_Metronome_Normal = constant_ABC_HH_Metronome_Normal;
+(globalThis as any).constant_ABC_HH_Metronome_Accent = constant_ABC_HH_Metronome_Accent;
+(globalThis as any).constant_ABC_SN_Normal = constant_ABC_SN_Normal;
+(globalThis as any).constant_ABC_SN_Accent = constant_ABC_SN_Accent;
+(globalThis as any).constant_ABC_SN_Ghost = constant_ABC_SN_Ghost;
+(globalThis as any).constant_ABC_SN_Flam = constant_ABC_SN_Flam;
+(globalThis as any).constant_ABC_SN_Drag = constant_ABC_SN_Drag;
+(globalThis as any).constant_ABC_SN_XStick = constant_ABC_SN_XStick;
+(globalThis as any).constant_ABC_SN_Buzz = constant_ABC_SN_Buzz;
+(globalThis as any).constant_ABC_KI_Normal = constant_ABC_KI_Normal;
+(globalThis as any).constant_ABC_KI_Splash = constant_ABC_KI_Splash;
+(globalThis as any).constant_ABC_KI_SandK = constant_ABC_KI_SandK;
+(globalThis as any).constant_ABC_T1_Normal = constant_ABC_T1_Normal;
+(globalThis as any).constant_ABC_T2_Normal = constant_ABC_T2_Normal;
+(globalThis as any).constant_ABC_T3_Normal = constant_ABC_T3_Normal;
+(globalThis as any).constant_ABC_T4_Normal = constant_ABC_T4_Normal;

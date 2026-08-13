@@ -282,3 +282,89 @@ describe('Measure to ABC', () => {
     expect(abc).toContain("(12:12:12[^g1F1]z1z1^g1^g1z1z1^g1[^g1F1]^g1^g1z1 (12:12:12!accent![c1^g1]z1e1[^A'1e1]^g1z1F1z1^g1A1z1z1 (12:12:12[^g1F1A1][!(.!!).!c1A1]^c'1z1^g1!accent!^g1[!(.!!).!c1F1]z1^g1z1!///!c1F1 (12:12:12!accent![c1^g1F1]F1F1z1[^g1F1]z1F1z1[^g1F1]z1F1z1 ||");
   });
 });
+
+describe('MIDI note lookups', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  describe('hihatMidiFor', () => {
+    // [abcName, mode, expectedNote, expectedVelocity]
+    const cases = [
+      ['HH_Normal', 'general_MIDI', 42, 85],
+      ['HH_Close', 'general_MIDI', 42, 85],
+      ['HH_Accent', 'general_MIDI', 42, 120],
+      ['HH_Accent', 'Custom', 108, 85],
+      ['HH_Open', 'general_MIDI', 46, 85],
+      ['HH_Ride', 'general_MIDI', 51, 85],
+      ['HH_Ride_Bell', 'general_MIDI', 53, 85],
+      ['HH_Cow_Bell', 'general_MIDI', 105, 85],
+      ['HH_Crash', 'general_MIDI', 49, 85],
+      ['HH_Stacker', 'general_MIDI', 52, 85],
+      ['HH_Metronome_Normal', 'general_MIDI', 77, 85],
+      ['HH_Metronome_Accent', 'general_MIDI', 76, 85],
+    ];
+    test.each(cases)('%s (%s) -> note=%i vel=%i', (name, mode, note, vel) => {
+      const abc = globalThis[`constant_ABC_${name}`];
+      expect(hihatMidiFor(abc, mode)).toEqual({ note, velocity: vel });
+    });
+    test('returns null for false/OFF', () => {
+      expect(hihatMidiFor(false, 'general_MIDI')).toBeNull();
+    });
+    test('returns null for unknown value', () => {
+      expect(hihatMidiFor('nonsense', 'general_MIDI')).toBeNull();
+    });
+  });
+
+  describe('snareMidiFor', () => {
+    const cases = [
+      ['SN_Normal', 'general_MIDI', 38, 85],
+      ['SN_Accent', 'general_MIDI', 38, 120],
+      ['SN_Accent', 'Custom', 22, 85],
+      ['SN_Ghost', 'general_MIDI', 38, 50],
+      ['SN_Ghost', 'Custom', 21, 50],
+      ['SN_Flam', 'general_MIDI', 38, 120],
+      ['SN_Flam', 'Custom', 107, 85],
+      ['SN_Drag', 'general_MIDI', 38, 120],
+      ['SN_Drag', 'Custom', 103, 85],
+      ['SN_XStick', 'general_MIDI', 37, 85],
+      ['SN_Buzz', 'general_MIDI', 104, 85],
+    ];
+    test.each(cases)('%s (%s) -> note=%i vel=%i', (name, mode, note, vel) => {
+      const abc = globalThis[`constant_ABC_${name}`];
+      expect(snareMidiFor(abc, mode)).toEqual({ note, velocity: vel });
+    });
+    test('returns null for false/OFF', () => {
+      expect(snareMidiFor(false, 'Custom')).toBeNull();
+    });
+  });
+
+  describe('kickMidiFor', () => {
+    test('Normal -> kick only', () => {
+      expect(kickMidiFor(constant_ABC_KI_Normal)).toEqual({ kick: 35, splash: null });
+    });
+    test('Splash -> hi-hat foot only', () => {
+      expect(kickMidiFor(constant_ABC_KI_Splash)).toEqual({ kick: null, splash: 44 });
+    });
+    test('SandK -> both kick + hi-hat foot', () => {
+      expect(kickMidiFor(constant_ABC_KI_SandK)).toEqual({ kick: 35, splash: 44 });
+    });
+    test('false/OFF -> both null', () => {
+      expect(kickMidiFor(false)).toEqual({ kick: null, splash: null });
+    });
+  });
+
+  describe('tomMidiFor', () => {
+    test('T1..T4 -> distinct notes', () => {
+      expect(tomMidiFor(constant_ABC_T1_Normal)).toBe(48);
+      expect(tomMidiFor(constant_ABC_T2_Normal)).toBe(47);
+      expect(tomMidiFor(constant_ABC_T3_Normal)).toBe(45);
+      expect(tomMidiFor(constant_ABC_T4_Normal)).toBe(43);
+    });
+    test('returns null for false/undefined/unknown', () => {
+      expect(tomMidiFor(false)).toBeNull();
+      expect(tomMidiFor(undefined)).toBeNull();
+      expect(tomMidiFor('junk')).toBeNull();
+    });
+  });
+});
