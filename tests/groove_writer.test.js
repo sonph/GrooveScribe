@@ -1547,6 +1547,7 @@ describe('Notion Embedding Options Measure Table', () => {
     embed.convert();
 
     const convertedUrl = document.getElementById('convertedUrl').value;
+    expect(convertedUrl).toContain('https://sonpham.me/GrooveScribe/render.html');
     expect(convertedUrl).toContain('EmbedTempoTimeSig=true');
     expect(convertedUrl).toContain('subText=Main%20Verse');
     expect(convertedUrl).toContain('&RepeatBegins=1');
@@ -1556,7 +1557,7 @@ describe('Notion Embedding Options Measure Table', () => {
   });
 
   test('decodeConvertedUrl restores table state from embed URL', () => {
-    const testUrl = 'https://sonpham.me/notion-drum-sheet/render.html?TimeSig=4/4&EmbedTempoTimeSig=true&subText=Chorus&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Start;4:e:Outro';
+    const testUrl = 'https://sonpham.me/GrooveScribe/render.html?TimeSig=4/4&EmbedTempoTimeSig=true&subText=Chorus&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Start;4:e:Outro';
     document.getElementById('convertedUrl').value = testUrl;
 
     embed.decodeConvertedUrl();

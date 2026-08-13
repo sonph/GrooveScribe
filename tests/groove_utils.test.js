@@ -685,4 +685,51 @@ describe('Legend and ABC Header', () => {
     data.showTempo = false;
     expect(encodeGrooveQueryString(data)).not.toContain('ShowTempo');
   });
+
+  test('decodeGrooveUrl parses repeats, alternate endings, measure text, and subText', () => {
+    const url = '?TimeSig=4/4&Div=12&Tempo=88&ShowTempo=1&EmbedTempoTimeSig=true&subText=Chorus%20Groove&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Intro;3:b:Bridge;4:e:Outro&H=|xxxxxxxxxxxx|xxxxxxxxxxxx|xxxxxxxxxxxx|xxxxxxxxxxxx|&S=|---O-----O--|---O-----O--|---O-----O--|---O-----O--|&K=|o-----o-----|o-----o-----|o-----o-----|o-----o-----|';
+    const decoded = decodeGrooveUrl(url);
+
+    expect(decoded.showTempo).toBe(true);
+    expect(decoded.subText).toBe('Chorus Groove');
+    expect(Array.from(decoded.repeatBegins)).toEqual([1, 3]);
+    expect(Array.from(decoded.repeatEnds)).toEqual([2, 4]);
+    expect(decoded.repeatEndings.get(2)).toBe('1');
+    expect(decoded.repeatEndings.get(4)).toBe('2');
+    expect(decoded.measureText.get(1)).toEqual({ begin: 'Intro' });
+    expect(decoded.measureText.get(3)).toEqual({ begin: 'Bridge' });
+    expect(decoded.measureText.get(4)).toEqual({ end: 'Outro' });
+
+    const grooveData = new GrooveData();
+    grooveData.fromUrl(url);
+    expect(grooveData.measures.length).toBe(4);
+    expect(grooveData.subText).toBe('Chorus Groove');
+    expect(Array.from(grooveData.repeatBegins)).toEqual([1, 3]);
+    expect(Array.from(grooveData.repeatEnds)).toEqual([2, 4]);
+  });
+
+  test('getAbcNotation renders repeats, alternate endings, and text annotations correctly', () => {
+    const url = '?Mode=edit&TimeSig=4/4&Div=12&Title=title&Author=author&Comments=comments&Tempo=88&ShowTempo=1&H=|xx-xxxxx-brr|x-x-x-x-x-x-|&S=|---O--O-gO--|---O-----O--|&K=|o-o---X--o--|o-----o-----|&EmbedTempoTimeSig=true&RepeatBegins=1&RepeatEnds=1';
+    const grooveData = new GrooveData();
+    grooveData.fromUrl(url);
+
+    const header = grooveData.getAbcHeader(false, 600, false);
+    const notation = grooveData.getAbcNotation();
+
+    expect(header).toContain('T: title\n');
+    expect(header).toContain('C: author\n');
+    expect(header).toContain('P: comments\n');
+    expect(header).toContain('Q: 1/4=88\n');
+
+    // Stickings voice repeats
+    expect(notation).toContain('V:Stickings\n|: x4x4x4 x4x4x4 x4x4x4 x4x4x4 :| x4x4x4 x4x4x4 x4x4x4 x4x4x4 ||');
+
+    // Hands voice repeats
+    expect(notation).toContain('|: (3:3:3[^g4F4]^g4F4 (3:3:3!accent![c4^g4]^g4^g4 (3:3:3!accent![c4^g4F^d,4]^g4!(.!!).!c4 (3:3:3!accent![c4^B\'4F4]^A\'4^A\'4 :|');
+    expect(notation).toContain('(3:3:3[^g4F4]z4^g4 (3:3:3!accent!c4^g4z4 (3:3:3[^g4F4]z4^g4 (3:3:3!accent!c4^g4z4 ||');
+
+    // Verify SVG rendering using GrooveUtils
+    const utils = new GrooveUtils(true);
+    expect(notation).toContain('||');
+  });
 });

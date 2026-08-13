@@ -202,7 +202,7 @@ function setEmbedTableData(data: Partial<EmbedTableData> | null): void {
 
 function convert(): void {
   const args = typeof window !== "undefined" && window.location ? window.location.search : "";
-  var convertedUrl = "https://sonpham.me/notion-drum-sheet/render.html" + args;
+  var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
 
   const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo")) as HTMLInputElement | null;
   const showTempo = showTempoElem ? showTempoElem.checked : false;

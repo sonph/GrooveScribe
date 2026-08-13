@@ -661,6 +661,11 @@ class Measure {
   }
 }
 
+interface MeasureTextEntry {
+  begin?: string;
+  end?: string;
+}
+
 interface DecodedGrooveUrl {
   viewMode: boolean;
   debugMode: boolean;
@@ -674,6 +679,11 @@ interface DecodedGrooveUrl {
   swingPercent: number;
   showLegend: boolean;
   showTempo: boolean;
+  repeatBegins: Set<number>;
+  repeatEnds: Set<number>;
+  repeatEndings: Map<number, string>;
+  measureText: Map<number, MeasureTextEntry>;
+  subText: string;
   // Raw pipe-delimited tab strings keyed by DrumType.name (e.g. "H", "S", "K").
   drumTabs: Map<string, string>;
 }
@@ -690,6 +700,65 @@ function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
     }
   }
 
+  const repeatBegins = new Set<number>();
+  const rbParam = params.get('RepeatBegins');
+  if (rbParam) {
+    rbParam.split(';').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).forEach(n => repeatBegins.add(n));
+  }
+
+  const repeatEnds = new Set<number>();
+  const reParam = params.get('RepeatEnds');
+  if (reParam) {
+    reParam.split(';').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).forEach(n => repeatEnds.add(n));
+  }
+
+  const repeatEndings = new Map<number, string>();
+  const rendParam = params.get('RepeatEndings');
+  if (rendParam) {
+    rendParam.split(';').forEach(entry => {
+      const parts = entry.split(':');
+      if (parts.length >= 2) {
+        const m = parseInt(parts[0].trim(), 10);
+        const ending = parts[1].trim();
+        if (!isNaN(m) && m > 0 && ending) {
+          repeatEndings.set(m, ending);
+        }
+      }
+    });
+  }
+
+  const measureText = new Map<number, MeasureTextEntry>();
+  const mtParam = params.get('MeasureText');
+  if (mtParam) {
+    mtParam.split(';').forEach(entry => {
+      const parts = entry.split(':');
+      if (parts.length >= 2) {
+        const m = parseInt(parts[0].trim(), 10);
+        if (isNaN(m) || m <= 0) return;
+        let isBegin = true;
+        let text = "";
+        if (parts.length === 2) {
+          text = decodeURIComponent(parts[1]);
+        } else {
+          const type = parts[1].toLowerCase();
+          isBegin = type.startsWith('b') || type.startsWith('s');
+          text = decodeURIComponent(parts.slice(2).join(':'));
+        }
+        if (!measureText.has(m)) {
+          measureText.set(m, {});
+        }
+        const obj = measureText.get(m)!;
+        if (isBegin) {
+          obj.begin = text;
+        } else {
+          obj.end = text;
+        }
+      }
+    });
+  }
+
+  const subText = params.get('subText') ? decodeURIComponent(params.get('subText')!) : '';
+
   return {
     viewMode: params.get('Mode') === 'view',
     debugMode: params.get('Debug') === '1',
@@ -703,6 +772,11 @@ function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
     swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
     showLegend: params.get('Legend') === '1' || params.get('showLegend') === '1',
     showTempo: params.get('ShowTempo') === '1' || params.get('EmbedTempoTimeSig') === 'true',
+    repeatBegins,
+    repeatEnds,
+    repeatEndings,
+    measureText,
+    subText,
     drumTabs,
   };
 }
@@ -797,6 +871,11 @@ class GrooveData {
   debugMode: boolean;
   grooveDBAuthoring: boolean;
   viewMode: boolean;
+  repeatBegins: Set<number>;
+  repeatEnds: Set<number>;
+  repeatEndings: Map<number, string>;
+  measureText: Map<number, MeasureTextEntry>;
+  subText: string;
 
   constructor(timeSig = TimeSignature.COMMON_TIME_44, subdivision = Subdivision.SIXTEENTH, numberOfMeasures = 1) {
     this.timeSig = timeSig;
@@ -821,6 +900,11 @@ class GrooveData {
     this.debugMode = true;
     this.grooveDBAuthoring = false;
     this.viewMode = false;
+    this.repeatBegins = new Set();
+    this.repeatEnds = new Set();
+    this.repeatEndings = new Map();
+    this.measureText = new Map();
+    this.subText = "";
   }
 
   get numberOfMeasures(): number {
@@ -849,6 +933,11 @@ class GrooveData {
     this.swingPercent = decoded.swingPercent;
     this.showLegend = decoded.showLegend;
     this.showTempo = decoded.showTempo;
+    this.repeatBegins = decoded.repeatBegins;
+    this.repeatEnds = decoded.repeatEnds;
+    this.repeatEndings = decoded.repeatEndings;
+    this.measureText = decoded.measureText;
+    this.subText = decoded.subText;
 
     const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
     if (measures.length !== 0) {
@@ -1055,69 +1144,86 @@ class GrooveData {
   // Note length is a multiple of the subdivision. Subdivision is set with `L:` in the header.
   // For example, `L:1/8` and `f1` means a 1/8 note, `f2` means a 1/4 note.
   getAbcNotation(): string {
-    // TODO: add stickings.
-
-    // convert sticking count symbol to the actual count
-    // do this right before ABC output so it can't every get encoded into something that gets saved.
-    // this.convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig);
-
-    var measuresPerLine = 2;
-    if (this.subdivision.equals(Subdivision.S_32ND)) {
-      measuresPerLine = 1; // 32nd notes are too dense, so we only show one measure per line.
-    }
-    var lines = [];
     const isTriplet = this.subdivision.isTriplet();
-    // Stickings voice is currently just rests. Its total length must match the
-    // hands voice — a mismatch causes abc2svg to render staves misaligned.
-    var measureRests: string;
-    if (isTriplet) {
-      // e.g. "x4x4x4" per beat — one rest per grid position, no spaces within a beat.
-      const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
-      const perBeat = ('x' + this.subdivision.abcPositionLength()).repeat(notesPerBeat);
-      measureRests = Array(this.timeSig.top).fill(perBeat).join(' ');
-    } else {
-      const abcUnitsPerBeat = this.subdivision.abcNoteLength() / this.timeSig.bottom.value;
-      const beatRest = 'z' + abcUnitsPerBeat;
-      measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
-    }
-    const stickings = Array(this.measures.length).fill(measureRests).join(' | ') + ' ||';
-    lines.push('V:Stickings\n' + stickings);
-    lines.push('V:Hands stem=up\n%%voicemap drum');
-    var line = [];
+    const stickingsVoiceParts: string[] = [];
+    const handsVoiceParts: string[] = [];
+
     for (let measureNum = 0; measureNum < this.measures.length; measureNum++) {
       const measure = this.measures[measureNum];
-      if ((measureNum + 1) % measuresPerLine === 0) {
-        line.push('\\'); // End of line, start a new one.
+      const m = measureNum + 1;
+      const lastMeasure = (measureNum === this.measures.length - 1);
+
+      let measureRests: string;
+      if (isTriplet) {
+        const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+        const perBeat = ('x' + this.subdivision.abcPositionLength()).repeat(notesPerBeat);
+        measureRests = Array(this.timeSig.top).fill(perBeat).join(' ');
+      } else {
+        const abcUnitsPerBeat = this.subdivision.abcNoteLength() / this.timeSig.bottom.value;
+        const beatRest = 'z' + abcUnitsPerBeat;
+        measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
       }
 
+      const hasRepeatBegin = this.repeatBegins && this.repeatBegins.has(m);
+      const hasRepeatEnd = this.repeatEnds && this.repeatEnds.has(m);
+      const altEnding = this.repeatEndings ? this.repeatEndings.get(m) : undefined;
+      const textBegin = this.measureText ? this.measureText.get(m)?.begin : undefined;
+      const textEnd = this.measureText ? this.measureText.get(m)?.end : undefined;
+
+      let beginPrefix = '';
+      if (hasRepeatBegin) {
+        beginPrefix = altEnding ? `|:[${altEnding}` : '|:';
+      } else if (altEnding) {
+        beginPrefix = `[${altEnding}`;
+      }
+
+      let endBar: string;
+      if (hasRepeatEnd) {
+        endBar = ':|';
+      } else if (lastMeasure) {
+        endBar = '||';
+      } else {
+        endBar = '|';
+      }
+
+      // Stickings voice for measure m
+      let stickingPart = (beginPrefix ? beginPrefix + ' ' : '') + measureRests + ' ' + endBar;
+      stickingsVoiceParts.push(stickingPart);
+
+      // Hands voice for measure m
       const hh_array = measure.getArray(DrumType.HIHAT);
       const snare_array = measure.getArray(DrumType.SNARE);
       const kick_array = measure.getArray(DrumType.KICK);
       const tom1_array = measure.getArray(DrumType.TOM1);
       const tom4_array = measure.getArray(DrumType.TOM4);
       const drumArrays: [Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>, Array<string | null>] = [hh_array, snare_array, kick_array, tom1_array, tom4_array];
-      const lastMeasure = measureNum === this.measures.length - 1;
 
-      if (isTriplet) {
-        this.appendTripletMeasureAbc(line, drumArrays);
-      } else {
-        this.appendPlainMeasureAbc(line, drumArrays);
+      const handsSegments: string[] = [];
+      if (beginPrefix) {
+        handsSegments.push(beginPrefix + ' ');
       }
-      // Triplet output uses ` ||` / ` |` with a leading space to match the
-      // legacy format the tests pin against; plain output does not.
-      const barSep = lastMeasure ? '||' : '|\\';
-      line.push(isTriplet ? ' ' + barSep : barSep);
-      lines.push(line.join(''));
-      line = [];
+      if (textBegin) {
+        handsSegments.push(`"${textBegin}"`);
+      }
+      if (isTriplet) {
+        this.appendTripletMeasureAbc(handsSegments, drumArrays);
+      } else {
+        this.appendPlainMeasureAbc(handsSegments, drumArrays);
+      }
+      if (textEnd) {
+        handsSegments.push(`"${textEnd}"`);
+      }
+      const endBarWithSpacing = isTriplet ? ' ' + endBar : (lastMeasure && !hasRepeatEnd ? ' ' + endBar : endBar);
+      handsSegments.push(endBarWithSpacing);
+
+      handsVoiceParts.push(handsSegments.join(''));
     }
 
-    return lines.join('\n') + '\n';
+    const lines: string[] = [];
+    lines.push('V:Stickings\n' + stickingsVoiceParts.join(' '));
+    lines.push('V:Hands stem=up\n%%voicemap drum\n' + handsVoiceParts.join(' '));
 
-    //   this.note_mapping_array = this.create_note_mapping_array_for_highlighting(FullNoteHHArray,
-    //     FullNoteSnareArray,
-    //     FullNoteKickArray,
-    //     FullNoteTomsArray,
-    //     FullNoteHHArray.length);
+    return lines.join('\n') + '\n';
   }
 
   getAbcHeader(isPermutation: boolean, renderWidth: number, showLegend: boolean = false): string {

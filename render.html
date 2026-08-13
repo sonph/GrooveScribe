@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Embedded Groove</title>
+
+	<script src="./js/abc2svg-1.js"></script>
+	<script src="./js/groove_utils.js"></script>
+	<script>
+		function parseQuery(queryString) {
+			var query = {};
+			var pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
+			for (var i = 0; i < pairs.length; i++) {
+				if (!pairs[i]) continue;
+				var pair = pairs[i].split('=');
+				query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+			}
+			return query;
+		}
+
+		window.addEventListener('DOMContentLoaded', function () {
+			var search = window.location.search || '';
+			var query = parseQuery(search);
+			var myGrooveUtils = new GrooveUtils();
+			var data = myGrooveUtils.data;
+			data.fromUrl(search);
+
+			var textE = document.getElementById("subText");
+			var topDiv = document.getElementById("topDiv");
+			var text = query.subText;
+			if (text) {
+				textE.innerText = decodeURIComponent(text);
+			} else if (topDiv) {
+				topDiv.style.display = "none";
+			}
+
+			var svgTarget = document.getElementById("svgTarget");
+			var renderWidth = 600;
+			var fullAbc = data.getAbcHeader(false, renderWidth, data.showLegend) + data.getAbcNotation();
+			console.log(fullAbc);
+			var svgReturn = myGrooveUtils.renderABCtoSVG(fullAbc);
+
+			var editorUrl = "https://sonpham.me/GrooveScribe/index.html" + search;
+			svgTarget.innerHTML = '<a target="_blank" style="text-decoration: none" href="' + editorUrl + '">' + svgReturn.svg + '</a>';
+		});
+	</script>
+	<style>
+		body {
+			overflow: hidden; /* hide scrollbars */
+			margin: 0;
+			padding: 4px;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+
+		.Printable {
+			display: block;
+		}
+		.nonPrintable {
+			display: block;
+		}
+		.svgTarget {
+			width: 100%;
+			display: inline-block;
+		}
+		.svgTarget svg {
+			width: 100%;
+			height: auto;
+		}
+		#topDiv {
+			width: 100%;
+			padding: 4px 8px;
+			box-sizing: border-box;
+			font-size: 14px;
+			font-weight: bold;
+			color: #333;
+		}
+		#subText {
+			display: inline-block;
+		}
+		.abcr {  /* rectangles enclosing notes in ABC SVG */
+			fill: transparent;
+			fill-opacity: 0.25;
+		}
+		.abcr.highlighted {
+			fill: #2484C0 !important;
+			fill-opacity: 0.20;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="topDiv">
+		<span id="subText"></span>
+	</div>
+	<!-- groove displays here -->
+	<div id="GrooveDisplayId">
+		<div class="Printable">
+			<div id="svgTarget" class="svgTarget"></div>
+		</div>
+	</div>
+</body>
+
+</html>
