@@ -286,85 +286,36 @@ function kickPermutationTriplets(section: number): Array<false | 'F'> {
 class GrooveWriter {
   myGrooveUtils: GrooveUtils;
   data: GrooveData;
-  myGrooveData: GrooveData;
   global_tempoChangeCallbackTimeout: number | null = null;
   class_metronome_frequency: number = 0;
-  class_metronome_auto_speed_up_active: boolean;
-  class_metronome_count_in_active: boolean;
-  class_metronome_count_in_is_playing: boolean;
-  class_permutation_type: string;
-  class_advancedEditIsOn: boolean;
-  class_cur_hh_highlight_id: number;
-  class_cur_tom1_highlight_id: number;
-  class_cur_tom4_highlight_id: number;
-  class_cur_snare_highlight_id: number;
-  class_cur_kick_highlight_id: number;
-  class_cur_all_notes_highlight_id: number;
+  class_metronome_auto_speed_up_active: boolean = false;
+  class_metronome_count_in_active: boolean = false;
+  class_metronome_count_in_is_playing: boolean = false;
+  class_permutation_type: string = "";
+  class_advancedEditIsOn: boolean = false;
+  class_cur_hh_highlight_id: number = 0;
+  class_cur_tom1_highlight_id: number = 0;
+  class_cur_tom4_highlight_id: number = 0;
+  class_cur_snare_highlight_id: number = 0;
+  class_cur_kick_highlight_id: number = 0;
+  class_cur_all_notes_highlight_id: number = 0;
   insertNoteContextMenu: HTMLElement | null = null;
-  class_which_index_last_clicked: number;
-  class_undo_stack: Array<string>;
-  class_redo_stack: Array<string>;
-  browserInfo: any;
-  class_our_midi_start_time: any | null;
-  class_our_midi_start_tempo: number;
-  class_our_last_midi_tempo_increase_time: any | null;
-  class_our_last_midi_tempo_increase_remainder: number;
-  have_shown_mixed_division_message: boolean;
-  class_app_title: string;
-  class_measure_for_note_label_click: number;
+  class_which_index_last_clicked: number = 0;
+  class_undo_stack: Array<string> = [];
+  class_redo_stack: Array<string> = [];
+  browserInfo: any = null;
+  class_our_midi_start_time: any | null = null;
+  class_our_midi_start_tempo: number = 0;
+  class_our_last_midi_tempo_increase_time: any | null = null;
+  class_our_last_midi_tempo_increase_remainder: number = 0;
+  have_shown_mixed_division_message: boolean = false;
+  class_app_title: string = "Groove Scribe";
+  class_measure_for_note_label_click: number = 0;
 
   constructor(grooveUtilsForTesting: GrooveUtils | null = null) {
     this.myGrooveUtils = grooveUtilsForTesting || new GrooveUtils();
     this.data = this.myGrooveUtils.data;
     this.data.fromUrl(window.location.search);
-
-    var class_undo_stack = [];
-    var class_redo_stack = [];
-
-    var class_metronome_auto_speed_up_active = false;
-    var class_metronome_count_in_active = false;
-    var class_metronome_count_in_is_playing = false;
-
-    var class_our_midi_start_time = null;
-    var class_our_midi_start_tempo = 0;
-    var class_our_last_midi_tempo_increase_time = null;
-    var class_our_last_midi_tempo_increase_remainder = 0;
-
-    var have_shown_mixed_division_message = false;
-
-    var class_app_title = "Groove Scribe";
-    var class_permutation_type = "none";
-    var class_advancedEditIsOn = false;
-    var class_measure_for_note_label_click = 0;
-    var class_which_index_last_clicked = 0;
-
-    var constant_default_tempo = 80;
-    var constant_note_stem_off_color = "transparent";
-
-    var constant_note_on_color_hex = "#000000";
-    var constant_note_on_color_rgb = 'rgb(0, 0, 0)';
-
-    var constant_note_off_color_hex = "#FFF";
-    var constant_note_off_color_rgb = 'rgb(255, 255, 255)';
-
-    var constant_note_border_color_hex = "#999";
-    var constant_hihat_note_off_color_hex = "#CCC";
-    var constant_hihat_note_off_color_rgb = 'rgb(204, 204, 204)';
-
-    var constant_note_hidden_color_rgb = "transparent";
-
-    var constant_sticking_right_on_color_rgb = "rgb(36, 132, 192)";
-    var constant_sticking_left_on_color_rgb = "rgb(57, 57, 57)";
-    var constant_sticking_both_on_color_rgb = "rgb(57, 57, 57)";
-    var constant_sticking_count_on_color_rgb = "rgb(57, 57, 57)";
-    var constant_sticking_right_off_color_rgb = "rgb(204, 204, 204)";
-    var constant_sticking_left_off_color_rgb = "rgb(204, 204, 204)";
-    var constant_snare_accent_on_color_hex = "#FFF";
-    var constant_snare_accent_on_color_rgb = "rgb(255, 255, 255)";
-
-    var insertNoteContextMenu = null;
-    var global_tempoChangeCallbackTimeout = null;
-    var class_metronome_frequency = 0;
   }
 
   usingTriplets() {
@@ -2491,9 +2442,7 @@ class GrooveWriter {
   }
 
   show_FullURLPopup = function () {
-    var popup = document.getElementById("fullURLPopup");
-
-    var ShareBut = new ShareButton({
+    new ShareButton({
       ui: {
         flyout: 'bottom center',
         button_font: false,

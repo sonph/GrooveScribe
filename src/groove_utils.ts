@@ -1158,7 +1158,6 @@ class GrooveData {
 class MidiEventCallback {
   grooveUtils: GrooveUtils;
   noteHasChangedSinceLastDataLoad: boolean;
-  myGrooveData: GrooveData;
   midiEventCallbacks: object;
   grooveUtilsUniqueIndex: number;
   playEvent: (root?: any) => void;
@@ -1172,7 +1171,7 @@ class MidiEventCallback {
     this.grooveUtilsUniqueIndex = grooveUtils.grooveUtilsUniqueIndex;
     this.noteHasChangedSinceLastDataLoad = false;
 
-    this.playEvent = function (root) {
+    this.playEvent = function () {
       var icon = document.getElementById("midiPlayImage" + this.grooveUtilsUniqueIndex);
       if (icon)
         icon.className = "midiPlayImage Playing";
@@ -1181,18 +1180,14 @@ class MidiEventCallback {
       }
     };
   }
-  // default loadMIDIDataEvent.  You probably want to override this
-  // it will only make changes to the tempo and swing
-  // playStarting: boolean that is true on the first time through the midi playback
-  loadMidiDataEvent(playStarting) {
-    if (this.myGrooveData) {
-      this.myGrooveData.tempo = this.myGrooveData.tempo;
-      this.myGrooveData.swingPercent = this.myGrooveData.swingPercent;
-      var midiURL = this.create_MIDIURLFromGrooveData(this.myGrooveData);
+
+  loadMidiDataEvent(_playStarting?: boolean) {
+    if (this.grooveUtils && this.grooveUtils.data) {
+      var midiURL = this.create_MIDIURLFromGrooveData(this.grooveUtils.data);
       this.loadMIDIFromURL(midiURL);
       this.noteHasChangedSinceLastDataLoad = false;
     } else {
-      console.log("can't load midi song.   myGrooveData is empty");
+      console.log("can't load midi song. data is empty");
     }
   }
 
@@ -1300,7 +1295,6 @@ interface AbcObj {
 
 class GrooveUtils {
   data: GrooveData;
-  grooveData: GrooveData;
   abc_obj: AbcObj;
   metronomeSolo: boolean;
   metronomeOffsetClickStart: string;
@@ -1322,12 +1316,10 @@ class GrooveUtils {
   tempoChangeCallback: ((tempo: number) => void) | null;
   lastMidiTimeUpdate: number;
   swingPercent: number;
-  myGrooveData: GrooveData;
 
   constructor(excludeAbcForTesting = false) {
     this.grooveUtilsUniqueIndex = 0;
     this.data = new GrooveData();
-    this.grooveData = this.data;
     this.note_mapping_array = null;
     this.metronomeSolo = false;
     this.metronomeOffsetClickStart = "1";
@@ -1489,16 +1481,7 @@ class GrooveUtils {
   };
 
   setupHotKeys() {
-    var isCtrl = false;
-    document.onkeyup = function (e) {
-      if (e.which == 17)
-        isCtrl = false;
-    };
-
     document.onkeydown = (e) => {
-      if (e.which == 17)
-        isCtrl = true;
-
       const target = e.target as HTMLInputElement;
       if (e.which == 32 && (target.type == "range" || (target.tagName.toUpperCase() != "INPUT" && target.tagName.toUpperCase() != "TEXTAREA"))) {
         this.startOrStopMIDI_playback();
@@ -1814,7 +1797,6 @@ class GrooveUtils {
 
   setGrooveData(grooveData: GrooveData) {
     this.data = grooveData;
-    this.grooveData = grooveData;
   };
 
   midiNoteHasChanged() {
@@ -2341,19 +2323,19 @@ class GrooveUtils {
   };
 
   loadFullScreenGrooveScribe = () => {
-    var fullURL = (this as any).getUrlStringFromGrooveData(this.myGrooveData, 'fullGrooveScribe')
+    var fullURL = (this as any).getUrlStringFromGrooveData(this.data, 'fullGrooveScribe');
 
     var win = window.open(fullURL, '_blank');
     win.focus();
   };
 
   metronomeMiniMenuClick = () => {
-    if (this.myGrooveData.metronomeFrequency > 0)
-      this.myGrooveData.metronomeFrequency = 0;
+    if (this.data.metronomeFrequency > 0)
+      this.data.metronomeFrequency = 0;
     else
-      this.myGrooveData.metronomeFrequency = 4;
+      this.data.metronomeFrequency = 4;
 
-    this.setMetronomeFrequencyDisplay(this.myGrooveData.metronomeFrequency);
+    this.setMetronomeFrequencyDisplay(this.data.metronomeFrequency);
     this.midiNoteHasChanged();
   };
 
