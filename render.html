@@ -26,7 +26,7 @@
 			console.log(fullAbc);
 			var svgReturn = GrooveRenderer.renderABCtoSVG(fullAbc);
 
-			var editorUrl = "https://sonpham.me/GrooveScribe/index.html" + search;
+			var editorUrl = data.toEditorUrl();
 			svgTarget.innerHTML = '<a target="_blank" style="text-decoration: none" href="' + editorUrl + '">' + svgReturn.svg + '</a>';
 		});
 	</script>

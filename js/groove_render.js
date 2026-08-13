@@ -513,6 +513,43 @@ function encodeGrooveQueryString(state) {
         add('Legend', '1');
     if (state.showTempo)
         add('ShowTempo', '1');
+    if (state.repeatBegins && state.repeatBegins.size > 0) {
+        add('RepeatBegins', Array.from(state.repeatBegins).sort((a, b) => a - b).join(';'));
+    }
+    if (state.repeatEnds && state.repeatEnds.size > 0) {
+        add('RepeatEnds', Array.from(state.repeatEnds).sort((a, b) => a - b).join(';'));
+    }
+    if (state.repeatEndings && state.repeatEndings.size > 0) {
+        const endings = Array.from(state.repeatEndings.entries())
+            .filter(([m, val]) => val && val.length > 0)
+            .sort((a, b) => a[0] - b[0])
+            .map(([m, val]) => `${m}:${val}`)
+            .join(';');
+        if (endings.length > 0) {
+            add('RepeatEndings', endings);
+        }
+    }
+    if (state.measureText && state.measureText.size > 0) {
+        const textParts = [];
+        const sortedMeasures = Array.from(state.measureText.keys()).sort((a, b) => a - b);
+        for (const m of sortedMeasures) {
+            const entry = state.measureText.get(m);
+            if (!entry)
+                continue;
+            if (entry.begin && entry.begin.trim().length > 0) {
+                textParts.push(`${m}:b:${encodeURIComponent(entry.begin.trim())}`);
+            }
+            if (entry.end && entry.end.trim().length > 0) {
+                textParts.push(`${m}:e:${encodeURIComponent(entry.end.trim())}`);
+            }
+        }
+        if (textParts.length > 0) {
+            add('MeasureText', textParts.join(';'));
+        }
+    }
+    if (state.subText && state.subText.trim().length > 0) {
+        add('subText', encodeURIComponent(state.subText.trim()));
+    }
     for (const drum of DrumType.ALL) {
         if (!state.showStickings && drum.equals(DrumType.STICKINGS))
             continue;
@@ -593,6 +630,16 @@ class GrooveData {
             this.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
         }
         return this;
+    }
+    toQueryString() {
+        return encodeGrooveQueryString(this);
+    }
+    toEditorUrl(baseUrl) {
+        const defaultBase = (typeof window !== "undefined" && window.location && window.location.href.includes('render.html'))
+            ? window.location.href.replace(/render\.html.*$/, 'index.html')
+            : 'https://sonpham.me/GrooveScribe/index.html';
+        const base = baseUrl || defaultBase;
+        return base + this.toQueryString();
     }
     toUrl(url_destination = '') {
         const base = typeof window !== "undefined" && window.location

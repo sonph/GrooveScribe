@@ -50,4 +50,25 @@ describe('groove_render.js isolated execution', () => {
     expect(result.svg).toBe('<svg>mocked</svg>');
     expect(result.error_html).toBe('');
   });
+
+  test('GrooveData toEditorUrl and toQueryString encode all embed parameters', () => {
+    const url = '?TimeSig=4/4&Div=8&Tempo=80&ShowTempo=1&subText=Chorus%20Section&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Intro;4:e:Outro&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|--o---o-|--o---o-|&K=|o---o---|o---o---|o---o---|o---o---|';
+    const data = new GrooveData().fromUrl(url);
+
+    const qs = data.toQueryString();
+    expect(qs).toContain('ShowTempo=1');
+    expect(qs).toContain('subText=Chorus%20Section');
+    expect(qs).toContain('RepeatBegins=1;3');
+    expect(qs).toContain('RepeatEnds=2;4');
+    expect(qs).toContain('RepeatEndings=2:1;4:2');
+    expect(qs).toContain('MeasureText=1:b:Intro;4:e:Outro');
+
+    const editorUrl = data.toEditorUrl();
+    expect(editorUrl).toContain('https://sonpham.me/GrooveScribe/index.html?');
+    expect(editorUrl).toContain('subText=Chorus%20Section');
+    expect(editorUrl).toContain('RepeatBegins=1;3');
+    expect(editorUrl).toContain('RepeatEnds=2;4');
+    expect(editorUrl).toContain('RepeatEndings=2:1;4:2');
+    expect(editorUrl).toContain('MeasureText=1:b:Intro;4:e:Outro');
+  });
 });

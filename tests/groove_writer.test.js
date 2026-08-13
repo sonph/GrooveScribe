@@ -1556,6 +1556,34 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(convertedUrl).toContain('&MeasureText=1:b:Intro;3:e:Fill');
   });
 
+  test('convert does not select or focus convertedUrl on keystrokes/input, but does on explicit convert(true)', () => {
+    embed.renderEmbedMeasureTable(2);
+    const convertedUrlInput = document.getElementById('convertedUrl');
+    convertedUrlInput.select = jest.fn();
+
+    const subTextInput = document.getElementById('subText');
+    subTextInput.focus();
+    expect(document.activeElement).toBe(subTextInput);
+
+    // Auto convert (e.g. from input event or direct convert call)
+    embed.convert();
+    expect(convertedUrlInput.select).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(subTextInput);
+
+    // Typing in embed-text-begin retains focus
+    const txtBegin = document.querySelector('.embed-text-begin');
+    txtBegin.focus();
+    expect(document.activeElement).toBe(txtBegin);
+    txtBegin.value = 'Intro';
+    embed.convert();
+    expect(convertedUrlInput.select).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(txtBegin);
+
+    // Explicit convert with selectUrl = true (e.g. clicking Convert button)
+    embed.convert(true);
+    expect(convertedUrlInput.select).toHaveBeenCalledTimes(1);
+  });
+
   test('decodeConvertedUrl restores table state from embed URL', () => {
     const testUrl = 'https://sonpham.me/GrooveScribe/render.html?TimeSig=4/4&EmbedTempoTimeSig=true&subText=Chorus&RepeatBegins=1;3&RepeatEnds=2;4&RepeatEndings=2:1;4:2&MeasureText=1:b:Start;4:e:Outro';
     document.getElementById('convertedUrl').value = testUrl;
@@ -1590,6 +1618,39 @@ describe('Notion Embedding Options Measure Table', () => {
     expect(rows[3].querySelector('.embed-repeat-end').checked).toBe(true);
     expect(rows[3].querySelector('.embed-alt-ending').value).toBe('2');
     expect(rows[3].querySelector('.embed-text-end').value).toBe('Outro');
+  });
+
+  test('populateFromUrl populates embed form directly from search/query string', () => {
+    const query = '?subText=Bridge+Groove&RepeatBegins=1&RepeatEnds=2&RepeatEndings=2:1&MeasureText=1:b:Soft;2:e:Loud&EmbedTempoTimeSig=true';
+    embed.populateFromUrl(query);
+
+    expect(document.getElementById('subText').value).toBe('Bridge Groove');
+    expect(document.getElementById('showTempo').checked).toBe(true);
+
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(2);
+    expect(rows[0].querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(rows[0].querySelector('.embed-text-begin').value).toBe('Soft');
+    expect(rows[1].querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(rows[1].querySelector('.embed-alt-ending').value).toBe('1');
+    expect(rows[1].querySelector('.embed-text-end').value).toBe('Loud');
+  });
+
+  test('set_Default_notes populates embedding form when loading groove URL with Notion parameters', () => {
+    window.populateFromUrl = embed.populateFromUrl;
+    window.myGrooveWriter = writer;
+
+    const fullUrl = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|&subText=Pre-Chorus&RepeatBegins=1&RepeatEnds=1&MeasureText=1:b:Intro';
+    writer.set_Default_notes(fullUrl);
+
+    expect(document.getElementById('subText').value).toBe('Pre-Chorus');
+    const tbody = document.getElementById('embedMeasureTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].querySelector('.embed-repeat-start').checked).toBe(true);
+    expect(rows[0].querySelector('.embed-repeat-end').checked).toBe(true);
+    expect(rows[0].querySelector('.embed-text-begin').value).toBe('Intro');
   });
 
   test('addMeasureButtonClick and closeMeasureButtonClick update measures and embed table rows', () => {

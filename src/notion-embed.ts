@@ -200,7 +200,7 @@ function setEmbedTableData(data: Partial<EmbedTableData> | null): void {
   });
 }
 
-function convert(): void {
+function convert(selectUrl: boolean = false): void {
   const args = typeof window !== "undefined" && window.location ? window.location.search : "";
   var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
 
@@ -250,12 +250,14 @@ function convert(): void {
   const convertedUrlElement = document.getElementById("convertedUrl") as HTMLInputElement | null;
   if (convertedUrlElement) {
     convertedUrlElement.value = convertedUrl;
-    if (typeof convertedUrlElement.select === "function") {
+    if (selectUrl === true && typeof convertedUrlElement.select === "function") {
       convertedUrlElement.select();
     }
   }
 
-  setStatus("Converted!");
+  if (selectUrl === true) {
+    setStatus("Converted!");
+  }
 }
 
 function convertAndCopy(): void {
@@ -277,46 +279,73 @@ function parseQuery(queryString: string): Record<string, string> {
   for (var i = 0; i < pairs.length; i++) {
     if (!pairs[i]) continue;
     var pair = pairs[i].split('=');
-    query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+    query[decodeURIComponent(pair[0])] = decodeURIComponent((pair[1] || '').replace(/\+/g, ' '));
   }
   return query;
 }
 
 var dbg: any = {};
 
-function decodeConvertedUrl(): void {
-  console.log("decoding");
-  const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
-  const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
-  const query = parseQuery(convertedUrl.split("?")[1] || "");
+function populateFromUrl(urlOrQuery?: string): void {
+  let queryString = "";
+  if (typeof urlOrQuery === "string" && urlOrQuery.length > 0) {
+    queryString = urlOrQuery.includes("?") ? urlOrQuery.split("?")[1] : urlOrQuery;
+  } else if (typeof window !== "undefined" && window.location && window.location.search) {
+    queryString = window.location.search.startsWith("?") ? window.location.search.substring(1) : window.location.search;
+  } else {
+    const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
+    const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+    if (convertedUrl.length > 0) {
+      queryString = convertedUrl.includes("?") ? convertedUrl.split("?")[1] : convertedUrl;
+    }
+  }
+
+  const query = parseQuery(queryString);
   dbg.query = query;
 
   const isTempo = (query.EmbedTempoTimeSig || "") === "true" || (query.ShowTempo || "") === "1";
   const stElem = document.getElementById("showTempo") as HTMLInputElement | null;
-  if (stElem) stElem.checked = isTempo;
+  if (stElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
+    stElem.checked = isTempo;
+  }
   const embedStElem = document.getElementById("embedShowTempo") as HTMLInputElement | null;
-  if (embedStElem) embedStElem.checked = isTempo;
+  if (embedStElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
+    embedStElem.checked = isTempo;
+  }
 
   const subTextElem = document.getElementById("subText") as HTMLInputElement | null;
-  if (subTextElem) subTextElem.value = decodeURIComponent(query.subText || "");
+  if (subTextElem && query.subText !== undefined) {
+    subTextElem.value = decodeURIComponent((query.subText || "").replace(/\+/g, ' '));
+  }
 
   const rbInput = document.getElementById("repeatBegins") as HTMLInputElement | null;
-  if (rbInput) rbInput.value = query.RepeatBegins || "";
+  if (rbInput && query.RepeatBegins !== undefined) rbInput.value = query.RepeatBegins || "";
   const reInput = document.getElementById("repeatEnds") as HTMLInputElement | null;
-  if (reInput) reInput.value = query.RepeatEnds || "";
+  if (reInput && query.RepeatEnds !== undefined) reInput.value = query.RepeatEnds || "";
   const rendInput = document.getElementById("repeatEndings") as HTMLInputElement | null;
-  if (rendInput) rendInput.value = query.RepeatEndings || "";
+  if (rendInput && query.RepeatEndings !== undefined) rendInput.value = query.RepeatEndings || "";
   const mtInput = document.getElementById("measureText") as HTMLInputElement | null;
-  if (mtInput) mtInput.value = encodeAfterLastColon(query.MeasureText || "", false);
+  if (mtInput && query.MeasureText !== undefined) mtInput.value = encodeAfterLastColon(query.MeasureText || "", false);
 
   setEmbedTableData({
-    repeatBegins: query.RepeatBegins || "",
-    repeatEnds: query.RepeatEnds || "",
-    repeatEndings: query.RepeatEndings || "",
-    measureText: encodeAfterLastColon(query.MeasureText || "", false)
+    repeatBegins: query.RepeatBegins || (rbInput ? rbInput.value : ""),
+    repeatEnds: query.RepeatEnds || (reInput ? reInput.value : ""),
+    repeatEndings: query.RepeatEndings || (rendInput ? rendInput.value : ""),
+    measureText: encodeAfterLastColon(query.MeasureText || (mtInput ? mtInput.value : ""), false)
   });
 
   convert();
+}
+
+function decodeConvertedUrl(urlOrQuery?: string): void {
+  console.log("decoding");
+  if (typeof urlOrQuery === "string" && urlOrQuery.length > 0) {
+    populateFromUrl(urlOrQuery);
+  } else {
+    const convertedUrlElem = document.getElementById("convertedUrl") as HTMLInputElement | null;
+    const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+    populateFromUrl(convertedUrl);
+  }
 }
 
 function openLink(): void {
@@ -330,28 +359,35 @@ function openLink(): void {
 // Event Listeners
 if (typeof document !== "undefined") {
   const tempoInput = document.getElementById("showTempo");
-  if (tempoInput) tempoInput.addEventListener("keypress", convert);
+  if (tempoInput) tempoInput.addEventListener("change", () => convert());
   const embedTempoInput = document.getElementById("embedShowTempo");
-  if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("keypress", convert);
+  if (embedTempoInput && embedTempoInput !== tempoInput) embedTempoInput.addEventListener("change", () => convert());
   const subTextInput = document.getElementById("subText");
   if (subTextInput) {
-    subTextInput.addEventListener("input", convert);
-    subTextInput.addEventListener("keypress", convert);
+    subTextInput.addEventListener("input", () => convert());
+    subTextInput.addEventListener("change", () => convert());
   }
   const convertBtn = document.getElementById("convertBtn");
-  if (convertBtn) convertBtn.addEventListener("click", convert);
+  if (convertBtn) convertBtn.addEventListener("click", () => convert(true));
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) copyBtn.addEventListener("click", convertAndCopy);
   const openLinkBtn = document.getElementById("openLink");
   if (openLinkBtn) openLinkBtn.addEventListener("click", openLink);
-  const decodeBtn = document.getElementById("decodeUrlBtn");
-  if (decodeBtn) decodeBtn.addEventListener("click", decodeConvertedUrl);
 
-  // Initialize table on startup
+  // Initialize and populate form on startup
+  const initForm = () => {
+    const currentSearch = typeof window !== "undefined" && window.location ? window.location.search : "";
+    if (currentSearch && currentSearch.length > 1) {
+      populateFromUrl(currentSearch);
+    } else {
+      renderEmbedMeasureTable();
+    }
+  };
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => renderEmbedMeasureTable());
+    document.addEventListener("DOMContentLoaded", initForm);
   } else {
-    renderEmbedMeasureTable();
+    initForm();
   }
 }
 
@@ -359,6 +395,7 @@ if (typeof window !== "undefined") {
   (window as any).renderEmbedMeasureTable = renderEmbedMeasureTable;
   (window as any).getEmbedTableData = getEmbedTableData;
   (window as any).setEmbedTableData = setEmbedTableData;
+  (window as any).populateFromUrl = populateFromUrl;
   (window as any).convert = convert;
   (window as any).convertAndCopy = convertAndCopy;
   (window as any).decodeConvertedUrl = decodeConvertedUrl;
@@ -371,6 +408,7 @@ if (typeof module !== "undefined" && module.exports) {
     renderEmbedMeasureTable,
     getEmbedTableData,
     setEmbedTableData,
+    populateFromUrl,
     convert,
     convertAndCopy,
     decodeConvertedUrl,

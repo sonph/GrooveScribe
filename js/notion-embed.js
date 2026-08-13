@@ -188,7 +188,7 @@ function setEmbedTableData(data) {
             txtEnd.value = textEndMap[m] || "";
     });
 }
-function convert() {
+function convert(selectUrl = false) {
     const args = typeof window !== "undefined" && window.location ? window.location.search : "";
     var convertedUrl = "https://sonpham.me/GrooveScribe/render.html" + args;
     const showTempoElem = (document.getElementById("showTempo") || document.getElementById("embedShowTempo"));
@@ -234,11 +234,13 @@ function convert() {
     const convertedUrlElement = document.getElementById("convertedUrl");
     if (convertedUrlElement) {
         convertedUrlElement.value = convertedUrl;
-        if (typeof convertedUrlElement.select === "function") {
+        if (selectUrl === true && typeof convertedUrlElement.select === "function") {
             convertedUrlElement.select();
         }
     }
-    setStatus("Converted!");
+    if (selectUrl === true) {
+        setStatus("Converted!");
+    }
 }
 function convertAndCopy() {
     convert();
@@ -260,46 +262,71 @@ function parseQuery(queryString) {
         if (!pairs[i])
             continue;
         var pair = pairs[i].split('=');
-        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+        query[decodeURIComponent(pair[0])] = decodeURIComponent((pair[1] || '').replace(/\+/g, ' '));
     }
     return query;
 }
 var dbg = {};
-function decodeConvertedUrl() {
-    console.log("decoding");
-    const convertedUrlElem = document.getElementById("convertedUrl");
-    const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
-    const query = parseQuery(convertedUrl.split("?")[1] || "");
+function populateFromUrl(urlOrQuery) {
+    let queryString = "";
+    if (typeof urlOrQuery === "string" && urlOrQuery.length > 0) {
+        queryString = urlOrQuery.includes("?") ? urlOrQuery.split("?")[1] : urlOrQuery;
+    }
+    else if (typeof window !== "undefined" && window.location && window.location.search) {
+        queryString = window.location.search.startsWith("?") ? window.location.search.substring(1) : window.location.search;
+    }
+    else {
+        const convertedUrlElem = document.getElementById("convertedUrl");
+        const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+        if (convertedUrl.length > 0) {
+            queryString = convertedUrl.includes("?") ? convertedUrl.split("?")[1] : convertedUrl;
+        }
+    }
+    const query = parseQuery(queryString);
     dbg.query = query;
     const isTempo = (query.EmbedTempoTimeSig || "") === "true" || (query.ShowTempo || "") === "1";
     const stElem = document.getElementById("showTempo");
-    if (stElem)
+    if (stElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
         stElem.checked = isTempo;
+    }
     const embedStElem = document.getElementById("embedShowTempo");
-    if (embedStElem)
+    if (embedStElem && (query.EmbedTempoTimeSig !== undefined || query.ShowTempo !== undefined)) {
         embedStElem.checked = isTempo;
+    }
     const subTextElem = document.getElementById("subText");
-    if (subTextElem)
-        subTextElem.value = decodeURIComponent(query.subText || "");
+    if (subTextElem && query.subText !== undefined) {
+        subTextElem.value = decodeURIComponent((query.subText || "").replace(/\+/g, ' '));
+    }
     const rbInput = document.getElementById("repeatBegins");
-    if (rbInput)
+    if (rbInput && query.RepeatBegins !== undefined)
         rbInput.value = query.RepeatBegins || "";
     const reInput = document.getElementById("repeatEnds");
-    if (reInput)
+    if (reInput && query.RepeatEnds !== undefined)
         reInput.value = query.RepeatEnds || "";
     const rendInput = document.getElementById("repeatEndings");
-    if (rendInput)
+    if (rendInput && query.RepeatEndings !== undefined)
         rendInput.value = query.RepeatEndings || "";
     const mtInput = document.getElementById("measureText");
-    if (mtInput)
+    if (mtInput && query.MeasureText !== undefined)
         mtInput.value = encodeAfterLastColon(query.MeasureText || "", false);
     setEmbedTableData({
-        repeatBegins: query.RepeatBegins || "",
-        repeatEnds: query.RepeatEnds || "",
-        repeatEndings: query.RepeatEndings || "",
-        measureText: encodeAfterLastColon(query.MeasureText || "", false)
+        repeatBegins: query.RepeatBegins || (rbInput ? rbInput.value : ""),
+        repeatEnds: query.RepeatEnds || (reInput ? reInput.value : ""),
+        repeatEndings: query.RepeatEndings || (rendInput ? rendInput.value : ""),
+        measureText: encodeAfterLastColon(query.MeasureText || (mtInput ? mtInput.value : ""), false)
     });
     convert();
+}
+function decodeConvertedUrl(urlOrQuery) {
+    console.log("decoding");
+    if (typeof urlOrQuery === "string" && urlOrQuery.length > 0) {
+        populateFromUrl(urlOrQuery);
+    }
+    else {
+        const convertedUrlElem = document.getElementById("convertedUrl");
+        const convertedUrl = convertedUrlElem ? convertedUrlElem.value : "";
+        populateFromUrl(convertedUrl);
+    }
 }
 function openLink() {
     const convertedUrlElem = document.getElementById("convertedUrl");
@@ -312,39 +339,46 @@ function openLink() {
 if (typeof document !== "undefined") {
     const tempoInput = document.getElementById("showTempo");
     if (tempoInput)
-        tempoInput.addEventListener("keypress", convert);
+        tempoInput.addEventListener("change", () => convert());
     const embedTempoInput = document.getElementById("embedShowTempo");
     if (embedTempoInput && embedTempoInput !== tempoInput)
-        embedTempoInput.addEventListener("keypress", convert);
+        embedTempoInput.addEventListener("change", () => convert());
     const subTextInput = document.getElementById("subText");
     if (subTextInput) {
-        subTextInput.addEventListener("input", convert);
-        subTextInput.addEventListener("keypress", convert);
+        subTextInput.addEventListener("input", () => convert());
+        subTextInput.addEventListener("change", () => convert());
     }
     const convertBtn = document.getElementById("convertBtn");
     if (convertBtn)
-        convertBtn.addEventListener("click", convert);
+        convertBtn.addEventListener("click", () => convert(true));
     const copyBtn = document.getElementById("copyBtn");
     if (copyBtn)
         copyBtn.addEventListener("click", convertAndCopy);
     const openLinkBtn = document.getElementById("openLink");
     if (openLinkBtn)
         openLinkBtn.addEventListener("click", openLink);
-    const decodeBtn = document.getElementById("decodeUrlBtn");
-    if (decodeBtn)
-        decodeBtn.addEventListener("click", decodeConvertedUrl);
-    // Initialize table on startup
+    // Initialize and populate form on startup
+    const initForm = () => {
+        const currentSearch = typeof window !== "undefined" && window.location ? window.location.search : "";
+        if (currentSearch && currentSearch.length > 1) {
+            populateFromUrl(currentSearch);
+        }
+        else {
+            renderEmbedMeasureTable();
+        }
+    };
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => renderEmbedMeasureTable());
+        document.addEventListener("DOMContentLoaded", initForm);
     }
     else {
-        renderEmbedMeasureTable();
+        initForm();
     }
 }
 if (typeof window !== "undefined") {
     window.renderEmbedMeasureTable = renderEmbedMeasureTable;
     window.getEmbedTableData = getEmbedTableData;
     window.setEmbedTableData = setEmbedTableData;
+    window.populateFromUrl = populateFromUrl;
     window.convert = convert;
     window.convertAndCopy = convertAndCopy;
     window.decodeConvertedUrl = decodeConvertedUrl;
@@ -356,6 +390,7 @@ if (typeof module !== "undefined" && module.exports) {
         renderEmbedMeasureTable,
         getEmbedTableData,
         setEmbedTableData,
+        populateFromUrl,
         convert,
         convertAndCopy,
         decodeConvertedUrl,

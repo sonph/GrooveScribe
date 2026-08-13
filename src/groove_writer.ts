@@ -2916,6 +2916,10 @@ class GrooveWriter {
     this.myGrooveUtils.setSwing(this.data.swingPercent);
     this.setMetronomeFrequency(this.data.metronomeFrequency);
     this.updateSheetMusic();
+
+    if (typeof (window as any).populateFromUrl === "function") {
+      (window as any).populateFromUrl(encodedURLData);
+    }
   }
 
   loadNewGroove(encodedURLData: string): void {
