@@ -12,16 +12,6 @@
 			var search = window.location.search || '';
 			var data = new GrooveData().fromUrl(search);
 
-			var textE = document.getElementById("subText");
-			var topDiv = document.getElementById("topDiv");
-			// Backward compatibility: "subText" parameter is merged into "Comments", with "Comments" taking priority.
-			var displayText = data.comments || data.subText || '';
-			if (displayText) {
-				textE.innerText = displayText;
-			} else if (topDiv) {
-				topDiv.style.display = "none";
-			}
-
 			var svgTarget = document.getElementById("svgTarget");
 			var renderWidth = 600;
 			var fullAbc = data.getAbcHeader(false, renderWidth, data.showLegend) + data.getAbcNotation();
@@ -54,17 +44,6 @@
 			width: 100%;
 			height: auto;
 		}
-		#topDiv {
-			width: 100%;
-			padding: 4px 8px;
-			box-sizing: border-box;
-			font-size: 14px;
-			font-weight: bold;
-			color: #333;
-		}
-		#subText {
-			display: inline-block;
-		}
 		.abcr {  /* rectangles enclosing notes in ABC SVG */
 			fill: transparent;
 			fill-opacity: 0.25;
@@ -77,9 +56,6 @@
 </head>
 
 <body>
-	<div id="topDiv">
-		<span id="subText"></span>
-	</div>
 	<!-- groove displays here -->
 	<div id="GrooveDisplayId">
 		<div class="Printable">

@@ -896,7 +896,7 @@ class GrooveData {
             }
             else {
                 const abcUnitsPerBeat = this.subdivision.abcNoteLength() / this.timeSig.bottom.value;
-                const beatRest = 'z' + abcUnitsPerBeat;
+                const beatRest = 'x' + abcUnitsPerBeat;
                 measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
             }
             const hasRepeatBegin = this.repeatBegins && this.repeatBegins.has(m);
@@ -922,7 +922,37 @@ class GrooveData {
                 endBar = '|';
             }
             // Stickings voice for measure m
-            let stickingPart = (beginPrefix ? beginPrefix + ' ' : '') + measureRests + ' ' + endBar;
+            const stickingsArray = measure.getArray(DrumType.STICKINGS);
+            const hasMeasureStickings = stickingsArray && stickingsArray.some(x => x !== null && x !== '-' && x !== '');
+            let stickingMeasureContent;
+            if (hasMeasureStickings) {
+                const posLen = isTriplet ? this.subdivision.abcPositionLength() : (this.subdivision.abcNoteLength() / this.subdivision.value);
+                const notesPerBeat = this.timeSig.bottom.divideBy(this.subdivision);
+                const beatParts = [];
+                for (let beat = 0; beat < this.timeSig.top; beat++) {
+                    const slotParts = [];
+                    for (let i = 0; i < notesPerBeat; i++) {
+                        const idx = beat * notesPerBeat + i;
+                        const val = stickingsArray[idx];
+                        if (val === 'R')
+                            slotParts.push(`"R"x${posLen}`);
+                        else if (val === 'L')
+                            slotParts.push(`"L"x${posLen}`);
+                        else if (val === 'b' || val === 'B')
+                            slotParts.push(`"R/L"x${posLen}`);
+                        else if (val === 'c')
+                            slotParts.push(`"count"x${posLen}`);
+                        else
+                            slotParts.push(`x${posLen}`);
+                    }
+                    beatParts.push(slotParts.join(''));
+                }
+                stickingMeasureContent = beatParts.join(' ');
+            }
+            else {
+                stickingMeasureContent = measureRests;
+            }
+            let stickingPart = (beginPrefix ? beginPrefix + ' ' : '') + stickingMeasureContent + ' ' + endBar;
             stickingsVoiceParts.push(stickingPart);
             // Hands voice for measure m
             const hh_array = measure.getArray(DrumType.HIHAT);

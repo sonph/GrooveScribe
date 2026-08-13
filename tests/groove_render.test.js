@@ -143,4 +143,11 @@ describe('groove_render.js isolated execution', () => {
     expect(m.toString(DrumType.KICK)).toBe('o---o---');
     expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
   });
+
+  test('generates invisible rests (x) instead of visible rests (z) in V:Stickings when empty', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=16&RepeatBegins=1&RepeatEnds=1;2&RepeatEndings=2:1&H=|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x---|&S=|----O----g--O---|----O----g-OO---|&K=|o-oo---oo-oo----|o-oo---oo-o--o--|');
+    const notation = data.getAbcNotation();
+    expect(notation).toContain('V:Stickings\n|: x4 x4 x4 x4 :| [1 x4 x4 x4 x4 :|');
+    expect(notation).not.toContain('z4');
+  });
 });
