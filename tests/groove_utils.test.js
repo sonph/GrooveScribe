@@ -80,16 +80,16 @@ describe('GrooveData', () => {
     grooveData = new GrooveData(new TimeSignature(2, Subdivision.QUARTER), Subdivision.SIXTEENTH);
   });
 
-  test('measuresFromUrl should fill data from url params', () => {
-    const url = 'H=|x---x-x-|';
-    grooveData.measuresFromUrl(url);
+  test('buildMeasuresFromTabs should fill data from url params', () => {
+    const decoded = decodeGrooveUrl('H=|x---x-x-|');
+    grooveData.measures = buildMeasuresFromTabs(decoded.drumTabs, grooveData.timeSig, grooveData.subdivision);
     expect(grooveData.measures[0].getArray(DrumType.HIHAT)).toEqual([
       'x', null, null, null, 'x', null, 'x', null]);
   });
 
-  test('measuresFromUrl should fill data from url params -- auto append 2nd measure', () => {
-    const url = 'S=|oooo----|o-o-o-o-|';
-    grooveData.measuresFromUrl(url);
+  test('buildMeasuresFromTabs should fill data from url params -- auto append 2nd measure', () => {
+    const decoded = decodeGrooveUrl('S=|oooo----|o-o-o-o-|');
+    grooveData.measures = buildMeasuresFromTabs(decoded.drumTabs, grooveData.timeSig, grooveData.subdivision);
     expect(grooveData.measures[0].getArray(DrumType.SNARE)).toEqual([
       'o', 'o', 'o', 'o', null, null, null, null]);
     expect(grooveData.measures[1].getArray(DrumType.SNARE)).toEqual([
@@ -121,6 +121,62 @@ describe('GrooveData', () => {
     grooveData.showStickings = false;
     grooveData.measures[0].arrays.get(DrumType.STICKINGS.name)[0] = 'b';
     expect(grooveData.toUrl()).not.toContain('Stickings');
+  });
+});
+
+describe('URL codec', () => {
+  beforeAll(() => {
+    require('../js/groove_utils.js');
+  });
+
+  test('decodeGrooveUrl parses Tempo (capitalized)', () => {
+    const decoded = decodeGrooveUrl('Tempo=132&Swing=25');
+    expect(decoded.tempo).toEqual(132);
+    expect(decoded.swingPercent).toEqual(25);
+  });
+
+  test('decodeGrooveUrl uses default tempo when missing', () => {
+    const decoded = decodeGrooveUrl('');
+    expect(decoded.tempo).toEqual(80);
+    expect(decoded.swingPercent).toEqual(0);
+  });
+
+  test('decodeGrooveUrl clamps tempo to [20, 400]', () => {
+    expect(decodeGrooveUrl('Tempo=1').tempo).toEqual(20);
+    expect(decodeGrooveUrl('Tempo=9999').tempo).toEqual(400);
+  });
+
+  test('decodeGrooveUrl parses Mode/Debug flags', () => {
+    const decoded = decodeGrooveUrl('Mode=view&Debug=1');
+    expect(decoded.viewMode).toEqual(true);
+    expect(decoded.debugMode).toEqual(true);
+  });
+
+  test('decodeGrooveUrl collects drum tabs', () => {
+    const decoded = decodeGrooveUrl('H=|x-x-x-x-|&S=|--o---o-|&K=|o---o---|');
+    expect(decoded.drumTabs.get('H')).toEqual('|x-x-x-x-|');
+    expect(decoded.drumTabs.get('S')).toEqual('|--o---o-|');
+    expect(decoded.drumTabs.get('K')).toEqual('|o---o---|');
+  });
+
+  test('URL round-trip preserves tempo and swing', () => {
+    const data = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data.fromUrl('TimeSig=4/4&Div=16&Tempo=132&Swing=33&H=|xxxxxxxxxxxxxxxx|&S=|----o-------o---|&K=|o-------o-------|');
+    expect(data.tempo).toEqual(132);
+    expect(data.swingPercent).toEqual(33);
+
+    const roundTripped = new GrooveData().fromUrl(data.toUrl().split('?')[1]);
+    expect(roundTripped.tempo).toEqual(132);
+    expect(roundTripped.swingPercent).toEqual(33);
+  });
+
+  test('encodeGrooveQueryString does not percent-encode | or /', () => {
+    const data = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    const encoded = encodeGrooveQueryString(data);
+    expect(encoded).toContain('TimeSig=4/4');
+    expect(encoded).toContain('H=|');
+    expect(encoded).not.toContain('%7C');
+    expect(encoded).not.toContain('%2F');
   });
 });
 

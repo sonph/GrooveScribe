@@ -626,6 +626,116 @@ class Measure {
   }
 }
 
+interface DecodedGrooveUrl {
+  viewMode: boolean;
+  debugMode: boolean;
+  timeSig: TimeSignature;
+  subdivision: Subdivision;
+  metronomeFrequency: number;
+  title: string;
+  author: string;
+  comments: string;
+  tempo: number;
+  swingPercent: number;
+  // Raw pipe-delimited tab strings keyed by DrumType.name (e.g. "H", "S", "K").
+  drumTabs: Map<string, string>;
+}
+
+// Pure parser: URL query string → typed decoded fields. No DOM, no side effects.
+function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
+  const params = new URLSearchParams(paramsString);
+
+  const drumTabs = new Map<string, string>();
+  for (const drum of DrumType.ALL) {
+    const data = params.get(drum.name);
+    if (data) {
+      drumTabs.set(drum.name, data);
+    }
+  }
+
+  return {
+    viewMode: params.get('Mode') === 'view',
+    debugMode: params.get('Debug') === '1',
+    timeSig: params.get('TimeSig') ? TimeSignature.fromString(params.get('TimeSig')) : TimeSignature.COMMON_TIME_44,
+    subdivision: params.get('Div') ? Subdivision.of(parseInt(params.get('Div'))) : Subdivision.SIXTEENTH,
+    metronomeFrequency: Math.max(parseInt(params.get('MetronomeFreq')) || 0, 0),
+    title: params.get('Title') || '',
+    author: params.get('Author') || '',
+    comments: params.get('Comments') || '',
+    tempo: Math.min(Math.max(parseInt(params.get('Tempo')) || constant_DEFAULT_TEMPO, 20), 400),
+    swingPercent: Math.min(Math.max(parseInt(params.get('Swing')) || 0, 0), 100),
+    drumTabs,
+  };
+}
+
+function buildMeasuresFromTabs(drumTabs: Map<string, string>, timeSig: TimeSignature, subdivision: Subdivision): Array<Measure> {
+  const measures: Array<Measure> = [];
+  for (const drum of DrumType.ALL) {
+    const data = drumTabs.get(drum.name);
+    if (!data) continue;
+    const measureData = GrooveData.splitTabIntoMeasureStrings(data);
+    for (let i = 0; i < measureData.length; i++) {
+      if (measures[i] === undefined) {
+        measures.push(new Measure(timeSig, subdivision));
+      }
+      measures[i].setDataFromString(drum, measureData[i]);
+    }
+  }
+  return measures;
+}
+
+// Minimal shape encodeGrooveQueryString needs from GrooveData. Declared as an
+// interface so tests can pass plain objects without constructing a full class.
+interface EncodableGrooveState {
+  debugMode: boolean;
+  viewMode: boolean;
+  grooveDBAuthoring: boolean;
+  timeSig: TimeSignature;
+  subdivision: Subdivision;
+  title: string;
+  author: string;
+  comments: string;
+  tempo: number;
+  swingPercent: number;
+  metronomeFrequency: number;
+  measures: Array<Measure>;
+  showStickings: boolean;
+  showToms: boolean;
+}
+
+// Build query string manually (not URLSearchParams) so `|` and `/` are preserved
+// verbatim in drum tabs and time signatures — percent-encoding breaks the tabs.
+function encodeGrooveQueryString(state: EncodableGrooveState): string {
+  const parts: string[] = [];
+  const add = (key: string, value: string | null | undefined) => {
+    if (value) parts.push(`${key}=${value}`);
+  };
+  add('Debug', state.debugMode ? '1' : '');
+  add('Mode', state.viewMode ? 'view' : 'edit');
+  add('GDB_Author', state.grooveDBAuthoring ? '1' : '');
+  add('TimeSig', state.timeSig.toString());
+  add('Div', state.subdivision.value.toString());
+  add('Title', encodeURIComponent(state.title));
+  add('Author', encodeURIComponent(state.author));
+  add('Comments', encodeURIComponent(state.comments));
+  add('Tempo', state.tempo.toString());
+  add('Swing', state.swingPercent ? state.swingPercent.toString() : '');
+  add('MetronomeFreq', state.metronomeFrequency ? state.metronomeFrequency.toString() : '');
+
+  for (const drum of DrumType.ALL) {
+    if (!state.showStickings && drum.equals(DrumType.STICKINGS)) continue;
+    if (!state.showToms && drum.isTom()) continue;
+    const arrays: string[] = [];
+    for (const measure of state.measures) {
+      const str = measure.toString(drum);
+      if (str) arrays.push(str);
+    }
+    parts.push(`${drum.name}=|${arrays.join('|')}|`);
+  }
+
+  return '?' + parts.join('&');
+}
+
 class GrooveData {
   timeSig: TimeSignature;
   subdivision: Subdivision;
@@ -681,113 +791,35 @@ class GrooveData {
   }
 
   fromUrl(paramsString: string): GrooveData {
-    const params = new URLSearchParams(paramsString);
+    const decoded = decodeGrooveUrl(paramsString);
+    this.viewMode = decoded.viewMode;
+    this.debugMode = decoded.debugMode;
+    this.timeSig = decoded.timeSig;
+    this.subdivision = decoded.subdivision;
+    this.metronomeFrequency = decoded.metronomeFrequency;
+    this.title = decoded.title;
+    this.author = decoded.author;
+    this.comments = decoded.comments;
+    this.tempo = decoded.tempo;
+    this.swingPercent = decoded.swingPercent;
 
-    this.viewMode = params.get('Mode') === 'view';
-    this.debugMode = params.get('Debug') === '1';
-    this.timeSig = params.get('TimeSig') ? TimeSignature.fromString(params.get('TimeSig')) : TimeSignature.COMMON_TIME_44;
-    this.subdivision = params.get('Div') ? Subdivision.of(parseInt(params.get('Div'))) : Subdivision.SIXTEENTH;
-    this.metronomeFrequency = Math.max(parseInt(params.get('MetronomeFreq')) || 0, 0);
-
-    this.title = params.get('Title') || '';
-    this.author = params.get('Author') || '';
-    this.comments = params.get('Comments') || '';
-    this.tempo = Math.min(Math.max(parseInt(params.get('tempo')) || constant_DEFAULT_TEMPO, 20), 400);
-    this.swingPercent = Math.min(Math.max(parseInt(params.get('swing')) || 0, 0), 100);
-
-    this.measuresFromUrl(paramsString);
+    const measures = buildMeasuresFromTabs(decoded.drumTabs, this.timeSig, this.subdivision);
+    if (measures.length !== 0) {
+      this.measures = measures;
+    } else {
+      // Preserve legacy fallback: URL with no drum data triggers default groove.
+      // The recursive call resets TimeSig/Div/etc. to the defaults in the fallback
+      // string; callers who want to keep other fields should provide drum data.
+      this.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    }
 
     return this;
   }
 
-  measuresFromUrl(paramsString: string): void {
-    const params = new URLSearchParams(paramsString);
-    const measures = [];
-    for (const drum of DrumType.ALL) {
-      var numMeasures = 0;
-      const data = params.get(drum.name);
-      if (data) {
-        const measureData = GrooveData.splitTabIntoMeasureStrings(data);
-        for (let i = 0; i < measureData.length; i++) {
-          if (measures[i] === undefined) {
-            measures.push(new Measure(this.timeSig, this.subdivision));
-          }
-          measures[i].setDataFromString(drum, measureData[i]);
-          numMeasures += 1;
-        }
-        console.log(`Parsed ${numMeasures} measures for drum ${drum.name}`);
-      }
-    }
-    if (measures.length !== 0) {
-      this.measures = measures;
-    } else {
-      // Set default groove.
-      this.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
-    }
-  }
-
   toUrl(url_destination: string = ''): string {
-    // Use a regular map instead of URLSearchParams because we don't want percent-encoding for some params.
-    // Characters like / | should not be percent encoded.
-    var fullUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-
-    // if (!url_destination) {
-    //   // then assume it is the groove writer display.  Do nothing
-    // } else if (url_destination == "display") {
-    //   // asking for the "groove_display" page
-    //   if (fullURL.includes('index.html'))
-    //     fullURL = fullURL.replace('index.html', 'GrooveEmbed.html');
-    //   else if (fullURL.includes('/gscribe'))
-    //     fullURL = fullURL.replace('/gscribe', '/groove/GrooveEmbed.html');
-    //   else
-    //     fullURL += 'GrooveEmbed.html';
-    // } else if (url_destination == "fullGrooveScribe") {
-    //   // asking for the full GrooveScribe link
-    //   fullURL = 'https://www.mikeslessons.com/gscribe';
-    // }
-
-    const params = new Map();
-    GrooveData.maybeSetUrlParam(params, 'Debug', this.debugMode ? '1' : '');
-    GrooveData.maybeSetUrlParam(params, 'Mode', this.viewMode ? 'view' : 'edit');
-    GrooveData.maybeSetUrlParam(params, 'GDB_Author', this.grooveDBAuthoring ? '1' : '');
-    GrooveData.maybeSetUrlParam(params, 'TimeSig', this.timeSig.toString());
-    GrooveData.maybeSetUrlParam(params, 'Div', this.subdivision.value.toString());
-    GrooveData.maybeSetUrlParam(params, 'Title', encodeURIComponent(this.title));
-    GrooveData.maybeSetUrlParam(params, 'Author', encodeURIComponent(this.author));
-    GrooveData.maybeSetUrlParam(params, 'Comments', encodeURIComponent(this.comments));
-    GrooveData.maybeSetUrlParam(params, 'Tempo', this.tempo.toString());
-    GrooveData.maybeSetUrlParam(params, 'Swing', this.swingPercent ? this.swingPercent.toString() : '');
-    GrooveData.maybeSetUrlParam(params, 'MetronomeFreq', this.metronomeFrequency ? this.metronomeFrequency.toString() : '');
-
-    // Add notes.
-    for (const drum of DrumType.ALL) {
-      var arrays = [];
-      for (const measure of this.measures) {
-        const str = measure.toString(drum);
-        if (str) {
-          arrays.push(str);
-        }
-      }
-      var shouldSet = true;
-      if (!this.showStickings && drum.equals(DrumType.STICKINGS)) {
-        shouldSet = false;
-      }
-      if (!this.showToms && drum.isTom()) {
-        shouldSet = false;
-      }
-      if (shouldSet) {
-        params.set(drum.name, '|' + arrays.join('|') + '|');
-      }
-    }
-
-    return fullUrl + '?' + Array.from(params.entries()).map(e => `${e[0]}=${e[1]}`).join('&');
-  }
-
-  static maybeSetUrlParam(params: Map<string, string>, key: string, value: string | null) {
-    // Prefer alternateValue if set.
-    if (value) {
-      params.set(key, value);
-    }
+    // window.* stays here so the pure encoder can run in tests / Node.
+    const base = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    return base + encodeGrooveQueryString(this);
   }
 
   static splitTabIntoMeasureStrings(string: string): Array<string> {
@@ -2866,6 +2898,9 @@ globalThis.tabCharToAbcNote = tabCharToAbcNote;
 (globalThis as any).snareMidiFor = snareMidiFor;
 (globalThis as any).kickMidiFor = kickMidiFor;
 (globalThis as any).tomMidiFor = tomMidiFor;
+(globalThis as any).decodeGrooveUrl = decodeGrooveUrl;
+(globalThis as any).encodeGrooveQueryString = encodeGrooveQueryString;
+(globalThis as any).buildMeasuresFromTabs = buildMeasuresFromTabs;
 // Re-export ABC constants for tests
 (globalThis as any).constant_ABC_HH_Normal = constant_ABC_HH_Normal;
 (globalThis as any).constant_ABC_HH_Accent = constant_ABC_HH_Accent;
