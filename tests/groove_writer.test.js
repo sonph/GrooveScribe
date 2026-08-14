@@ -2514,3 +2514,128 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     expect(convertedUrl).toContain('RepeatEndings=1:1,2;2:3');
   });
 });
+
+describe('moveMeasure Functionality', () => {
+  let writer;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
+      <div id="embedTool" style="display: none;">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+    `;
+    writer = new GrooveWriter(new GrooveUtils(true));
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+    writer.setupMeasureContainerNavigation();
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
+  });
+
+  test('moveMeasure returns false when only 1 measure exists', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(writer.moveMeasure(0, 0)).toBe(false);
+    expect(writer.moveMeasure(0, 1)).toBe(false);
+  });
+
+  test('moveMeasure returns false for out-of-bounds indices', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(writer.moveMeasure(-1, 1)).toBe(false);
+    expect(writer.moveMeasure(0, 5)).toBe(false);
+    expect(writer.moveMeasure(5, 0)).toBe(false);
+  });
+
+  test('moveMeasure returns false when fromIndex === toIndex and does not stop audio', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    writer.isAudioPlaying = true;
+    writer.myGrooveUtils.stopMIDI_playback = jest.fn();
+    writer.selectedNoteIndex = 5;
+
+    const result = writer.moveMeasure(1, 1);
+    expect(result).toBe(false);
+    expect(writer.myGrooveUtils.stopMIDI_playback).not.toHaveBeenCalled();
+    expect(writer.selectedNoteIndex).toBe(5);
+  });
+
+  test('moveMeasure moves measure forward from index 0 to index 2 with all notes and annotations', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|--O-----|&K=|o-------|o-o-----|--o-o---|&RepeatBegins=1&RepeatEnds=1&RepeatEndings=1:1&MeasureText=1:b:Intro;1:l:one%20two';
+    writer.set_Default_notes(url);
+
+    expect(writer.data.numberOfMeasures).toBe(3);
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('----O---');
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('------O-');
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe('--O-----');
+
+    // Move measure 1 (index 0) to position 3 (index 2)
+    const result = writer.moveMeasure(0, 2);
+    expect(result).toBe(true);
+
+    // Old measure 2 is now measure 1, old measure 3 is now measure 2, old measure 1 is now measure 3
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('------O-');
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('--O-----');
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe('----O---');
+
+    // Annotations of old measure 1 are now on measure 3 (index 2)
+    expect(writer.data.measures[2].repeatBegin).toBe(true);
+    expect(writer.data.measures[2].repeatEnd).toBe(true);
+    expect(writer.data.measures[2].alternateEnding).toBe('1');
+    expect(writer.data.measures[2].textBegin).toBe('Intro');
+    expect(writer.data.measures[2].lyrics).toBe('one two');
+
+    // Measures 1 and 2 have empty annotations
+    expect(writer.data.measures[0].repeatBegin).toBe(false);
+    expect(writer.data.measures[1].repeatBegin).toBe(false);
+
+    // Note highlight cursor reset to first note of dropped measure (index 2 * 8 = 16)
+    expect(writer.selectedNoteIndex).toBe(16);
+
+    // URL reflects updated measure order
+    const fullUrl = writer.get_FullURLForPage();
+    expect(fullUrl).toContain('S=|------O-|--O-----|----O---|');
+    expect(fullUrl).toContain('RepeatBegins=3');
+    expect(fullUrl).toContain('RepeatEnds=3');
+    expect(fullUrl).toContain('RepeatEndings=3:1');
+    expect(fullUrl).toContain('MeasureText=3:b:Intro;3:l:one%20two');
+  });
+
+  test('moveMeasure moves measure backward from index 2 to index 0', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|--O-----|&K=|o-------|o-o-----|--o-o---|&RepeatBegins=3&MeasureText=3:e:Solo';
+    writer.set_Default_notes(url);
+
+    // Move measure 3 (index 2) to position 1 (index 0)
+    const result = writer.moveMeasure(2, 0);
+    expect(result).toBe(true);
+
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('--O-----');
+    expect(writer.data.measures[0].repeatBegin).toBe(true);
+    expect(writer.data.measures[0].textEnd).toBe('Solo');
+
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('----O---');
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe('------O-');
+
+    // Selected note cursor reset to note 0
+    expect(writer.selectedNoteIndex).toBe(0);
+  });
+
+  test('moveMeasure stops playback if audio is currently playing', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    writer.isAudioPlaying = true;
+    writer.myGrooveUtils.stopMIDI_playback = jest.fn();
+
+    writer.moveMeasure(0, 1);
+    expect(writer.myGrooveUtils.stopMIDI_playback).toHaveBeenCalledTimes(1);
+  });
+});

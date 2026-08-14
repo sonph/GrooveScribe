@@ -474,7 +474,7 @@ class GrooveUtils {
   };
 
   stopMIDI_playback(): void {
-    if (MIDI.Player.playing || this.isMIDIPaused) {
+    if (typeof MIDI !== "undefined" && MIDI.Player && (MIDI.Player.playing || this.isMIDIPaused)) {
       this.isMIDIPaused = false;
       MIDI.Player.stop();
       this.midiEventCallbacks.stopEvent();
@@ -485,7 +485,7 @@ class GrooveUtils {
   };
 
   startOrStopMIDI_playback(): void {
-    if (MIDI.Player.playing) {
+    if (this.isPlaying()) {
       this.stopMIDI_playback();
     } else {
       this.startMIDI_playback();
@@ -493,7 +493,7 @@ class GrooveUtils {
   };
 
   startOrPauseMIDI_playback(): void {
-    if (MIDI.Player.playing) {
+    if (this.isPlaying()) {
       this.pauseMIDI_playback();
     } else {
       this.startMIDI_playback();
@@ -501,7 +501,7 @@ class GrooveUtils {
   };
 
   isPlaying(): boolean {
-    return MIDI.Player.playing;
+    return typeof MIDI !== "undefined" && !!(MIDI.Player && MIDI.Player.playing);
   };
 
   repeatMIDI_playback = (): void => {

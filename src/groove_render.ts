@@ -422,6 +422,12 @@ class Measure {
   tabSubdivision: Subdivision;
   notesPerMeasure: number;
   arrays: Map<string, Array<string | null> | null>;
+  repeatBegin: boolean = false;
+  repeatEnd: boolean = false;
+  alternateEnding: string = "";
+  textBegin: string = "";
+  textEnd: string = "";
+  lyrics: string = "";
 
   static getHiHatDefaultStep(subdivision: Subdivision): number {
     switch (subdivision.value) {
@@ -453,6 +459,13 @@ class Measure {
     for (const drum of DrumType.ALL) {
       this.arrays.set(drum.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
     }
+
+    this.repeatBegin = false;
+    this.repeatEnd = false;
+    this.alternateEnding = "";
+    this.textBegin = "";
+    this.textEnd = "";
+    this.lyrics = "";
 
     if (populateDefault) {
       this.populateDefaultGroove();
@@ -562,13 +575,19 @@ class Measure {
   }
 
   clone(): Measure {
-    const copy = new Measure(this.timeSig, this.tabSubdivision);
+    const copy = new Measure(this.timeSig, this.tabSubdivision, false);
     for (const drum of DrumType.ALL) {
       const arr = this.getArray(drum);
       if (arr) {
         copy.arrays.set(drum.name, [...arr]);
       }
     }
+    copy.repeatBegin = this.repeatBegin;
+    copy.repeatEnd = this.repeatEnd;
+    copy.alternateEnding = this.alternateEnding;
+    copy.textBegin = this.textBegin;
+    copy.textEnd = this.textEnd;
+    copy.lyrics = this.lyrics;
     return copy;
   }
 }
@@ -854,11 +873,106 @@ class GrooveData {
   debugMode: boolean;
   grooveDBAuthoring: boolean;
   viewMode: boolean;
-  repeatBegins: Set<number>;
-  repeatEnds: Set<number>;
-  repeatEndings: Map<number, string>;
-  measureText: Map<number, MeasureTextEntry>;
   subText: string;
+
+  ensureMeasuresLength(maxN: number): void {
+    while (this.measures.length < maxN) {
+      this.measures.push(new Measure(this.timeSig, this.subdivision, true));
+    }
+  }
+
+  get repeatBegins(): Set<number> {
+    const set = new Set<number>();
+    this.measures.forEach((m, idx) => {
+      if (m.repeatBegin) set.add(idx + 1);
+    });
+    return set;
+  }
+
+  set repeatBegins(set: Set<number> | null | undefined) {
+    if (set && set.size > 0) {
+      const maxM = Math.max(...Array.from(set));
+      if (!isNaN(maxM) && maxM > 0) this.ensureMeasuresLength(maxM);
+    }
+    this.measures.forEach((m, idx) => {
+      m.repeatBegin = set ? set.has(idx + 1) : false;
+    });
+  }
+
+  get repeatEnds(): Set<number> {
+    const set = new Set<number>();
+    this.measures.forEach((m, idx) => {
+      if (m.repeatEnd) set.add(idx + 1);
+    });
+    return set;
+  }
+
+  set repeatEnds(set: Set<number> | null | undefined) {
+    if (set && set.size > 0) {
+      const maxM = Math.max(...Array.from(set));
+      if (!isNaN(maxM) && maxM > 0) this.ensureMeasuresLength(maxM);
+    }
+    this.measures.forEach((m, idx) => {
+      m.repeatEnd = set ? set.has(idx + 1) : false;
+    });
+  }
+
+  get repeatEndings(): Map<number, string> {
+    const map = new Map<number, string>();
+    this.measures.forEach((m, idx) => {
+      if (m.alternateEnding && m.alternateEnding.trim().length > 0) {
+        map.set(idx + 1, m.alternateEnding);
+      }
+    });
+    return map;
+  }
+
+  set repeatEndings(map: Map<number, string> | null | undefined) {
+    if (map && map.size > 0) {
+      const maxM = Math.max(...Array.from(map.keys()));
+      if (!isNaN(maxM) && maxM > 0) this.ensureMeasuresLength(maxM);
+    }
+    this.measures.forEach((m, idx) => {
+      m.alternateEnding = map && map.has(idx + 1) ? map.get(idx + 1)! : "";
+    });
+  }
+
+  get measureText(): Map<number, MeasureTextEntry> {
+    const map = new Map<number, MeasureTextEntry>();
+    this.measures.forEach((m, idx) => {
+      const entry: MeasureTextEntry = {};
+      let hasAny = false;
+      if (m.textBegin && m.textBegin.trim().length > 0) {
+        entry.begin = m.textBegin;
+        hasAny = true;
+      }
+      if (m.textEnd && m.textEnd.trim().length > 0) {
+        entry.end = m.textEnd;
+        hasAny = true;
+      }
+      if (m.lyrics && m.lyrics.trim().length > 0) {
+        entry.lyrics = m.lyrics;
+        hasAny = true;
+      }
+      if (hasAny) {
+        map.set(idx + 1, entry);
+      }
+    });
+    return map;
+  }
+
+  set measureText(map: Map<number, MeasureTextEntry> | null | undefined) {
+    if (map && map.size > 0) {
+      const maxM = Math.max(...Array.from(map.keys()));
+      if (!isNaN(maxM) && maxM > 0) this.ensureMeasuresLength(maxM);
+    }
+    this.measures.forEach((m, idx) => {
+      const entry = map ? map.get(idx + 1) : undefined;
+      m.textBegin = entry && entry.begin ? entry.begin : "";
+      m.textEnd = entry && entry.end ? entry.end : "";
+      m.lyrics = entry && entry.lyrics ? entry.lyrics : "";
+    });
+  }
 
   constructor(timeSig = TimeSignature.COMMON_TIME_44, subdivision = Subdivision.EIGHTH, numberOfMeasures = 1) {
     this.timeSig = timeSig;
@@ -883,10 +997,6 @@ class GrooveData {
     this.debugMode = true;
     this.grooveDBAuthoring = false;
     this.viewMode = false;
-    this.repeatBegins = new Set();
-    this.repeatEnds = new Set();
-    this.repeatEndings = new Map();
-    this.measureText = new Map();
     this.subText = "";
   }
 
@@ -916,10 +1026,6 @@ class GrooveData {
     this.swingPercent = decoded.swingPercent;
     this.showLegend = decoded.showLegend;
     this.showTempo = decoded.showTempo;
-    this.repeatBegins = decoded.repeatBegins;
-    this.repeatEnds = decoded.repeatEnds;
-    this.repeatEndings = decoded.repeatEndings;
-    this.measureText = decoded.measureText;
     this.subText = decoded.subText;
 
     const hasTomTabs = (decoded.drumTabs.has(DrumType.TOM1.name) && decoded.drumTabs.get(DrumType.TOM1.name)!.split('').some(c => c !== '-' && c !== '|'))
@@ -940,6 +1046,21 @@ class GrooveData {
         this.measures.push(new Measure(this.timeSig, this.subdivision, true));
       }
     }
+
+    // Ensure measures array has enough measures if annotations reference higher measures
+    let maxAnnotatedMeasure = this.measures.length;
+    if (decoded.repeatBegins) decoded.repeatBegins.forEach(n => { if (n > maxAnnotatedMeasure) maxAnnotatedMeasure = n; });
+    if (decoded.repeatEnds) decoded.repeatEnds.forEach(n => { if (n > maxAnnotatedMeasure) maxAnnotatedMeasure = n; });
+    if (decoded.repeatEndings) decoded.repeatEndings.forEach((_, n) => { if (n > maxAnnotatedMeasure) maxAnnotatedMeasure = n; });
+    if (decoded.measureText) decoded.measureText.forEach((_, n) => { if (n > maxAnnotatedMeasure) maxAnnotatedMeasure = n; });
+    while (this.measures.length < maxAnnotatedMeasure) {
+      this.measures.push(new Measure(this.timeSig, this.subdivision, true));
+    }
+
+    this.repeatBegins = decoded.repeatBegins;
+    this.repeatEnds = decoded.repeatEnds;
+    this.repeatEndings = decoded.repeatEndings;
+    this.measureText = decoded.measureText;
 
     return this;
   }
@@ -1165,12 +1286,12 @@ class GrooveData {
         measureRests = Array(this.timeSig.top).fill(beatRest).join(' ');
       }
 
-      const hasRepeatBegin = this.repeatBegins && this.repeatBegins.has(m);
-      const hasRepeatEnd = this.repeatEnds && this.repeatEnds.has(m);
-      const altEnding = this.repeatEndings ? this.repeatEndings.get(m) : undefined;
-      const textBegin = this.measureText ? this.measureText.get(m)?.begin : undefined;
-      const textEnd = this.measureText ? this.measureText.get(m)?.end : undefined;
-      const lyrics = this.measureText ? this.measureText.get(m)?.lyrics : undefined;
+      const hasRepeatBegin = measure.repeatBegin;
+      const hasRepeatEnd = measure.repeatEnd;
+      const altEnding = measure.alternateEnding && measure.alternateEnding.trim().length > 0 ? measure.alternateEnding.trim() : undefined;
+      const textBegin = measure.textBegin && measure.textBegin.trim().length > 0 ? measure.textBegin.trim() : undefined;
+      const textEnd = measure.textEnd && measure.textEnd.trim().length > 0 ? measure.textEnd.trim() : undefined;
+      const lyrics = measure.lyrics && measure.lyrics.trim().length > 0 ? measure.lyrics.trim() : undefined;
 
       let beginPrefix = '';
       if (hasRepeatBegin) {
@@ -1254,7 +1375,7 @@ class GrooveData {
       handsVoiceParts.push(measureHandsAbc);
     }
 
-    const hasAnyLyrics = Array.from(this.measureText?.values() || []).some(e => e.lyrics && e.lyrics.trim().length > 0);
+    const hasAnyLyrics = this.measures.some(m => m.lyrics && m.lyrics.trim().length > 0);
     const lines: string[] = [];
     lines.push('V:Stickings\n' + stickingsVoiceParts.join(' '));
     lines.push('V:Hands stem=up\n%%voicemap drum\n' + (hasAnyLyrics ? handsVoiceParts.join('\n') : handsVoiceParts.join(' ')));

@@ -872,4 +872,63 @@ describe('Legend and ABC Header', () => {
     const utils = new GrooveUtils(true);
     expect(notation).toContain('||');
   });
+
+  test('Measure class encapsulates annotations and clone preserves them', () => {
+    const m = new Measure(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    expect(m.repeatBegin).toBe(false);
+    expect(m.repeatEnd).toBe(false);
+    expect(m.alternateEnding).toBe('');
+    expect(m.textBegin).toBe('');
+    expect(m.textEnd).toBe('');
+    expect(m.lyrics).toBe('');
+
+    m.repeatBegin = true;
+    m.repeatEnd = true;
+    m.alternateEnding = '1,2';
+    m.textBegin = 'Intro';
+    m.textEnd = 'Fill';
+    m.lyrics = 'la la la';
+
+    const cloned = m.clone();
+    expect(cloned.repeatBegin).toBe(true);
+    expect(cloned.repeatEnd).toBe(true);
+    expect(cloned.alternateEnding).toBe('1,2');
+    expect(cloned.textBegin).toBe('Intro');
+    expect(cloned.textEnd).toBe('Fill');
+    expect(cloned.lyrics).toBe('la la la');
+
+    // Modifying cloned measure does not mutate original
+    cloned.repeatBegin = false;
+    cloned.textBegin = 'Verse';
+    expect(m.repeatBegin).toBe(true);
+    expect(m.textBegin).toBe('Intro');
+  });
+
+  test('GrooveData getters and setters synchronize with Measure annotations', () => {
+    const gd = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.EIGHTH, 3);
+    gd.repeatBegins = new Set([1]);
+    gd.repeatEnds = new Set([2, 3]);
+    gd.repeatEndings = new Map([[2, '1'], [3, '2']]);
+    gd.measureText = new Map([
+      [1, { begin: 'Intro' }],
+      [3, { end: 'Outro', lyrics: '1 & 2 &' }]
+    ]);
+
+    expect(gd.measures[0].repeatBegin).toBe(true);
+    expect(gd.measures[0].textBegin).toBe('Intro');
+    expect(gd.measures[1].repeatEnd).toBe(true);
+    expect(gd.measures[1].alternateEnding).toBe('1');
+    expect(gd.measures[2].repeatEnd).toBe(true);
+    expect(gd.measures[2].alternateEnding).toBe('2');
+    expect(gd.measures[2].textEnd).toBe('Outro');
+    expect(gd.measures[2].lyrics).toBe('1 & 2 &');
+
+    // Verify getters return expected structures
+    expect(Array.from(gd.repeatBegins)).toEqual([1]);
+    expect(Array.from(gd.repeatEnds)).toEqual([2, 3]);
+    expect(gd.repeatEndings.get(2)).toBe('1');
+    expect(gd.repeatEndings.get(3)).toBe('2');
+    expect(gd.measureText.get(1)).toEqual({ begin: 'Intro' });
+    expect(gd.measureText.get(3)).toEqual({ end: 'Outro', lyrics: '1 & 2 &' });
+  });
 });

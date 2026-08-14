@@ -2312,6 +2312,12 @@ class GrooveWriter {
         const wasTomsVisible = this.isTomsVisible();
         const lastMeasure = this.data.measures[this.data.measures.length - 1];
         const newMeasure = lastMeasure ? lastMeasure.clone() : new Measure(this.data.timeSig, this.data.subdivision);
+        newMeasure.repeatBegin = false;
+        newMeasure.repeatEnd = false;
+        newMeasure.alternateEnding = "";
+        newMeasure.textBegin = "";
+        newMeasure.textEnd = "";
+        newMeasure.lyrics = "";
         this.data.measures.push(newMeasure);
         this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
         return newMeasure;
@@ -2324,47 +2330,31 @@ class GrooveWriter {
         const wasStickingsVisible = this.isStickingsVisible();
         const wasTomsVisible = this.isTomsVisible();
         this.data.measures.splice(measureIndex, 1);
-        const deletedM = measureIndex + 1;
-        const newRepeatBegins = new Set();
-        if (this.data.repeatBegins) {
-            this.data.repeatBegins.forEach(m => {
-                if (m < deletedM)
-                    newRepeatBegins.add(m);
-                else if (m > deletedM)
-                    newRepeatBegins.add(m - 1);
-            });
+        this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+        return true;
+    }
+    moveMeasure(fromIndex, toIndex) {
+        if (this.data.numberOfMeasures <= 1) {
+            return false;
         }
-        this.data.repeatBegins = newRepeatBegins;
-        const newRepeatEnds = new Set();
-        if (this.data.repeatEnds) {
-            this.data.repeatEnds.forEach(m => {
-                if (m < deletedM)
-                    newRepeatEnds.add(m);
-                else if (m > deletedM)
-                    newRepeatEnds.add(m - 1);
-            });
+        if (fromIndex < 0 || fromIndex >= this.data.numberOfMeasures) {
+            return false;
         }
-        this.data.repeatEnds = newRepeatEnds;
-        const newRepeatEndings = new Map();
-        if (this.data.repeatEndings) {
-            this.data.repeatEndings.forEach((val, m) => {
-                if (m < deletedM)
-                    newRepeatEndings.set(m, val);
-                else if (m > deletedM)
-                    newRepeatEndings.set(m - 1, val);
-            });
+        if (toIndex < 0 || toIndex >= this.data.numberOfMeasures) {
+            return false;
         }
-        this.data.repeatEndings = newRepeatEndings;
-        const newMeasureText = new Map();
-        if (this.data.measureText) {
-            this.data.measureText.forEach((val, m) => {
-                if (m < deletedM)
-                    newMeasureText.set(m, val);
-                else if (m > deletedM)
-                    newMeasureText.set(m - 1, val);
-            });
+        if (fromIndex === toIndex) {
+            return false;
         }
-        this.data.measureText = newMeasureText;
+        this.syncUIToMeasures();
+        if (this.isAudioPlaying || (this.myGrooveUtils && this.myGrooveUtils.isPlaying())) {
+            this.myGrooveUtils?.stopMIDI_playback();
+        }
+        const wasStickingsVisible = this.isStickingsVisible();
+        const wasTomsVisible = this.isTomsVisible();
+        const [movedMeasure] = this.data.measures.splice(fromIndex, 1);
+        this.data.measures.splice(toIndex, 0, movedMeasure);
+        this.selectedNoteIndex = toIndex * this.data.notesPerMeasure;
         this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
         return true;
     }
@@ -3591,13 +3581,14 @@ class GrooveWriter {
         const addMeasureBtn = baseindex === this.data.numberOfMeasures
             ? `<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>`
             : '';
-        const isRepeatStart = this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex);
-        const isRepeatEnd = this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex);
-        const altEnding = (this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "";
+        const measure = this.data && this.data.measures ? this.data.measures[baseindex - 1] : null;
+        const isRepeatStart = measure ? measure.repeatBegin : (this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex));
+        const isRepeatEnd = measure ? measure.repeatEnd : (this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex));
+        const altEnding = measure ? measure.alternateEnding : ((this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "");
         const textEntry = (this.data && this.data.measureText && this.data.measureText.get(baseindex)) ? this.data.measureText.get(baseindex) : {};
-        const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
-        const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
-        const lyrics = (textEntry && textEntry.lyrics) ? textEntry.lyrics : "";
+        const textBegin = measure ? measure.textBegin : ((textEntry && textEntry.begin) ? textEntry.begin : "");
+        const textEnd = measure ? measure.textEnd : ((textEntry && textEntry.end) ? textEntry.end : "");
+        const lyrics = measure ? measure.lyrics : ((textEntry && textEntry.lyrics) ? textEntry.lyrics : "");
         const isOnlyMeasure = this.data.numberOfMeasures <= 1;
         return `
       <div class="staff-container" id="staff-container${baseindex}">
@@ -3878,6 +3869,7 @@ const decodeConvertedUrlGlobal = (url) => getGWInstance()?.populateEmbedFromUrl(
 const copyMeasureToLastGlobal = (measureIndex) => getGWInstance()?.copyMeasureToLast(measureIndex);
 const clearMeasureGlobal = (measureIndex) => getGWInstance()?.clearMeasure(measureIndex);
 const deleteMeasureGlobal = (measureIndex) => getGWInstance()?.deleteMeasure(measureIndex);
+const moveMeasureGlobal = (fromIndex, toIndex) => getGWInstance()?.moveMeasure(fromIndex, toIndex);
 if (typeof window !== "undefined") {
     window.renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
     window.getEmbedTableData = getEmbedTableDataGlobal;
@@ -3893,6 +3885,7 @@ if (typeof window !== "undefined") {
     window.copyMeasureToLast = copyMeasureToLastGlobal;
     window.clearMeasure = clearMeasureGlobal;
     window.deleteMeasure = deleteMeasureGlobal;
+    window.moveMeasure = moveMeasureGlobal;
     window.encodeAfterLastColon = encodeAfterLastColon;
     window.parseQuery = parseQuery;
 }
@@ -3911,6 +3904,7 @@ if (typeof globalThis !== "undefined") {
     globalThis.copyMeasureToLast = copyMeasureToLastGlobal;
     globalThis.clearMeasure = clearMeasureGlobal;
     globalThis.deleteMeasure = deleteMeasureGlobal;
+    globalThis.moveMeasure = moveMeasureGlobal;
     globalThis.encodeAfterLastColon = encodeAfterLastColon;
     globalThis.parseQuery = parseQuery;
 }
@@ -3930,6 +3924,7 @@ if (typeof module !== "undefined" && module.exports) {
         copyMeasureToLast: copyMeasureToLastGlobal,
         clearMeasure: clearMeasureGlobal,
         deleteMeasure: deleteMeasureGlobal,
+        moveMeasure: moveMeasureGlobal,
         encodeAfterLastColon,
         parseQuery,
         kickPermutationStrait,

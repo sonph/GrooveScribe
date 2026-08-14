@@ -2394,6 +2394,12 @@ class GrooveWriter {
 
     const lastMeasure = this.data.measures[this.data.measures.length - 1];
     const newMeasure = lastMeasure ? lastMeasure.clone() : new Measure(this.data.timeSig, this.data.subdivision);
+    newMeasure.repeatBegin = false;
+    newMeasure.repeatEnd = false;
+    newMeasure.alternateEnding = "";
+    newMeasure.textBegin = "";
+    newMeasure.textEnd = "";
+    newMeasure.lyrics = "";
     this.data.measures.push(newMeasure);
 
     this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
@@ -2412,42 +2418,37 @@ class GrooveWriter {
 
     this.data.measures.splice(measureIndex, 1);
 
-    const deletedM = measureIndex + 1;
-    const newRepeatBegins = new Set<number>();
-    if (this.data.repeatBegins) {
-      this.data.repeatBegins.forEach(m => {
-        if (m < deletedM) newRepeatBegins.add(m);
-        else if (m > deletedM) newRepeatBegins.add(m - 1);
-      });
-    }
-    this.data.repeatBegins = newRepeatBegins;
+    this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+    return true;
+  }
 
-    const newRepeatEnds = new Set<number>();
-    if (this.data.repeatEnds) {
-      this.data.repeatEnds.forEach(m => {
-        if (m < deletedM) newRepeatEnds.add(m);
-        else if (m > deletedM) newRepeatEnds.add(m - 1);
-      });
+  moveMeasure(fromIndex: number, toIndex: number): boolean {
+    if (this.data.numberOfMeasures <= 1) {
+      return false;
     }
-    this.data.repeatEnds = newRepeatEnds;
+    if (fromIndex < 0 || fromIndex >= this.data.numberOfMeasures) {
+      return false;
+    }
+    if (toIndex < 0 || toIndex >= this.data.numberOfMeasures) {
+      return false;
+    }
+    if (fromIndex === toIndex) {
+      return false;
+    }
 
-    const newRepeatEndings = new Map<number, string>();
-    if (this.data.repeatEndings) {
-      this.data.repeatEndings.forEach((val, m) => {
-        if (m < deletedM) newRepeatEndings.set(m, val);
-        else if (m > deletedM) newRepeatEndings.set(m - 1, val);
-      });
-    }
-    this.data.repeatEndings = newRepeatEndings;
+    this.syncUIToMeasures();
 
-    const newMeasureText = new Map<number, MeasureTextEntry>();
-    if (this.data.measureText) {
-      this.data.measureText.forEach((val, m) => {
-        if (m < deletedM) newMeasureText.set(m, val);
-        else if (m > deletedM) newMeasureText.set(m - 1, val);
-      });
+    if (this.isAudioPlaying || (this.myGrooveUtils && this.myGrooveUtils.isPlaying())) {
+      this.myGrooveUtils?.stopMIDI_playback();
     }
-    this.data.measureText = newMeasureText;
+
+    const wasStickingsVisible = this.isStickingsVisible();
+    const wasTomsVisible = this.isTomsVisible();
+
+    const [movedMeasure] = this.data.measures.splice(fromIndex, 1);
+    this.data.measures.splice(toIndex, 0, movedMeasure);
+
+    this.selectedNoteIndex = toIndex * this.data.notesPerMeasure;
 
     this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
     return true;
@@ -3891,13 +3892,14 @@ class GrooveWriter {
       ? `<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>`
       : '';
 
-    const isRepeatStart = this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex);
-    const isRepeatEnd = this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex);
-    const altEnding = (this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "";
+    const measure = this.data && this.data.measures ? this.data.measures[baseindex - 1] : null;
+    const isRepeatStart = measure ? measure.repeatBegin : (this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex));
+    const isRepeatEnd = measure ? measure.repeatEnd : (this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex));
+    const altEnding = measure ? measure.alternateEnding : ((this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "");
     const textEntry = (this.data && this.data.measureText && this.data.measureText.get(baseindex)) ? this.data.measureText.get(baseindex) : {};
-    const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
-    const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
-    const lyrics = (textEntry && textEntry.lyrics) ? textEntry.lyrics : "";
+    const textBegin = measure ? measure.textBegin : ((textEntry && textEntry.begin) ? textEntry.begin : "");
+    const textEnd = measure ? measure.textEnd : ((textEntry && textEntry.end) ? textEntry.end : "");
+    const lyrics = measure ? measure.lyrics : ((textEntry && textEntry.lyrics) ? textEntry.lyrics : "");
     const isOnlyMeasure = this.data.numberOfMeasures <= 1;
 
     return `
@@ -4182,6 +4184,7 @@ const decodeConvertedUrlGlobal = (url?: string) => getGWInstance()?.populateEmbe
 const copyMeasureToLastGlobal = (measureIndex: number) => getGWInstance()?.copyMeasureToLast(measureIndex);
 const clearMeasureGlobal = (measureIndex: number) => getGWInstance()?.clearMeasure(measureIndex);
 const deleteMeasureGlobal = (measureIndex: number) => getGWInstance()?.deleteMeasure(measureIndex);
+const moveMeasureGlobal = (fromIndex: number, toIndex: number) => getGWInstance()?.moveMeasure(fromIndex, toIndex);
 
 if (typeof window !== "undefined") {
   (window as any).renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
@@ -4198,6 +4201,7 @@ if (typeof window !== "undefined") {
   (window as any).copyMeasureToLast = copyMeasureToLastGlobal;
   (window as any).clearMeasure = clearMeasureGlobal;
   (window as any).deleteMeasure = deleteMeasureGlobal;
+  (window as any).moveMeasure = moveMeasureGlobal;
   (window as any).encodeAfterLastColon = encodeAfterLastColon;
   (window as any).parseQuery = parseQuery;
 }
@@ -4217,6 +4221,7 @@ if (typeof (globalThis as any) !== "undefined") {
   (globalThis as any).copyMeasureToLast = copyMeasureToLastGlobal;
   (globalThis as any).clearMeasure = clearMeasureGlobal;
   (globalThis as any).deleteMeasure = deleteMeasureGlobal;
+  (globalThis as any).moveMeasure = moveMeasureGlobal;
   (globalThis as any).encodeAfterLastColon = encodeAfterLastColon;
   (globalThis as any).parseQuery = parseQuery;
 }
@@ -4237,6 +4242,7 @@ if (typeof module !== "undefined" && module.exports) {
     copyMeasureToLast: copyMeasureToLastGlobal,
     clearMeasure: clearMeasureGlobal,
     deleteMeasure: deleteMeasureGlobal,
+    moveMeasure: moveMeasureGlobal,
     encodeAfterLastColon,
     parseQuery,
     kickPermutationStrait,
