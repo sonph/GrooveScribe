@@ -282,13 +282,13 @@ describe('TimeSignature.fromString', () => {
   });
 });
 
-describe('figure_out_sticking_count_for_index', () => {
+describe('figureOutStickingCountForIndex', () => {
   beforeAll(() => {
     require('../js/groove_render.js');
   });
 
   test('calculates 16th note counts correctly (1, e, &, a)', () => {
-    const counts = Array.from({ length: 16 }, (_, i) => figure_out_sticking_count_for_index(i, 16, 16, 4));
+    const counts = Array.from({ length: 16 }, (_, i) => figureOutStickingCountForIndex(i, 16, 16, 4));
     expect(counts).toEqual([
       1, 'e', '&', 'a',
       2, 'e', '&', 'a',
@@ -298,12 +298,12 @@ describe('figure_out_sticking_count_for_index', () => {
   });
 
   test('calculates 8th note counts correctly (1, &, 2, &)', () => {
-    const counts = Array.from({ length: 8 }, (_, i) => figure_out_sticking_count_for_index(i, 8, 8, 4));
+    const counts = Array.from({ length: 8 }, (_, i) => figureOutStickingCountForIndex(i, 8, 8, 4));
     expect(counts).toEqual([1, '&', 2, '&', 3, '&', 4, '&']);
   });
 
   test('calculates 8th triplet counts correctly (1, &, a, 2, &, a)', () => {
-    const counts = Array.from({ length: 12 }, (_, i) => figure_out_sticking_count_for_index(i, 12, 12, 4));
+    const counts = Array.from({ length: 12 }, (_, i) => figureOutStickingCountForIndex(i, 12, 12, 4));
     expect(counts).toEqual([
       1, '&', 'a',
       2, '&', 'a',
@@ -313,7 +313,7 @@ describe('figure_out_sticking_count_for_index', () => {
   });
 
   test('calculates quarter note counts correctly (1, 2, 3, 4)', () => {
-    const counts = Array.from({ length: 4 }, (_, i) => figure_out_sticking_count_for_index(i, 4, 4, 4));
+    const counts = Array.from({ length: 4 }, (_, i) => figureOutStickingCountForIndex(i, 4, 4, 4));
     expect(counts).toEqual([1, 2, 3, 4]);
   });
 });
@@ -647,13 +647,13 @@ describe('SVG Note Highlighting & Note Mapping', () => {
     utils = new global.GrooveUtils(excludeAbcForTesting = true);
   });
 
-  test('create_note_mapping_array_for_highlighting identifies active note slots', () => {
+  test('createNoteMappingArrayForHighlighting identifies active note slots', () => {
     const hh = ['x', null, 'x', null, false, '-'];
     const sn = [null, 'o', null, null, null, null];
     const kk = [null, null, null, null, null, null];
     const toms = [[null, null, null, 'o', null, null], null, null, null];
 
-    const mapping = utils.create_note_mapping_array_for_highlighting(hh, sn, kk, toms, 6);
+    const mapping = createNoteMappingArrayForHighlighting(hh, sn, kk, toms, 6);
     expect(mapping).toEqual([true, true, true, true, false, false]);
   });
 
@@ -699,6 +699,57 @@ describe('SVG Note Highlighting & Note Mapping', () => {
     utils.clearHighlightNoteInABCSVG();
     expect(document.getElementById('abcNoteNum_0_1').getAttribute('class')).toBe('abcr');
     expect(utils.abcNoteNumCurrentlyHighlighted).toBe(-1);
+  });
+});
+
+describe('Helper math and sticking functions', () => {
+  beforeAll(() => {
+    require('../js/groove_audio.js');
+    require('../js/groove_render.js');
+  });
+
+  test('notesPerMeasureInFullSizeArray calculates full array length', () => {
+    expect(notesPerMeasureInFullSizeArray(false, TimeSignature.COMMON_TIME_44)).toBe(32);
+    expect(notesPerMeasureInFullSizeArray(true, TimeSignature.COMMON_TIME_44)).toBe(48);
+    expect(notesPerMeasureInFullSizeArray(false, new TimeSignature(3, Subdivision.QUARTER))).toBe(24);
+  });
+
+  test('getNoteScaler calculates scaling factor for UI arrays', () => {
+    expect(getNoteScaler(16, TimeSignature.COMMON_TIME_44)).toBe(2);
+    expect(getNoteScaler(8, TimeSignature.COMMON_TIME_44)).toBe(4);
+    expect(getNoteScaler(32, TimeSignature.COMMON_TIME_44)).toBe(1);
+    expect(getNoteScaler(12, TimeSignature.COMMON_TIME_44)).toBe(4);
+  });
+
+  test('noteGroupingSize calculates proper group sizes', () => {
+    expect(noteGroupingSize(16, TimeSignature.COMMON_TIME_44)).toBe(4);
+    expect(noteGroupingSize(8, TimeSignature.COMMON_TIME_44)).toBe(2);
+    expect(noteGroupingSize(12, TimeSignature.COMMON_TIME_44)).toBe(3);
+    expect(noteGroupingSize(12, new TimeSignature(3, Subdivision.QUARTER))).toBe(4);
+  });
+
+  test('convertStickingCountsToActualCounts replaces "count"x with musical count annotations', () => {
+    const stickingArray = new Array(32).fill('""x');
+    stickingArray[0] = '"count"x';
+    stickingArray[4] = '"count"x';
+    convertStickingCountsToActualCounts(stickingArray, 8, TimeSignature.COMMON_TIME_44);
+    expect(stickingArray[0]).toBe('"1"x');
+    expect(stickingArray[4]).toBe('"&"x');
+  });
+
+  test('HTMLForMidiPlayer renders multi-line template correctly', () => {
+    const utils = new global.GrooveUtils(true);
+    const htmlBasic = utils.HTMLForMidiPlayer(false);
+    expect(htmlBasic).toContain('class="playerControl"');
+    expect(htmlBasic).toContain('class="midiPlayImage Stopped"');
+    expect(htmlBasic).toContain('class="tempoAndProgress"');
+    expect(htmlBasic).not.toContain('midiMetronomeMenu');
+    expect(htmlBasic).not.toContain('midiGSLogo');
+
+    const htmlExpandable = utils.HTMLForMidiPlayer(true);
+    expect(htmlExpandable).toContain('midiMetronomeMenu');
+    expect(htmlExpandable).toContain('midiGSLogo');
+    expect(htmlExpandable).toContain('midiExpandImage');
   });
 });
 

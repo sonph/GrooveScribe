@@ -705,8 +705,8 @@ class GrooveWriter {
     if (this.class_permutation_type != "none")
       percent_complete = (percent_complete * this.get_numberOfActivePermutationSections()) % 1.0;
 
-    var note_id_in_32 = Math.floor(percent_complete * this.myGrooveUtils.notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
-    var real_note_id = (note_id_in_32 / this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
+    var note_id_in_32 = Math.floor(percent_complete * notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
+    var real_note_id = (note_id_in_32 / getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
 
     this.hilight_all_notes_on_same_beat(instrument, real_note_id);
   }
@@ -1571,7 +1571,7 @@ class GrooveWriter {
 
   // Extracts note array of a single measure from the clickable UI and scales it to 32 (or 48) elements.
   get32NoteArrayFromClickableUI(Sticking_Array: Array<any>, HH_Array: Array<any>, Snare_Array: Array<any>, Kick_Array: Array<any>, Toms_Array: Array<Array<any>>, startIndexForClickableUI: number, HH2_Array?: Array<any>): number {
-    var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
+    var scaler = getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
 
     for (var i = 0; i < this.data.notesPerMeasure; i++) {
       var array_index = (i) * scaler;
@@ -1685,7 +1685,7 @@ class GrooveWriter {
             this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
             this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes, HH2_Array)
+              createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes, HH2_Array)
             );
           }
         }
@@ -1706,7 +1706,7 @@ class GrooveWriter {
             this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
             this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-              this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes, HH2_Array)
+              createNoteMappingArrayForHighlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes, HH2_Array)
             );
           }
         }
@@ -1722,7 +1722,7 @@ class GrooveWriter {
         this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
         this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-          this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
+          createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
         );
 
         for (i = 1; i < this.data.numberOfMeasures; i++) {
@@ -1739,7 +1739,7 @@ class GrooveWriter {
           this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
 
           this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(
-            this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
+            createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array)
           );
         }
         break;
@@ -3791,7 +3791,7 @@ class GrooveWriter {
 														</div>\n\
 													');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div>\n');
       }
     }
@@ -3829,7 +3829,7 @@ class GrooveWriter {
       newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" onClick="myGrooveWriter.handleBgHighlightClick(event, ' + i + ')" >\
 												</div>\n');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -3856,7 +3856,7 @@ class GrooveWriter {
 														</div>\n\
 													');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -3884,7 +3884,7 @@ class GrooveWriter {
 														</div>\n\
 													');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -3901,7 +3901,7 @@ class GrooveWriter {
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -3963,7 +3963,7 @@ class GrooveWriter {
         '</div>' +
         '</div> \n');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }
@@ -3980,7 +3980,7 @@ class GrooveWriter {
 						</div>\n\
 						');
 
-      if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((i - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> \n');
       }
     }
@@ -3998,7 +3998,7 @@ class GrooveWriter {
 														</div> \n\
 													');
 
-      if ((j - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && j < this.data.notesPerMeasure + indexStartForNotes - 1) {
+      if ((j - (indexStartForNotes - 1)) % noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && j < this.data.notesPerMeasure + indexStartForNotes - 1) {
         newHTML += ('<div class="space_between_note_groups"> </div> ');
       }
     }
