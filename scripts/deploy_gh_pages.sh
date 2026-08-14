@@ -49,6 +49,10 @@ npm test
 echo "==> Minifying JavaScript assets..."
 npm run minify
 
+# Update HTML files on gh-pages branch to use .min.js
+echo "==> Updating HTML script tags to use .min.js..."
+node scripts/switch_to_minified_html.js
+
 # Stage all assets including compiled JS files, minified bundles, and sourcemaps
 echo "==> Staging assets..."
 git add -A
