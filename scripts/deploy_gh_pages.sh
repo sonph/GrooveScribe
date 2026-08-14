@@ -33,9 +33,9 @@ fi
 echo "==> Pulling latest ${TARGET_BRANCH} from origin..."
 git pull origin ${TARGET_BRANCH} || true
 
-# Merge latest source branch (master)
+# Merge latest source branch (master), prioritizing master in case of artifact conflicts
 echo "==> Merging ${SOURCE_BRANCH} into ${TARGET_BRANCH}..."
-git merge ${SOURCE_BRANCH} --no-edit
+git merge ${SOURCE_BRANCH} -X theirs --no-edit
 
 # Build TypeScript to JavaScript
 echo "==> Building JavaScript assets..."
