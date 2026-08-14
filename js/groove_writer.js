@@ -3089,6 +3089,7 @@ class GrooveWriter {
             if (this.usingTriplets() && newTimeSigBottom != 4) {
                 this.changeDivision(Subdivision.SIXTEENTH);
             }
+            this.syncUIToMeasures();
             this.data.timeSig = new TimeSignature(newTimeSigTop, Subdivision.of(newTimeSigBottom));
             this.changeDivision(this.data.subdivision);
         }
@@ -3210,14 +3211,14 @@ class GrooveWriter {
             embedShowTempo.checked = this.data.showTempo;
         this.data.showToms = this.isTomsVisible();
         this.data.showStickings = this.isStickingsVisible();
-        const npm = this.data.notesPerMeasure;
         const hasStaffInDOM = !!document.querySelector(".staff-container");
         if (hasStaffInDOM) {
+            let start = 0;
             for (let m = 0; m < this.data.numberOfMeasures; m++) {
                 const measure = this.data.measures[m];
                 if (!measure)
                     continue;
-                const start = m * npm;
+                const npm = measure.notesPerMeasure;
                 for (const drum of DrumType.ALL) {
                     const chars = [];
                     for (let i = 0; i < npm; i++) {
@@ -3225,6 +3226,7 @@ class GrooveWriter {
                     }
                     measure.setDataFromString(drum, chars.join(''));
                 }
+                start += npm;
             }
         }
         const tableData = this.getEmbedTableData();
@@ -3380,8 +3382,16 @@ class GrooveWriter {
         this.data.measures = [];
         for (let m = 0; m < oldMeasures.length; m++) {
             const fresh = new Measure(this.data.timeSig, this.data.subdivision);
-            if (sameTripletness && oldMeasures[m]) {
-                GrooveWriter.rescaleMeasure(oldMeasures[m], fresh);
+            if (oldMeasures[m]) {
+                fresh.repeatBegin = oldMeasures[m].repeatBegin;
+                fresh.repeatEnd = oldMeasures[m].repeatEnd;
+                fresh.alternateEnding = oldMeasures[m].alternateEnding;
+                fresh.textBegin = oldMeasures[m].textBegin;
+                fresh.textEnd = oldMeasures[m].textEnd;
+                fresh.lyrics = oldMeasures[m].lyrics;
+                if (sameTripletness) {
+                    GrooveWriter.rescaleMeasure(oldMeasures[m], fresh);
+                }
             }
             this.data.measures.push(fresh);
         }
@@ -3409,18 +3419,27 @@ class GrooveWriter {
         const drums = [DrumType.STICKINGS, DrumType.HIHAT, DrumType.HIHAT2, DrumType.SNARE, DrumType.KICK, DrumType.TOM1, DrumType.TOM4];
         const srcLen = src.notesPerMeasure;
         const dstLen = dst.notesPerMeasure;
+        const sameTimeSig = src.timeSig.equals(dst.timeSig);
         for (const drum of drums) {
             const srcArr = src.getArray(drum);
             const dstArr = Measure.createEmptyArrayOfLength(dstLen);
-            if (dstLen >= srcLen) {
-                const scale = Math.floor(dstLen / srcLen);
-                for (let i = 0; i < srcLen; i++)
-                    dstArr[i * scale] = srcArr[i];
+            if (sameTimeSig) {
+                if (dstLen >= srcLen && srcLen > 0) {
+                    const scale = Math.floor(dstLen / srcLen);
+                    for (let i = 0; i < srcLen; i++)
+                        dstArr[i * scale] = srcArr[i];
+                }
+                else if (srcLen > 0 && dstLen > 0) {
+                    const scale = Math.floor(srcLen / dstLen);
+                    for (let i = 0; i < dstLen; i++)
+                        dstArr[i] = srcArr[i * scale];
+                }
             }
             else {
-                const scale = Math.floor(srcLen / dstLen);
-                for (let i = 0; i < dstLen; i++)
-                    dstArr[i] = srcArr[i * scale];
+                const minLen = Math.min(srcLen, dstLen);
+                for (let i = 0; i < minLen; i++) {
+                    dstArr[i] = srcArr[i];
+                }
             }
             dst.arrays.set(drum.name, dstArr);
         }

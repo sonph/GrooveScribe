@@ -2931,3 +2931,108 @@ describe('Drag and Drop Measure Reordering', () => {
     expect(writer.selectedNoteIndex).toBe(19 * 8);
   });
 });
+
+describe('Time Signature Selection', () => {
+  let writer;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="timeLabel"></div>
+      <div id="timeSigLabel"></div>
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
+      <div id="PermutationOptions"></div>
+      <div id="subdivision_8ths"></div>
+      <div id="subdivision_16ths"></div>
+      <div id="embedTool" style="display: none;">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+      <div id="timeSigPopup" style="display: block;">
+        <select id="timeSigPopupTimeSigTop">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option selected value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+        <select id="timeSigPopupTimeSigBottom">
+          <option value="2">2</option>
+          <option selected value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </div>
+    `;
+    writer = new GrooveWriter(new GrooveUtils(true));
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
+  });
+
+  test('changes time signature from 4/4 to 3/4 without throwing length errors', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--O---O-|&K=|o---o---|&MeasureText=1:l:test%20lyrics');
+    expect(writer.data.timeSig.toString()).toBe('4/4');
+    expect(writer.data.notesPerMeasure).toBe(8);
+
+    // Set popup to 3/4
+    (document.getElementById('timeSigPopupTimeSigTop')).value = '3';
+    (document.getElementById('timeSigPopupTimeSigBottom')).value = '4';
+
+    expect(() => {
+      writer.timeSigPopupClose('ok');
+    }).not.toThrow();
+
+    expect(writer.data.timeSig.toString()).toBe('3/4');
+    expect(writer.data.notesPerMeasure).toBe(6);
+    expect(writer.data.measures[0].notesPerMeasure).toBe(6);
+    expect(writer.data.measures[0].lyrics).toBe('test lyrics');
+
+    // DOM measure container re-rendered with 6 notes
+    const m1 = document.getElementById('staff-container1');
+    expect(m1).not.toBeNull();
+    const hhNotes = m1.querySelectorAll('.hi-hat');
+    expect(hhNotes.length).toBe(6);
+  });
+
+  test('changes time signature from 4/4 to 5/4 and preserves existing notes', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--O---O-|&K=|o---o---|');
+
+    // Set popup to 5/4
+    (document.getElementById('timeSigPopupTimeSigTop')).value = '5';
+    (document.getElementById('timeSigPopupTimeSigBottom')).value = '4';
+
+    expect(() => {
+      writer.timeSigPopupClose('ok');
+    }).not.toThrow();
+
+    expect(writer.data.timeSig.toString()).toBe('5/4');
+    expect(writer.data.notesPerMeasure).toBe(10);
+    expect(writer.data.measures[0].notesPerMeasure).toBe(10);
+    expect(writer.data.measures[0].toString(DrumType.HIHAT)).toBe('xxxxxxxx--');
+  });
+
+  test('changes time signature with multiple measures', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--O---O-|--O---O-|&K=|o---o---|o---o---|&MeasureText=1:l:m1;2:l:m2');
+
+    (document.getElementById('timeSigPopupTimeSigTop')).value = '3';
+    (document.getElementById('timeSigPopupTimeSigBottom')).value = '4';
+
+    writer.timeSigPopupClose('ok');
+
+    expect(writer.data.measures.length).toBe(2);
+    expect(writer.data.measures[0].notesPerMeasure).toBe(6);
+    expect(writer.data.measures[1].notesPerMeasure).toBe(6);
+    expect(writer.data.measures[0].lyrics).toBe('m1');
+    expect(writer.data.measures[1].lyrics).toBe('m2');
+  });
+});
