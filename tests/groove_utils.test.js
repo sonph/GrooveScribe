@@ -62,6 +62,11 @@ describe('Measure', () => {
       'o', null, null, null, null, null, null, null]);
   });
 
+  test('setDataFromString should clear array when given empty string', () => {
+    measure.setDataFromString(DrumType.SNARE, '');
+    expect(measure.getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+  });
+
   test('should get correct string from array value', () => {
     measure.arrays.set(DrumType.KICK.name, [null, 'o', null, 'o', 'o']);
     expect(measure.toString(DrumType.KICK)).toEqual('-o-oo');
@@ -125,6 +130,12 @@ describe('GrooveData', () => {
     expect(GrooveData.splitTabIntoMeasureStrings(null)).toEqual([]);
     expect(GrooveData.splitTabIntoMeasureStrings('')).toEqual([]);
     expect(GrooveData.splitTabIntoMeasureStrings('|')).toEqual([]);
+    expect(GrooveData.splitTabIntoMeasureStrings('||')).toEqual(['']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|||')).toEqual(['', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('||||')).toEqual(['', '', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('||x-x-|')).toEqual(['', 'x-x-']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|x-x-||')).toEqual(['x-x-', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|x-x-||-x-x|')).toEqual(['x-x-', '', '-x-x']);
   });
 
   test('toUrl should encode params', () => {
@@ -171,6 +182,48 @@ describe('URL codec', () => {
     expect(decoded.drumTabs.get('H')).toEqual('|x-x-x-x-|');
     expect(decoded.drumTabs.get('S')).toEqual('|--o---o-|');
     expect(decoded.drumTabs.get('K')).toEqual('|o---o---|');
+  });
+
+  test('decodeGrooveUrl and encodeGrooveQueryString optimize empty bars with consecutive pipes', () => {
+    // 1-measure with empty Snare: S=||
+    const data1 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data1.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|&S=||&K=|o-------o-------|');
+    expect(data1.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data1.toUrl()).toContain('S=||');
+
+    // 2-measures: Measure 1 empty snare, Measure 2 active snare -> S=||----o-------o---|
+    const data2 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data2.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=||----o-------o---|&K=|o-------o-------|o-------o-------|');
+    expect(data2.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data2.measures[1].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data2.toUrl()).toContain('S=||----o-------o---|');
+
+    // 2-measures: Measure 1 active snare, Measure 2 empty snare -> S=|----o-------o---||
+    const data3 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data3.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|----o-------o---||&K=|o-------o-------|o-------o-------|');
+    expect(data3.measures[0].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data3.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data3.toUrl()).toContain('S=|----o-------o---||');
+
+    // 2-measures: both empty snare -> S=|||
+    const data4 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data4.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|||&K=|o-------o-------|o-------o-------|');
+    expect(data4.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data4.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data4.toUrl()).toContain('S=|||');
+
+    // Backward compatibility: loading old legacy dash string S=|----------------| optimizes on serialize to S=||
+    const data5 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data5.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|&S=|----------------|&K=|o-------o-------|');
+    expect(data5.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data5.toUrl()).toContain('S=||');
+
+    // Backward compatibility: multi-measure legacy dash strings S=|----------------|----------------| and mixed
+    const data6 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data6.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|----o-------o---|----------------|&K=|o-------o-------|o-------o-------|');
+    expect(data6.measures[0].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data6.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data6.toUrl()).toContain('S=|----o-------o---||');
   });
 
   test('URL round-trip preserves tempo and swing', () => {

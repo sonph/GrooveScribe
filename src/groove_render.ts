@@ -473,6 +473,10 @@ class Measure {
 
   // String should be without the bar separators `|`.
   setDataFromString(drumType: DrumType, string: string) {
+    if (string === '' || string.length === 0) {
+      this.arrays.set(drumType.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
+      return;
+    }
     if (string.length !== this.notesPerMeasure) {
       throw new Error(`Expected string of length ${this.notesPerMeasure}, got ${string} of length ${string.length}`);
     }
@@ -786,9 +790,11 @@ function encodeGrooveQueryString(state: EncodableGrooveState): string {
     for (const measure of state.measures) {
       const str = measure.toString(drum);
       if (str) {
-        arrays.push(str);
         if (str.split('').some(c => c !== '-')) {
           hasAnyNotes = true;
+          arrays.push(str);
+        } else {
+          arrays.push('');
         }
       }
     }

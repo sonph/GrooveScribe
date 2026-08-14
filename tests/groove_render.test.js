@@ -144,6 +144,22 @@ describe('groove_render.js isolated execution', () => {
     expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
   });
 
+  test('populates initial groove when URL explicitly contains empty pipe arrays (||)', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=8&H=||&S=||&K=||');
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+    expect(m.toString(DrumType.KICK)).toBe('o---o---');
+    expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
+  });
+
+  test('encodes empty bars as consecutive pipes in query string', () => {
+    const data = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.EIGHTH);
+    data.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=||&K=|o---o---|');
+    expect(data.toQueryString()).toContain('S=||');
+    expect(data.toQueryString()).toContain('H=|xxxxxxxx|');
+    expect(data.toQueryString()).toContain('K=|o---o---|');
+  });
+
   test('generates invisible rests (x) instead of visible rests (z) in V:Stickings when empty', () => {
     const data = new GrooveData().fromUrl('TimeSig=4/4&Div=16&RepeatBegins=1&RepeatEnds=1;2&RepeatEndings=2:1&H=|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x---|&S=|----O----g--O---|----O----g-OO---|&K=|o-oo---oo-oo----|o-oo---oo-o--o--|');
     const notation = data.getAbcNotation();
