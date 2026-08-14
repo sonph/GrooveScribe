@@ -2354,12 +2354,19 @@ class GrooveWriter {
   }
 
   refreshMeasureGrid(wasStickingsVisible: boolean = false, wasTomsVisible: boolean = false): void {
+    const musicalInput = document.getElementById("musicalInput");
+    const prevScrollLeft = musicalInput ? musicalInput.scrollLeft : 0;
+
     this.expandAuthoringViewWhenNecessary(this.data.notesPerMeasure, this.data.numberOfMeasures);
     this.renderMeasureContainer();
     this.applyMeasuresToUI();
 
     if (wasStickingsVisible) this.stickingsShowHide(true, true, true);
     if (wasTomsVisible) this.showHideToms(true, true, true);
+
+    if (musicalInput && prevScrollLeft > 0) {
+      musicalInput.scrollLeft = prevScrollLeft;
+    }
 
     this.updateUrl();
     this.updateSheetMusic();
@@ -2436,12 +2443,84 @@ class GrooveWriter {
     this.removeMeasure(measureNum - 1);
   };
 
+  copyMeasureToLast(measureIndex: number): Measure | null {
+    if (measureIndex < 0 || measureIndex >= this.data.numberOfMeasures) {
+      return null;
+    }
+    this.syncUIToMeasures();
+
+    const wasStickingsVisible = this.isStickingsVisible();
+    const wasTomsVisible = this.isTomsVisible();
+
+    const sourceMeasure = this.data.measures[measureIndex];
+    const newMeasure = sourceMeasure ? sourceMeasure.clone() : new Measure(this.data.timeSig, this.data.subdivision);
+    this.data.measures.push(newMeasure);
+
+    this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+    return newMeasure;
+  }
+
+  copyMeasureToLastButtonClick(measureNum: number): void {
+    this.copyMeasureToLast(measureNum - 1);
+
+    var add_measure_button = document.getElementById("addMeasureButton");
+    if (add_measure_button && typeof add_measure_button.scrollIntoView === 'function')
+      add_measure_button.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+
+    if (this.data.numberOfMeasures >= 5)
+      window.alert("Please be aware that the Groove Scribe is not designed to write an entire musical score.\n" +
+        "You can create as many measures as you want, but your browser may slow down as more measures are added.\n" +
+        "There are also many notation features that would be useful for score writing that are not part of Groove Scribe");
+  }
+
+  clearMeasure(measureIndex: number): boolean {
+    if (measureIndex < 0 || measureIndex >= this.data.numberOfMeasures) {
+      return false;
+    }
+    const npm = this.data.notesPerMeasure;
+    const start = measureIndex * npm;
+    for (let i = start; i < start + npm; i++) {
+      this.set_sticking_state(i, 'off');
+      this.set_hh_state(i, 'off');
+      this.set_hh2_state(i, 'off');
+      this.set_tom1_state(i, 'off');
+      this.set_tom4_state(i, 'off');
+      this.set_snare_state(i, 'off');
+      this.set_kick_state(i, 'off');
+    }
+    if (this.data.measures[measureIndex]) {
+      for (const drum of DrumType.ALL) {
+        this.data.measures[measureIndex].arrays.set(drum.name, Measure.createEmptyArrayOfLength(npm));
+      }
+    }
+    this.updateSheetMusic();
+    return true;
+  }
+
+  clearMeasureButtonClick(measureNum: number): boolean {
+    return this.clearMeasure(measureNum - 1);
+  }
+
+  deleteMeasure(measureIndex: number): boolean {
+    return this.removeMeasure(measureIndex);
+  }
+
+  deleteMeasureButtonClick(measureNum: number): boolean {
+    if (this.data.numberOfMeasures <= 1) {
+      if (typeof window !== "undefined" && typeof window.alert === "function") {
+        window.alert("A groove must have at least one measure. Use 'Clear measure' if you want to erase all notes.");
+      }
+      return false;
+    }
+    return this.removeMeasure(measureNum - 1);
+  }
+
   addMeasureButtonClick = (event?: MouseEvent): void => {
     this.addMeasure();
 
     var add_measure_button = document.getElementById("addMeasureButton");
     if (add_measure_button && typeof add_measure_button.scrollIntoView === 'function')
-      add_measure_button.scrollIntoView({ block: "start", behavior: "smooth" });
+      add_measure_button.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
 
     if (this.data.numberOfMeasures >= 5)
       window.alert("Please be aware that the Groove Scribe is not designed to write an entire musical score.\n" +
@@ -2670,7 +2749,7 @@ class GrooveWriter {
     }
   }
 
-  updateNavHighlights(): void {
+  updateNavHighlights(shouldScroll: boolean = false): void {
     this.clearNavHighlights();
     if (this.isAudioPlaying) return;
 
@@ -2740,7 +2819,7 @@ class GrooveWriter {
     const noteEle = this.getNoteElement(this.selectedInstrument, this.selectedNoteIndex);
     if (noteEle) {
       noteEle.classList.add("nav-note-cursor");
-      if (typeof noteEle.scrollIntoView === "function") {
+      if (shouldScroll && typeof noteEle.scrollIntoView === "function") {
         try {
           noteEle.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
         } catch (_) {}
@@ -2753,6 +2832,7 @@ class GrooveWriter {
     if (maxNotes <= 0) return;
     this.selectedNoteIndex = Math.max(0, Math.min(maxNotes - 1, this.selectedNoteIndex + delta));
     this.setMeasureContainerSelected(true);
+    this.updateNavHighlights(true);
   }
 
   navigateMeasureRows(delta: number): void {
@@ -2765,6 +2845,7 @@ class GrooveWriter {
     const newIdx = Math.max(0, Math.min(rows.length - 1, idx + delta));
     this.selectedInstrument = rows[newIdx];
     this.setMeasureContainerSelected(true);
+    this.updateNavHighlights(true);
   }
 
   getModeForKey(instrument: string, key: string): string | null {
@@ -3911,11 +3992,6 @@ class GrooveWriter {
 							</div>\
 						</span>\n');
 
-    if (this.data.numberOfMeasures > 1)
-      newHTML += '<span title="Remove Measure" id="closeMeasureButton' + baseindex + '" onClick="myGrooveWriter.closeMeasureButtonClick(' + baseindex + ')" class="closeMeasureButton"><i class="fa fa-times-circle"></i></span>';
-    else
-      newHTML += '<span class="closeMeasureButton"><i class="fa">&nbsp;&nbsp;&nbsp;</i></span>';
-
     if (baseindex == this.data.numberOfMeasures)
       newHTML += '<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>';
 
@@ -3945,6 +4021,11 @@ class GrooveWriter {
       '<div class="measure-control-row measure-text-row">' +
         '<label class="measure-text-label">End Text:</label>' +
         '<input type="text" class="embed-text-end measure-text-input" data-measure="' + baseindex + '" value="' + textEnd.replace(/"/g, '&quot;') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
+      '</div>' +
+      '<div class="measure-control-row measure-actions-row">' +
+        '<button type="button" class="measure-btn measure-copy-btn" data-measure="' + baseindex + '" title="Copy this measure and append to the end" onClick="myGrooveWriter.copyMeasureToLastButtonClick(' + baseindex + ')"><i class="fa fa-clone"></i> Copy to last</button>' +
+        '<button type="button" class="measure-btn measure-clear-btn" data-measure="' + baseindex + '" title="Erase all notes in this measure" onClick="myGrooveWriter.clearMeasureButtonClick(' + baseindex + ')"><i class="fa fa-eraser"></i> Clear measure</button>' +
+        '<button type="button" class="measure-btn measure-delete-btn" data-measure="' + baseindex + '" title="' + (this.data.numberOfMeasures <= 1 ? 'Cannot delete the only measure' : 'Delete this measure') + '" onClick="myGrooveWriter.deleteMeasureButtonClick(' + baseindex + ')"' + (this.data.numberOfMeasures <= 1 ? ' disabled' : '') + '><i class="fa fa-trash"></i> Delete measure</button>' +
       '</div>' +
     '</div>';
 
@@ -4117,6 +4198,9 @@ const convertGlobal = () => getGWInstance()?.updateEmbedLink();
 const convertAndCopyGlobal = () => getGWInstance()?.copyEmbedLink();
 const openLinkGlobal = () => getGWInstance()?.openEmbedLink();
 const decodeConvertedUrlGlobal = (url?: string) => getGWInstance()?.populateEmbedFromUrl(url);
+const copyMeasureToLastGlobal = (measureIndex: number) => getGWInstance()?.copyMeasureToLast(measureIndex);
+const clearMeasureGlobal = (measureIndex: number) => getGWInstance()?.clearMeasure(measureIndex);
+const deleteMeasureGlobal = (measureIndex: number) => getGWInstance()?.deleteMeasure(measureIndex);
 
 if (typeof window !== "undefined") {
   (window as any).renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
@@ -4130,6 +4214,9 @@ if (typeof window !== "undefined") {
   (window as any).convertAndCopy = convertAndCopyGlobal;
   (window as any).openLink = openLinkGlobal;
   (window as any).decodeConvertedUrl = decodeConvertedUrlGlobal;
+  (window as any).copyMeasureToLast = copyMeasureToLastGlobal;
+  (window as any).clearMeasure = clearMeasureGlobal;
+  (window as any).deleteMeasure = deleteMeasureGlobal;
   (window as any).encodeAfterLastColon = encodeAfterLastColon;
   (window as any).parseQuery = parseQuery;
 }
@@ -4146,6 +4233,9 @@ if (typeof (globalThis as any) !== "undefined") {
   (globalThis as any).convertAndCopy = convertAndCopyGlobal;
   (globalThis as any).openLink = openLinkGlobal;
   (globalThis as any).decodeConvertedUrl = decodeConvertedUrlGlobal;
+  (globalThis as any).copyMeasureToLast = copyMeasureToLastGlobal;
+  (globalThis as any).clearMeasure = clearMeasureGlobal;
+  (globalThis as any).deleteMeasure = deleteMeasureGlobal;
   (globalThis as any).encodeAfterLastColon = encodeAfterLastColon;
   (globalThis as any).parseQuery = parseQuery;
 }
@@ -4163,6 +4253,9 @@ if (typeof module !== "undefined" && module.exports) {
     convert: convertGlobal,
     convertAndCopy: convertAndCopyGlobal,
     decodeConvertedUrl: decodeConvertedUrlGlobal,
+    copyMeasureToLast: copyMeasureToLastGlobal,
+    clearMeasure: clearMeasureGlobal,
+    deleteMeasure: deleteMeasureGlobal,
     encodeAfterLastColon,
     parseQuery,
     kickPermutationStrait,

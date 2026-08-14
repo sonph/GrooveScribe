@@ -2060,7 +2060,7 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     global.myGrooveWriter = writer;
   });
 
-  test('HTMLforStaffContainer renders 3 rows below measure: repeat options, Begin Text, End Text', () => {
+  test('HTMLforStaffContainer renders 4 rows below measure: repeat options, Begin Text, End Text, action buttons', () => {
     const html = writer.HTMLforStaffContainer(1, 0);
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
@@ -2100,6 +2100,24 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     const endTextInput = controlsContainer.querySelector('.embed-text-end');
     expect(endTextInput).not.toBeNull();
     expect(endTextInput.getAttribute('data-measure')).toBe('1');
+
+    // Row 4: Action buttons
+    const actionsRow = controlsContainer.querySelector('.measure-actions-row');
+    expect(actionsRow).not.toBeNull();
+    const copyBtn = actionsRow.querySelector('.measure-copy-btn');
+    expect(copyBtn).not.toBeNull();
+    expect(copyBtn.textContent).toContain('Copy to last');
+    expect(copyBtn.getAttribute('data-measure')).toBe('1');
+
+    const clearBtn = actionsRow.querySelector('.measure-clear-btn');
+    expect(clearBtn).not.toBeNull();
+    expect(clearBtn.textContent).toContain('Clear measure');
+    expect(clearBtn.getAttribute('data-measure')).toBe('1');
+
+    const deleteBtn = actionsRow.querySelector('.measure-delete-btn');
+    expect(deleteBtn).not.toBeNull();
+    expect(deleteBtn.textContent).toContain('Delete measure');
+    expect(deleteBtn.getAttribute('data-measure')).toBe('1');
   });
 
   test('renderMeasureContainer populates 3 rows for all measures from URL state', () => {
@@ -2287,5 +2305,159 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
       expect(document.getElementById('hi-hat' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
       expect(document.getElementById('bg-highlight' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
     }
+  });
+
+  test('copyMeasureToLastButtonClick copies measure 1 and appends as measure 3 with identical notes', () => {
+    // Measure 1: Kick on 0, Snare on 4, Hihat on all. Measure 2: Kick on 0 and 2, Snare on 6.
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|&K=|o-------|o-o-----|';
+    writer.set_Default_notes(url);
+
+    expect(writer.data.numberOfMeasures).toBe(2);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(2);
+
+    // Click "Copy to last" on Measure 1 (baseindex 1)
+    writer.copyMeasureToLastButtonClick(1);
+
+    expect(writer.data.numberOfMeasures).toBe(3);
+    expect(document.querySelectorAll('.measure-controls-container').length).toBe(3);
+    expect(document.getElementById('staff-container3')).not.toBeNull();
+
+    // Verify notes in measure 3 are identical to measure 1
+    expect(writer.data.measures[2].toString(DrumType.HIHAT)).toBe(writer.data.measures[0].toString(DrumType.HIHAT));
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe(writer.data.measures[0].toString(DrumType.SNARE));
+    expect(writer.data.measures[2].toString(DrumType.KICK)).toBe(writer.data.measures[0].toString(DrumType.KICK));
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe('----O---');
+    expect(writer.data.measures[2].toString(DrumType.KICK)).toBe('o-------');
+
+    // Verify measure 2 notes are unchanged
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('------O-');
+    expect(writer.data.measures[1].toString(DrumType.KICK)).toBe('o-o-----');
+
+    // Verify URL contains 3 measures
+    const fullUrl = writer.get_FullURLForPage();
+    expect(fullUrl).toContain('S=|----O---|------O-|----O---|');
+    expect(fullUrl).toContain('K=|o-------|o-o-----|o-------|');
+  });
+
+  test('copyMeasureToLastButtonClick copies measure 2 and appends to end', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|&K=|o-------|o-o-----|';
+    writer.set_Default_notes(url);
+
+    // Click "Copy to last" on Measure 2 (baseindex 2)
+    writer.copyMeasureToLastButtonClick(2);
+
+    expect(writer.data.numberOfMeasures).toBe(3);
+    expect(writer.data.measures[2].toString(DrumType.SNARE)).toBe('------O-');
+    expect(writer.data.measures[2].toString(DrumType.KICK)).toBe('o-o-----');
+  });
+
+  test('copyMeasureToLast with invalid index returns null and leaves measures unchanged', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    expect(writer.copyMeasureToLast(-1)).toBeNull();
+    expect(writer.copyMeasureToLast(5)).toBeNull();
+    expect(writer.data.numberOfMeasures).toBe(1);
+  });
+
+  test('clearMeasureButtonClick erases all notes in the selected measure while preserving other measures', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|&K=|o-------|o-o-----|';
+    writer.set_Default_notes(url);
+
+    expect(writer.data.measures[0].isEmpty()).toBe(false);
+    expect(writer.data.measures[1].isEmpty()).toBe(false);
+
+    // Click "Clear measure" on Measure 1 (baseindex 1)
+    const result = writer.clearMeasureButtonClick(1);
+    expect(result).toBe(true);
+
+    // Measure 1 notes should be empty
+    expect(writer.data.measures[0].isEmpty()).toBe(true);
+    expect(writer.data.measures[0].toString(DrumType.HIHAT)).toBe('--------');
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('--------');
+    expect(writer.data.measures[0].toString(DrumType.KICK)).toBe('--------');
+
+    // Measure 2 notes must be preserved
+    expect(writer.data.measures[1].isEmpty()).toBe(false);
+    expect(writer.data.measures[1].toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('------O-');
+    expect(writer.data.measures[1].toString(DrumType.KICK)).toBe('o-o-----');
+
+    // Total measures remains 2
+    expect(writer.data.numberOfMeasures).toBe(2);
+
+    // DOM note elements in measure 1 are off
+    for (let i = 0; i < 8; i++) {
+      expect(writer.is_hh_on(i)).toBe(false);
+      expect(writer.is_snare_on(i)).toBe(false);
+      expect(writer.is_kick_on(i)).toBe(false);
+    }
+  });
+
+  test('clearMeasure with invalid index returns false', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    expect(writer.clearMeasure(-1)).toBe(false);
+    expect(writer.clearMeasure(5)).toBe(false);
+  });
+
+  test('undoCommand restores state after copyMeasureToLast and clearMeasure', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|&K=|o-------|o-o-----|';
+    writer.set_Default_notes(url);
+
+    // Copy measure 1 to last
+    writer.copyMeasureToLastButtonClick(1);
+    expect(writer.data.numberOfMeasures).toBe(3);
+
+    // Undo -> back to 2 measures
+    writer.undoCommand();
+    expect(writer.data.numberOfMeasures).toBe(2);
+
+    // Clear measure 1
+    writer.clearMeasureButtonClick(1);
+    expect(writer.data.measures[0].isEmpty()).toBe(true);
+
+    // Undo -> measure 1 notes restored
+    writer.undoCommand();
+    expect(writer.data.measures[0].isEmpty()).toBe(false);
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('----O---');
+  });
+
+  test('deleteMeasureButtonClick removes measure when multiple measures exist', () => {
+    const url = 'TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|----O---|------O-|&K=|o-------|o-o-----|';
+    writer.set_Default_notes(url);
+    expect(writer.data.numberOfMeasures).toBe(2);
+
+    const deleteBtnM2 = document.querySelector('#staff-container2 .measure-delete-btn');
+    expect(deleteBtnM2.disabled).toBe(false);
+
+    // Delete measure 2
+    const result = writer.deleteMeasureButtonClick(2);
+    expect(result).toBe(true);
+    expect(writer.data.numberOfMeasures).toBe(1);
+    expect(document.getElementById('staff-container2')).toBeNull();
+
+    // With 1 measure left, delete button should be disabled
+    const deleteBtnM1 = document.querySelector('#staff-container1 .measure-delete-btn');
+    expect(deleteBtnM1.disabled).toBe(true);
+
+    // Clicking delete on the only measure returns false
+    window.alert = jest.fn();
+    expect(writer.deleteMeasureButtonClick(1)).toBe(false);
+    expect(writer.data.numberOfMeasures).toBe(1);
+  });
+
+  test('updateNavHighlights does not scroll unless shouldScroll is true', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    writer.selectedInstrument = 'hh';
+    writer.selectedNoteIndex = 0;
+    const noteEle = document.getElementById('hi-hat0');
+    noteEle.scrollIntoView = jest.fn();
+
+    // Default call: should not scroll
+    writer.updateNavHighlights();
+    expect(noteEle.scrollIntoView).not.toHaveBeenCalled();
+
+    // Explicit scroll call: should scroll
+    writer.updateNavHighlights(true);
+    expect(noteEle.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(noteEle.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   });
 });

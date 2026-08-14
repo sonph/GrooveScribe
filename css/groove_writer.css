@@ -771,6 +771,54 @@
 		outline: none;
 		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
 	}
+	.measure-actions-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 2px;
+	}
+	.measure-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 4px 10px;
+		font-size: 11px;
+		font-weight: 600;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		background: #fff;
+		color: #444;
+		cursor: pointer;
+		transition: all 0.15s ease-in-out;
+		user-select: none;
+		line-height: 1.4;
+	}
+	.measure-btn:hover {
+		background: #f0f0f0;
+		border-color: #bbb;
+		color: #222;
+	}
+	.measure-copy-btn:hover {
+		background: #e8f4fd;
+		border-color: #2484C0;
+		color: #1765a7;
+	}
+	.measure-clear-btn:hover {
+		background: #fdf0f0;
+		border-color: #e57373;
+		color: #c62828;
+	}
+	.measure-delete-btn:hover:not(:disabled) {
+		background: #fdf0f0;
+		border-color: #e53e3e;
+		color: #c53030;
+	}
+	.measure-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+		border-color: #e2e8f0;
+		color: #a0aec0;
+	}
 	#PermutationOptions.displayed {
 		margin: 3px 0px 0px 10px;
 	}
