@@ -214,14 +214,21 @@ describe('groove_render.js isolated execution', () => {
       expect(qs).toContain('MeasureText=1:l:1%20%26%202%20%26;2:l:3%20%26%204%20%26');
     });
 
-    test('generates w: lyrics line in ABC notation when lyrics are present for a measure', () => {
+    test('generates w: lyrics line with measure bar separators in ABC notation', () => {
       const url = '?TimeSig=4/4&Div=8&MeasureText=1:b:Intro;1:l:1%20%26%202%20%26%203%20%26%204%20%26;2:l:Fill%20count&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|';
       const data = new GrooveData().fromUrl(url);
 
       const notation = data.getAbcNotation();
-      expect(notation).toContain('w: 1 & 2 & 3 & 4 &');
-      expect(notation).toContain('w: Fill count');
+      expect(notation).toContain('w: 1 & 2 & 3 & 4 & | Fill count');
       expect(notation).toContain('"Intro"');
+    });
+
+    test('generates leading bar line in w: when lyrics start on measure 2 or later', () => {
+      const url = 'Mode=edit&TimeSig=4/4&Div=8&Tempo=80&RepeatEnds=1;3&MeasureText=2:l:this%20is%20awe%20some;3:l:1%202%203%204&H=||||&H2=|xx-xxxxx||xxxxxxxx|&S=|OOOOOOOO|--O---O-|--O---O-|&K=|o---o---|o---o---|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+
+      const notation = data.getAbcNotation();
+      expect(notation).toContain('w:  | this is awe some | 1 2 3 4');
     });
 
     test('omits w: lines when no lyrics are provided', () => {

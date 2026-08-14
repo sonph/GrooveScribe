@@ -2639,3 +2639,295 @@ describe('moveMeasure Functionality', () => {
     expect(writer.myGrooveUtils.stopMIDI_playback).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Drag and Drop Measure Reordering', () => {
+  let writer;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="measureContainer"></div>
+      <div id="musicalInput"></div>
+      <input type="text" id="tuneTitle" value="" />
+      <input type="text" id="tuneAuthor" value="" />
+      <input type="text" id="tuneComments" value="" />
+      <textarea id="ABCsource"></textarea>
+      <div id="svgTarget"></div>
+      <div id="diverr"></div>
+      <div id="embedTool" style="display: none;">
+        <input type="checkbox" id="showTempo" />
+        <input type="checkbox" id="embedShowTempo" />
+        <input type="text" id="convertedUrl" value="" />
+        <span id="status"></span>
+      </div>
+    `;
+    writer = new GrooveWriter(new GrooveUtils(true));
+    writer.displayNewSVG = jest.fn();
+    writer.myGrooveUtils.midiNoteHasChanged = jest.fn();
+    writer.setupMeasureContainerNavigation();
+    window.myGrooveWriter = writer;
+    global.myGrooveWriter = writer;
+  });
+
+  const createDragEvent = (type, options = {}) => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.assign(event, {
+      clientX: options.clientX || 0,
+      clientY: options.clientY || 0,
+      dataTransfer: {
+        data: {},
+        effectAllowed: 'all',
+        dropEffect: 'none',
+        setData(format, data) { this.data[format] = data; },
+        getData(format) { return this.data[format]; }
+      }
+    }, options);
+    return event;
+  };
+
+  test('drag and drop is disabled when there is only 1 measure', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|');
+    const container = document.getElementById('staff-container1');
+    expect(container).not.toBeNull();
+    expect(container.getAttribute('draggable')).toBeNull();
+
+    const dragStartEvent = createDragEvent('dragstart');
+    container.dispatchEvent(dragStartEvent);
+    expect(dragStartEvent.defaultPrevented).toBe(true);
+    expect(writer.draggedMeasureIndex).toBeNull();
+  });
+
+  test('drag and drop is enabled when there are 2 or more measures', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+    expect(m1.getAttribute('draggable')).toBe('true');
+    expect(m2.getAttribute('draggable')).toBe('true');
+
+    const dragStartEvent = createDragEvent('dragstart');
+    m1.dispatchEvent(dragStartEvent);
+    expect(dragStartEvent.defaultPrevented).toBe(false);
+    expect(writer.draggedMeasureIndex).toBe(0);
+    expect(m1.classList.contains('is-dragging')).toBe(true);
+  });
+
+  test('dragstart inside an input or button is prevented', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    const m1 = document.getElementById('staff-container1');
+    const input = m1.querySelector('.embed-text-begin');
+    expect(input).not.toBeNull();
+
+    const dragStartEvent = createDragEvent('dragstart');
+    input.dispatchEvent(dragStartEvent);
+    expect(dragStartEvent.defaultPrevented).toBe(true);
+    expect(writer.draggedMeasureIndex).toBeNull();
+  });
+
+  test('dragover shows guide line on left half vs right half', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+
+    m2.getBoundingClientRect = () => ({
+      left: 100,
+      right: 300,
+      width: 200,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    // Start dragging m1
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    expect(writer.draggedMeasureIndex).toBe(0);
+
+    // Hover left half of m2 (clientX = 150 < 100 + 100)
+    const dragOverLeft = createDragEvent('dragover', { clientX: 150 });
+    m2.dispatchEvent(dragOverLeft);
+    expect(m2.classList.contains('drag-guide-left')).toBe(true);
+    expect(m2.classList.contains('drag-guide-right')).toBe(false);
+
+    // Hover right half of m2 (clientX = 250 >= 100 + 100)
+    const dragOverRight = createDragEvent('dragover', { clientX: 250 });
+    m2.dispatchEvent(dragOverRight);
+    expect(m2.classList.contains('drag-guide-right')).toBe(true);
+    expect(m2.classList.contains('drag-guide-left')).toBe(false);
+  });
+
+  test('drop on right half of measure 2 moves measure 1 to index 1 and updates UI and URL', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--O---O-|----O---|&K=|o---o---|o-------|&RepeatBegins=1&MeasureText=1:b:Intro');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+
+    m2.getBoundingClientRect = () => ({
+      left: 100,
+      right: 300,
+      width: 200,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    const dropEvent = createDragEvent('drop', { clientX: 250 });
+    m2.dispatchEvent(dropEvent);
+
+    expect(writer.data.measures[0].toString(DrumType.SNARE)).toBe('----O---');
+    expect(writer.data.measures[1].toString(DrumType.SNARE)).toBe('--O---O-');
+    expect(writer.data.measures[1].repeatBegin).toBe(true);
+    expect(writer.data.measures[1].textBegin).toBe('Intro');
+
+    // Guide classes and dragging state are cleared
+    expect(document.querySelectorAll('.is-dragging').length).toBe(0);
+    expect(document.querySelectorAll('.drag-guide-left').length).toBe(0);
+    expect(document.querySelectorAll('.drag-guide-right').length).toBe(0);
+  });
+
+  test('drop moves lyrics along with measure when dragging measure 1 after measure 2', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&MeasureText=1:l:one%20and%20two%20and;2:l:three%20and%20four%20and');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+
+    expect(m1.querySelector('.embed-text-lyrics').value).toBe('one and two and');
+    expect(m2.querySelector('.embed-text-lyrics').value).toBe('three and four and');
+
+    m2.getBoundingClientRect = () => ({
+      left: 100,
+      right: 300,
+      width: 200,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    const dropEvent = createDragEvent('drop', { clientX: 250 });
+    m2.dispatchEvent(dropEvent);
+
+    // Measure 0 now has lyrics of old measure 2
+    expect(writer.data.measures[0].lyrics).toBe('three and four and');
+    // Measure 1 now has lyrics of old measure 1
+    expect(writer.data.measures[1].lyrics).toBe('one and two and');
+
+    // DOM inputs reflect moved lyrics
+    const updatedM1 = document.getElementById('staff-container1');
+    const updatedM2 = document.getElementById('staff-container2');
+    expect(updatedM1.querySelector('.embed-text-lyrics').value).toBe('three and four and');
+    expect(updatedM2.querySelector('.embed-text-lyrics').value).toBe('one and two and');
+
+    // URL parameter reflects moved lyrics
+    const fullUrl = writer.get_FullURLForPage();
+    expect(fullUrl).toContain('MeasureText=1:l:three%20and%20four%20and;2:l:one%20and%20two%20and');
+
+    // ABC notation includes lyrics under correct measures
+    const abcSource = document.getElementById('ABCsource').value;
+    expect(abcSource).toContain('w: three and four and | one and two and');
+  });
+
+  test('drop moves lyrics when user edited lyrics in DOM before dragging', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+
+    // User types lyrics directly into DOM inputs
+    m1.querySelector('.embed-text-lyrics').value = 'first measure lyrics';
+    m2.querySelector('.embed-text-lyrics').value = 'second measure lyrics';
+
+    m2.getBoundingClientRect = () => ({
+      left: 100,
+      right: 300,
+      width: 200,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    const dropEvent = createDragEvent('drop', { clientX: 250 });
+    m2.dispatchEvent(dropEvent);
+
+    expect(writer.data.measures[0].lyrics).toBe('second measure lyrics');
+    expect(writer.data.measures[1].lyrics).toBe('first measure lyrics');
+
+    const updatedM1 = document.getElementById('staff-container1');
+    const updatedM2 = document.getElementById('staff-container2');
+    expect(updatedM1.querySelector('.embed-text-lyrics').value).toBe('second measure lyrics');
+    expect(updatedM2.querySelector('.embed-text-lyrics').value).toBe('first measure lyrics');
+  });
+
+  test('drop in same place does not trigger moveMeasure or stop audio', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    writer.isAudioPlaying = true;
+    writer.myGrooveUtils.stopMIDI_playback = jest.fn();
+
+    const m1 = document.getElementById('staff-container1');
+    m1.getBoundingClientRect = () => ({
+      left: 0,
+      right: 200,
+      width: 200,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    const dropEvent = createDragEvent('drop', { clientX: 50 }); // Left half of m1 -> index 0 -> no change
+    m1.dispatchEvent(dropEvent);
+
+    expect(writer.myGrooveUtils.stopMIDI_playback).not.toHaveBeenCalled();
+    expect(writer.draggedMeasureIndex).toBeNull();
+  });
+
+  test('dragend event resets state and clears guide indicators', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|');
+    const m1 = document.getElementById('staff-container1');
+    const m2 = document.getElementById('staff-container2');
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    expect(writer.draggedMeasureIndex).toBe(0);
+    expect(m1.classList.contains('is-dragging')).toBe(true);
+
+    m2.classList.add('drag-guide-left');
+    m1.dispatchEvent(createDragEvent('dragend'));
+
+    expect(writer.draggedMeasureIndex).toBeNull();
+    expect(m1.classList.contains('is-dragging')).toBe(false);
+    expect(m2.classList.contains('drag-guide-left')).toBe(false);
+  });
+
+  test('performant drag and drop with 20 measures', () => {
+    // Generate 20 measures
+    const tab20 = Array(20).fill('xxxxxxxx').join('|');
+    writer.set_Default_notes(`TimeSig=4/4&Div=8&H=|${tab20}|`);
+    expect(writer.data.numberOfMeasures).toBe(20);
+
+    writer.data.measures[0].setDataFromString(DrumType.SNARE, 'O-------');
+    writer.data.measures[19].setDataFromString(DrumType.SNARE, '-------O');
+    writer.refreshMeasureGrid();
+
+    const m1 = document.getElementById('staff-container1');
+    const m20 = document.getElementById('staff-container20');
+    expect(m1).not.toBeNull();
+    expect(m20).not.toBeNull();
+
+    m20.getBoundingClientRect = () => ({
+      left: 1900,
+      right: 2000,
+      width: 100,
+      top: 0,
+      bottom: 200,
+      height: 200
+    });
+
+    m1.dispatchEvent(createDragEvent('dragstart'));
+    expect(writer.draggedMeasureIndex).toBe(0);
+
+    // Drop on right half of m20
+    const dropEvent = createDragEvent('drop', { clientX: 1980 });
+    m20.dispatchEvent(dropEvent);
+
+    // Measure 0 is now moved to the last position (index 19)
+    expect(writer.data.measures[19].toString(DrumType.SNARE)).toBe('O-------');
+    expect(writer.data.measures[18].toString(DrumType.SNARE)).toBe('-------O');
+    expect(writer.selectedNoteIndex).toBe(19 * 8);
+  });
+});

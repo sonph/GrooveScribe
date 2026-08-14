@@ -1198,15 +1198,28 @@ class GrooveData {
             const endBarWithSpacing = isTriplet ? ' ' + endBar : (lastMeasure && !hasRepeatEnd ? ' ' + endBar : endBar);
             handsSegments.push(endBarWithSpacing);
             let measureHandsAbc = handsSegments.join('');
-            if (lyrics && lyrics.trim().length > 0) {
-                measureHandsAbc += '\nw: ' + lyrics.trim();
-            }
             handsVoiceParts.push(measureHandsAbc);
         }
         const hasAnyLyrics = this.measures.some(m => m.lyrics && m.lyrics.trim().length > 0);
         const lines = [];
         lines.push('V:Stickings\n' + stickingsVoiceParts.join(' '));
-        lines.push('V:Hands stem=up\n%%voicemap drum\n' + (hasAnyLyrics ? handsVoiceParts.join('\n') : handsVoiceParts.join(' ')));
+        let handsLine = 'V:Hands stem=up\n%%voicemap drum\n' + handsVoiceParts.join(' ');
+        if (hasAnyLyrics) {
+            let lastLyricsMeasureIndex = -1;
+            for (let i = this.measures.length - 1; i >= 0; i--) {
+                if (this.measures[i].lyrics && this.measures[i].lyrics.trim().length > 0) {
+                    lastLyricsMeasureIndex = i;
+                    break;
+                }
+            }
+            const lyricsBars = [];
+            for (let i = 0; i <= lastLyricsMeasureIndex; i++) {
+                const lyr = this.measures[i].lyrics && this.measures[i].lyrics.trim().length > 0 ? this.measures[i].lyrics.trim() : '';
+                lyricsBars.push(lyr);
+            }
+            handsLine += '\nw: ' + lyricsBars.join(' | ');
+        }
+        lines.push(handsLine);
         return lines.join('\n') + '\n';
     }
     getAbcHeader(isPermutation, renderWidth, showLegend = false) {

@@ -394,6 +394,7 @@ class GrooveWriter {
         this.selectedInstrument = "snare";
         this.isConverting = false;
         this.isInitializing = false;
+        this.draggedMeasureIndex = null;
         this.tempoChangeCallback = (newTempo) => {
             this.data.tempo = newTempo;
             if (this.data.showTempo) {
@@ -1884,48 +1885,24 @@ class GrooveWriter {
             count = this.data ? this.data.numberOfMeasures : 1;
         }
         count = Math.max(1, count);
-        // Preserve existing row states
-        const existingRows = tbody.querySelectorAll("tr");
-        const existingData = {};
-        existingRows.forEach(row => {
-            const m = parseInt(row.getAttribute("data-measure") || "0", 10);
-            if (!m)
-                return;
-            const startCb = row.querySelector(".embed-repeat-start");
-            const endCb = row.querySelector(".embed-repeat-end");
-            const altSel = row.querySelector(".embed-alt-ending");
-            const txtBegin = row.querySelector(".embed-text-begin");
-            const txtEnd = row.querySelector(".embed-text-end");
-            const txtLyrics = row.querySelector(".embed-text-lyrics");
-            existingData[m] = {
-                repeatStart: startCb ? startCb.checked : false,
-                repeatEnd: endCb ? endCb.checked : false,
-                altEnding: altSel ? altSel.value : "",
-                textBegin: txtBegin ? txtBegin.value : "",
-                textEnd: txtEnd ? txtEnd.value : "",
-                lyrics: txtLyrics ? txtLyrics.value : ""
-            };
-        });
         var html = "";
         for (var m = 1; m <= count; m++) {
-            let d = existingData[m];
-            if (!d && this.data) {
-                const isRepeatStart = this.data.repeatBegins && this.data.repeatBegins.has(m);
-                const isRepeatEnd = this.data.repeatEnds && this.data.repeatEnds.has(m);
-                const altEnding = this.data.repeatEndings && this.data.repeatEndings.get(m) ? this.data.repeatEndings.get(m) : "";
-                const textEntry = this.data.measureText && this.data.measureText.get(m) ? this.data.measureText.get(m) : {};
-                d = {
-                    repeatStart: !!isRepeatStart,
-                    repeatEnd: !!isRepeatEnd,
-                    altEnding: altEnding || "",
-                    textBegin: textEntry.begin || "",
-                    textEnd: textEntry.end || "",
-                    lyrics: textEntry.lyrics || ""
-                };
-            }
-            if (!d) {
-                d = { repeatStart: false, repeatEnd: false, altEnding: "", textBegin: "", textEnd: "", lyrics: "" };
-            }
+            const measure = this.data && this.data.measures ? this.data.measures[m - 1] : null;
+            const isRepeatStart = measure ? measure.repeatBegin : (this.data && this.data.repeatBegins && this.data.repeatBegins.has(m));
+            const isRepeatEnd = measure ? measure.repeatEnd : (this.data && this.data.repeatEnds && this.data.repeatEnds.has(m));
+            const altEnding = measure ? measure.alternateEnding : (this.data && this.data.repeatEndings && this.data.repeatEndings.get(m) ? this.data.repeatEndings.get(m) : "");
+            const textEntry = this.data && this.data.measureText && this.data.measureText.get(m) ? this.data.measureText.get(m) : {};
+            const textBegin = measure ? measure.textBegin : (textEntry?.begin || "");
+            const textEnd = measure ? measure.textEnd : (textEntry?.end || "");
+            const lyrics = measure ? measure.lyrics : (textEntry?.lyrics || "");
+            const d = {
+                repeatStart: !!isRepeatStart,
+                repeatEnd: !!isRepeatEnd,
+                altEnding: altEnding || "",
+                textBegin: textBegin || "",
+                textEnd: textEnd || "",
+                lyrics: lyrics || ""
+            };
             html += '<tr data-measure="' + m + '">' +
                 '<td>Measure ' + m + '</td>' +
                 '<td><input type="checkbox" class="embed-repeat-start" data-measure="' + m + '"' + (d.repeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"></td>' +
@@ -2002,11 +1979,11 @@ class GrooveWriter {
                 current.end = true;
             if (altSel && altSel.value && altSel.value.trim().length > 0)
                 current.altEnding = altSel.value.trim();
-            if (txtBegin && txtBegin.value.trim().length > 0)
+            if (txtBegin && txtBegin.value && txtBegin.value.trim().length > 0)
                 current.txtBegin = txtBegin.value.trim();
-            if (txtEnd && txtEnd.value.trim().length > 0)
+            if (txtEnd && txtEnd.value && txtEnd.value.trim().length > 0)
                 current.txtEnd = txtEnd.value.trim();
-            if (txtLyrics && txtLyrics.value.trim().length > 0)
+            if (txtLyrics && txtLyrics.value && txtLyrics.value.trim().length > 0)
                 current.txtLyrics = txtLyrics.value.trim();
             measureMap.set(m, current);
         });
@@ -3463,6 +3440,125 @@ class GrooveWriter {
         }
         this.updateNavHighlights();
         this.renderEmbedMeasureTable(this.data.numberOfMeasures);
+        this.setupMeasureDragAndDrop();
+    }
+    setupMeasureDragAndDrop() {
+        const measureContainer = document.getElementById("measureContainer");
+        if (!measureContainer)
+            return;
+        const staffContainers = measureContainer.querySelectorAll(".staff-container");
+        const numMeasures = this.data.numberOfMeasures;
+        staffContainers.forEach((container) => {
+            const el = container;
+            const measureIdxStr = el.getAttribute("data-measure-index");
+            const idx = measureIdxStr ? parseInt(measureIdxStr, 10) : -1;
+            if (idx < 0)
+                return;
+            if (numMeasures > 1) {
+                el.setAttribute("draggable", "true");
+            }
+            else {
+                el.removeAttribute("draggable");
+            }
+            el.addEventListener("dragstart", (e) => {
+                if (this.data.numberOfMeasures <= 1) {
+                    e.preventDefault();
+                    return;
+                }
+                const target = e.target;
+                if (target && typeof target.closest === "function" && target.closest("input, textarea, select, button, a, label, .unmuteHHButton, .unmuteHH2Button, .unmuteTom1Button, .unmuteSnareButton, .unmuteTom4Button, .unmuteKickButton")) {
+                    e.preventDefault();
+                    return;
+                }
+                this.draggedMeasureIndex = idx;
+                el.classList.add("is-dragging");
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", String(idx));
+                }
+            });
+            el.addEventListener("dragend", () => {
+                this.draggedMeasureIndex = null;
+                this.clearDragGuides();
+                el.classList.remove("is-dragging");
+            });
+            el.addEventListener("dragover", (e) => {
+                if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                    return;
+                }
+                e.preventDefault();
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = "move";
+                }
+                const rect = el.getBoundingClientRect();
+                const isLeftHalf = e.clientX < rect.left + rect.width / 2;
+                this.showDragGuide(idx, isLeftHalf);
+            });
+            el.addEventListener("drop", (e) => {
+                if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = el.getBoundingClientRect();
+                const isLeftHalf = e.clientX < rect.left + rect.width / 2;
+                const fromIndex = this.draggedMeasureIndex;
+                const insertPosition = isLeftHalf ? idx : idx + 1;
+                const toIndex = insertPosition > fromIndex ? insertPosition - 1 : insertPosition;
+                this.draggedMeasureIndex = null;
+                this.clearDragGuides();
+                if (fromIndex !== toIndex) {
+                    this.moveMeasure(fromIndex, toIndex);
+                }
+            });
+        });
+        measureContainer.addEventListener("dragover", (e) => {
+            if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                return;
+            }
+            e.preventDefault();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "move";
+            }
+        });
+        measureContainer.addEventListener("drop", (e) => {
+            if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                return;
+            }
+            e.preventDefault();
+            const fromIndex = this.draggedMeasureIndex;
+            const toIndex = this.data.numberOfMeasures - 1;
+            this.draggedMeasureIndex = null;
+            this.clearDragGuides();
+            if (fromIndex !== toIndex) {
+                this.moveMeasure(fromIndex, toIndex);
+            }
+        });
+    }
+    showDragGuide(targetMeasureIndex, isLeftHalf) {
+        const containers = document.querySelectorAll(".staff-container");
+        containers.forEach((el) => {
+            const measureIdxStr = el.getAttribute("data-measure-index");
+            const idx = measureIdxStr ? parseInt(measureIdxStr, 10) : -1;
+            if (idx === targetMeasureIndex) {
+                if (isLeftHalf) {
+                    el.classList.add("drag-guide-left");
+                    el.classList.remove("drag-guide-right");
+                }
+                else {
+                    el.classList.add("drag-guide-right");
+                    el.classList.remove("drag-guide-left");
+                }
+            }
+            else {
+                el.classList.remove("drag-guide-left", "drag-guide-right");
+            }
+        });
+    }
+    clearDragGuides() {
+        document.querySelectorAll(".staff-container").forEach((el) => {
+            el.classList.remove("drag-guide-left", "drag-guide-right", "is-dragging");
+        });
     }
     HTMLforStaffContainer(baseindex, indexStartForNotes) {
         const notesPerMeasure = this.data.notesPerMeasure;
@@ -3590,8 +3686,15 @@ class GrooveWriter {
         const textEnd = measure ? measure.textEnd : ((textEntry && textEntry.end) ? textEntry.end : "");
         const lyrics = measure ? measure.lyrics : ((textEntry && textEntry.lyrics) ? textEntry.lyrics : "");
         const isOnlyMeasure = this.data.numberOfMeasures <= 1;
+        const draggableAttr = !isOnlyMeasure ? ' draggable="true"' : '';
+        const dragHandleHTML = `
+      <div class="measure-drag-handle" data-measure="${baseindex}" title="${isOnlyMeasure ? '' : 'Drag to reorder measure'}">
+        <span class="measure-number-label">${!isOnlyMeasure ? '<i class="fa fa-bars measure-drag-icon"></i> ' : ''}Measure ${baseindex}</span>
+      </div>
+    `.trim();
         return `
-      <div class="staff-container" id="staff-container${baseindex}">
+      <div class="staff-container" id="staff-container${baseindex}" data-measure-index="${baseindex - 1}"${draggableAttr}>
+        ${dragHandleHTML}
         <div class="stickings-row-container">
           <div class="line-labels">
             <div class="stickings-label" onClick="myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})">STICKINGS</div>
