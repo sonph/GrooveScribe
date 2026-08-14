@@ -1554,6 +1554,7 @@
 		border-radius: 4px !important;
 	}
 	.hi-hat.nav-col-highlight,
+	.hi-hat2.nav-col-highlight,
 	.snare.nav-col-highlight,
 	.kick.nav-col-highlight,
 	.tom.nav-col-highlight,
@@ -1562,6 +1563,7 @@
 		border-radius: 4px !important;
 	}
 	.hi-hat-container.nav-row-highlight,
+	.hi-hat2-container.nav-row-highlight,
 	.snare-container.nav-row-highlight,
 	.kick-container.nav-row-highlight,
 	.toms-container.nav-row-highlight,
@@ -1570,6 +1572,7 @@
 		border-radius: 4px !important;
 	}
 	.hi-hat.nav-note-cursor,
+	.hi-hat2.nav-note-cursor,
 	.snare.nav-note-cursor,
 	.kick.nav-note-cursor,
 	.tom.nav-note-cursor,
@@ -1582,6 +1585,7 @@
 		transition: background-color 0.08s ease, box-shadow 0.08s ease;
 	}
 	#measureContainer.nav-active .hi-hat.nav-note-cursor,
+	#measureContainer.nav-active .hi-hat2.nav-note-cursor,
 	#measureContainer.nav-active .snare.nav-note-cursor,
 	#measureContainer.nav-active .kick.nav-note-cursor,
 	#measureContainer.nav-active .tom.nav-note-cursor,

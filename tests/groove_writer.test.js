@@ -969,7 +969,7 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     // Press down to hh2 (Cymbal 2) row
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedInstrument).toBe('hh2');
-    expect(document.getElementById('hi-hat24').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.getElementById('hi-hat2-4').classList.contains('nav-note-cursor')).toBe(true);
 
     // Press down to snare row (when toms hidden, hh -> hh2 -> snare -> kick)
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
@@ -2264,5 +2264,28 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     expect(writer.isMeasureContainerSelected).toBe(true);
     beginTextInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     expect(writer.isMeasureContainerSelected).toBe(false);
+  });
+
+  test('highlighting notes 20-23 in measure 3 does not erroneously highlight notes 0-3 in measure 1', () => {
+    const url = 'Mode=edit&TimeSig=4/4&Div=8&Comments=chorus&Tempo=124&ShowTempo=1&RepeatBegins=1&RepeatEnds=2&RepeatEndings=1:1;2:2&MeasureText=3:b:aaaa&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|&H2=|x-bb----|x-bb----|x-bbbbbb|&S=|--O---O-|--O---O-|--O---o-|&K=|X---o---|o---o---|o---o---|&T1=|----o---|----o---|----o---|&T4=|------oo|------oo|------oo|';
+    writer.set_Default_notes(url);
+    writer.setMeasureContainerSelected(true);
+
+    for (let idx = 20; idx <= 23; idx++) {
+      writer.selectedNoteIndex = idx;
+      writer.selectedInstrument = 'hh2';
+      writer.updateNavHighlights();
+
+      // Measure 3 elements for note index should be highlighted
+      expect(document.getElementById('bg-highlight' + idx).classList.contains('nav-col-highlight')).toBe(true);
+      expect(document.getElementById('hi-hat2-' + idx).classList.contains('nav-col-highlight')).toBe(true);
+      expect(document.getElementById('hi-hat' + idx).classList.contains('nav-col-highlight')).toBe(true);
+
+      // Measure 1 notes (0..3) must NOT have nav-col-highlight
+      const m1NoteIdx = idx - 20;
+      expect(document.getElementById('hi-hat2-' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
+      expect(document.getElementById('hi-hat' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
+      expect(document.getElementById('bg-highlight' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
+    }
   });
 });

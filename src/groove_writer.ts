@@ -2633,7 +2633,7 @@ class GrooveWriter {
       case "hh":
         return document.getElementById("hi-hat" + index);
       case "hh2":
-        return document.getElementById("hi-hat2" + index) || document.getElementById("hi-hat2-" + index);
+        return document.getElementById("hi-hat2-" + index) || document.getElementById("hi-hat2" + index);
       case "tom1":
         return document.getElementById("tom1-" + index);
       case "snare":
@@ -3770,7 +3770,7 @@ class GrooveWriter {
     for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
 
       newHTML += ('\
-														<div id="hi-hat2' + i + '" class="hi-hat2" onClick="myGrooveWriter.noteLeftClick(event, \'hh2\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh2\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh2\', ' + i + ')">\
+														<div id="hi-hat2-' + i + '" class="hi-hat2" onClick="myGrooveWriter.noteLeftClick(event, \'hh2\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh2\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh2\', ' + i + ')">\
 															<div class="hh2_crash note_part"  id="hh2_crash' + i + '"><i class="fa fa-asterisk"></i></div>\
 															<div class="hh2_ride note_part"   id="hh2_ride' + i + '"><i class="fa fa-dot-circle-o"></i></div>\
 															<div class="hh2_ride_bell note_part"   id="hh2_ride_bell' + i + '"><i class="fa fa-bell-o"></i></div>\
