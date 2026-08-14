@@ -246,6 +246,40 @@ function abcNoteToTabChar(drumType, abcNote) {
 function tabCharToAbcNote(drumType, tabChar) {
     return AbcNote.TAB_CHAR_TO_ABC_NOTE.get(drumType.name)?.get(tabChar) || null;
 }
+function figure_out_sticking_count_for_index(index, notes_per_measure, sub_division, time_sig_bottom) {
+    const note_index = index % notes_per_measure;
+    const implied_sub_division = sub_division * (4 / time_sig_bottom);
+    switch (implied_sub_division) {
+        case 4:
+            return note_index + 1;
+        case 8:
+            return (note_index % 2 === 0) ? Math.floor(note_index / 2) + 1 : "&";
+        case 12:
+            if (note_index % 3 === 0)
+                return Math.floor(note_index / 3) + 1;
+            return (note_index % 3 == 1) ? "&" : "a";
+        case 24:
+            if (note_index % 3 === 0)
+                return Math.floor(note_index / 6) + 1;
+            return (note_index % 3 == 1) ? "&" : "a";
+        case 48:
+            if (note_index % 3 === 0)
+                return Math.floor(note_index / 12) + 1;
+            return (note_index % 3 == 1) ? "&" : "a";
+        case 16:
+        case 32:
+        default:
+            var whole_note_interval = implied_sub_division / 4;
+            if (note_index % 4 === 0)
+                return Math.floor(note_index / whole_note_interval) + 1;
+            else if (note_index % 4 === 1)
+                return "e";
+            else if (note_index % 4 === 2)
+                return "&";
+            else
+                return "a";
+    }
+}
 class Subdivision {
     constructor(number) {
         if (typeof number === 'number' && Number.isInteger(number) && number >= 0) {
@@ -994,8 +1028,10 @@ class GrooveData {
                             slotParts.push(`"L"x${posLen}`);
                         else if (val === 'b' || val === 'B')
                             slotParts.push(`"R/L"x${posLen}`);
-                        else if (val === 'c')
-                            slotParts.push(`"count"x${posLen}`);
+                        else if (val === 'c') {
+                            const count = figure_out_sticking_count_for_index(idx, this.notesPerMeasure, this.subdivision.value, this.timeSig.bottom.value);
+                            slotParts.push(`"${count}"x${posLen}`);
+                        }
                         else
                             slotParts.push(`x${posLen}`);
                     }
@@ -1210,6 +1246,7 @@ globalThis.getFirstElement = getFirstElement;
 globalThis.decodeGrooveUrl = decodeGrooveUrl;
 globalThis.encodeGrooveQueryString = encodeGrooveQueryString;
 globalThis.buildMeasuresFromTabs = buildMeasuresFromTabs;
+globalThis.figure_out_sticking_count_for_index = figure_out_sticking_count_for_index;
 globalThis.constant_ABC_HH_Normal = constant_ABC_HH_Normal;
 globalThis.constant_ABC_HH_Accent = constant_ABC_HH_Accent;
 globalThis.constant_ABC_HH_Open = constant_ABC_HH_Open;

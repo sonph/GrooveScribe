@@ -282,6 +282,42 @@ describe('TimeSignature.fromString', () => {
   });
 });
 
+describe('figure_out_sticking_count_for_index', () => {
+  beforeAll(() => {
+    require('../js/groove_render.js');
+  });
+
+  test('calculates 16th note counts correctly (1, e, &, a)', () => {
+    const counts = Array.from({ length: 16 }, (_, i) => figure_out_sticking_count_for_index(i, 16, 16, 4));
+    expect(counts).toEqual([
+      1, 'e', '&', 'a',
+      2, 'e', '&', 'a',
+      3, 'e', '&', 'a',
+      4, 'e', '&', 'a'
+    ]);
+  });
+
+  test('calculates 8th note counts correctly (1, &, 2, &)', () => {
+    const counts = Array.from({ length: 8 }, (_, i) => figure_out_sticking_count_for_index(i, 8, 8, 4));
+    expect(counts).toEqual([1, '&', 2, '&', 3, '&', 4, '&']);
+  });
+
+  test('calculates 8th triplet counts correctly (1, &, a, 2, &, a)', () => {
+    const counts = Array.from({ length: 12 }, (_, i) => figure_out_sticking_count_for_index(i, 12, 12, 4));
+    expect(counts).toEqual([
+      1, '&', 'a',
+      2, '&', 'a',
+      3, '&', 'a',
+      4, '&', 'a'
+    ]);
+  });
+
+  test('calculates quarter note counts correctly (1, 2, 3, 4)', () => {
+    const counts = Array.from({ length: 4 }, (_, i) => figure_out_sticking_count_for_index(i, 4, 4, 4));
+    expect(counts).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe('ABCtoTab', () => {
   beforeAll(() => {
     require('../js/groove_utils.js');

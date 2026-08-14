@@ -232,37 +232,6 @@ function create_note_mapping_array_for_highlighting(HH_array: Array<any>, snare_
   return mapping_array;
 }
 
-function figure_out_sticking_count_for_index(index: number, notes_per_measure: number, sub_division: number, time_sig_bottom: number): string | number {
-  const note_index = index % notes_per_measure;
-  const implied_sub_division = sub_division * (4 / time_sig_bottom);
-  switch (implied_sub_division) {
-    case 4:
-      return note_index + 1;
-    case 8:
-      return (note_index % 2 === 0) ? Math.floor(note_index / 2) + 1 : "&";
-    case 12:
-      if (note_index % 3 === 0) return Math.floor(note_index / 3) + 1;
-      return (note_index % 3 == 1) ? "&" : "a";
-    case 24:
-      if (note_index % 3 === 0) return Math.floor(note_index / 6) + 1;
-      return (note_index % 3 == 1) ? "&" : "a";
-    case 48:
-      if (note_index % 3 === 0) return Math.floor(note_index / 12) + 1;
-      return (note_index % 3 == 1) ? "&" : "a";
-    case 16:
-    case 32:
-    default:
-      var whole_note_interval = implied_sub_division / 4;
-      if (note_index % 4 === 0)
-        return Math.floor(note_index / whole_note_interval) + 1;
-      else if (note_index % 4 === 1)
-        return "e";
-      else if (note_index % 4 === 2)
-        return "&";
-      else
-        return "a";
-  }
-}
 
 function convert_sticking_counts_to_actual_counts(sticking_array: Array<string>, time_division: number, timeSig: TimeSignature): void {
   var cur_div_of_array = isTripletDivision(time_division) ? 48 : 32;
