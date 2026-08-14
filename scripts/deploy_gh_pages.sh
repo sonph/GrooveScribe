@@ -6,6 +6,12 @@ INITIAL_BRANCH=$(git branch --show-current)
 TARGET_BRANCH="gh-pages"
 SOURCE_BRANCH="master"
 
+# Ensure script is invoked from master branch
+if [ "${INITIAL_BRANCH}" != "${SOURCE_BRANCH}" ]; then
+  echo "Error: Deployment can only be invoked from the '${SOURCE_BRANCH}' branch (currently on '${INITIAL_BRANCH}')."
+  exit 1
+fi
+
 echo "==> Starting deployment to ${TARGET_BRANCH}..."
 
 # Ensure working directory is clean
