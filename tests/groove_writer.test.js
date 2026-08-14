@@ -2080,12 +2080,12 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     expect(repeatEndCb.type).toBe('checkbox');
     expect(repeatEndCb.getAttribute('data-measure')).toBe('1');
 
-    const altEndingSelect = controlsContainer.querySelector('.embed-alt-ending');
-    expect(altEndingSelect).not.toBeNull();
-    expect(altEndingSelect.tagName).toBe('SELECT');
-    expect(altEndingSelect.getAttribute('data-measure')).toBe('1');
-    const options = Array.from(altEndingSelect.options).map(o => o.value);
-    expect(options).toEqual(['', '1', '2', '3', '4']);
+    const altEndingInput = controlsContainer.querySelector('.embed-alt-ending');
+    expect(altEndingInput).not.toBeNull();
+    expect(altEndingInput.tagName).toBe('INPUT');
+    expect(altEndingInput.type).toBe('text');
+    expect(altEndingInput.getAttribute('data-measure')).toBe('1');
+    expect(altEndingInput.placeholder).toBe('e.g. 1 or 1,2');
 
     // Row 2: Begin Text
     const beginTextLabel = controlsContainer.querySelectorAll('.measure-text-label')[0];
@@ -2488,5 +2488,29 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
 
     const convertedUrl = document.getElementById('convertedUrl').value;
     expect(convertedUrl).toContain('MeasureText=1:l:1%20%26%202%20%26%203%20%26%204%20%26');
+  });
+
+  test('free form text input in Ending control supports custom repeat endings like 1,2 and 1-3', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|');
+    const m1Ending = document.querySelector('#staff-container1 .embed-alt-ending');
+    const m2Ending = document.querySelector('#staff-container2 .embed-alt-ending');
+
+    expect(m1Ending).not.toBeNull();
+    expect(m2Ending).not.toBeNull();
+
+    // Set free-form endings
+    m1Ending.value = '1,2';
+    m2Ending.value = '3';
+    writer.updateSheetMusic();
+
+    expect(writer.data.repeatEndings.get(1)).toBe('1,2');
+    expect(writer.data.repeatEndings.get(2)).toBe('3');
+
+    const abcSource = document.getElementById('ABCsource').value;
+    expect(abcSource).toContain('[1,2');
+    expect(abcSource).toContain('[3');
+
+    const convertedUrl = document.getElementById('convertedUrl').value;
+    expect(convertedUrl).toContain('RepeatEndings=1:1,2;2:3');
   });
 });

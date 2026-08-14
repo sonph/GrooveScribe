@@ -1973,7 +1973,7 @@ class GrooveWriter {
       if (!m) return;
       const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
       const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
-      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | HTMLInputElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
       const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
@@ -2032,6 +2032,15 @@ class GrooveWriter {
     const repeatEndings: string[] = [];
     const measureTexts: string[] = [];
 
+    const measureMap = new Map<number, {
+      start: boolean;
+      end: boolean;
+      altEnding: string;
+      txtBegin: string;
+      txtEnd: string;
+      txtLyrics: string;
+    }>();
+
     const measureContainers = document.querySelectorAll(".measure-controls-container, #embedMeasureTableBody tr");
     if (measureContainers.length === 0) {
       if (!this.data) return null;
@@ -2059,32 +2068,43 @@ class GrooveWriter {
 
     measureContainers.forEach((row, idx) => {
       const m = parseInt(row.getAttribute("data-measure") || (idx + 1).toString(), 10);
+      if (!m) return;
       const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
       const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
-      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | HTMLInputElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
       const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
 
-      if (startCb && startCb.checked) {
-        repeatBegins.push(m);
-      }
-      if (endCb && endCb.checked) {
-        repeatEnds.push(m);
-      }
-      if (altSel && altSel.value) {
-        repeatEndings.push(m + ":" + altSel.value);
-      }
-      if (txtBegin && txtBegin.value.trim().length > 0) {
-        measureTexts.push(m + ":b:" + txtBegin.value.trim());
-      }
-      if (txtEnd && txtEnd.value.trim().length > 0) {
-        measureTexts.push(m + ":e:" + txtEnd.value.trim());
-      }
-      if (txtLyrics && txtLyrics.value.trim().length > 0) {
-        measureTexts.push(m + ":l:" + txtLyrics.value.trim());
-      }
+      const current = measureMap.get(m) || {
+        start: false,
+        end: false,
+        altEnding: "",
+        txtBegin: "",
+        txtEnd: "",
+        txtLyrics: ""
+      };
+
+      if (startCb && startCb.checked) current.start = true;
+      if (endCb && endCb.checked) current.end = true;
+      if (altSel && altSel.value && altSel.value.trim().length > 0) current.altEnding = altSel.value.trim();
+      if (txtBegin && txtBegin.value.trim().length > 0) current.txtBegin = txtBegin.value.trim();
+      if (txtEnd && txtEnd.value.trim().length > 0) current.txtEnd = txtEnd.value.trim();
+      if (txtLyrics && txtLyrics.value.trim().length > 0) current.txtLyrics = txtLyrics.value.trim();
+
+      measureMap.set(m, current);
     });
+
+    const sortedMs = Array.from(measureMap.keys()).sort((a, b) => a - b);
+    for (const m of sortedMs) {
+      const d = measureMap.get(m)!;
+      if (d.start) repeatBegins.push(m);
+      if (d.end) repeatEnds.push(m);
+      if (d.altEnding) repeatEndings.push(m + ":" + d.altEnding);
+      if (d.txtBegin) measureTexts.push(m + ":b:" + d.txtBegin);
+      if (d.txtEnd) measureTexts.push(m + ":e:" + d.txtEnd);
+      if (d.txtLyrics) measureTexts.push(m + ":l:" + d.txtLyrics);
+    }
 
     return {
       repeatBegins: repeatBegins.join(";"),
@@ -2165,7 +2185,7 @@ class GrooveWriter {
       const m = parseInt(row.getAttribute("data-measure") || "0", 10);
       const startCb = row.querySelector(".embed-repeat-start") as HTMLInputElement | null;
       const endCb = row.querySelector(".embed-repeat-end") as HTMLInputElement | null;
-      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
+      const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | HTMLInputElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
       const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
@@ -3971,13 +3991,7 @@ class GrooveWriter {
           <div class="measure-control-row measure-repeats-row">
             <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-start" data-measure="${baseindex}"${isRepeatStart ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat Start</label>
             <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-end" data-measure="${baseindex}"${isRepeatEnd ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat End</label>
-            <label class="measure-select-label">Ending: <select class="embed-alt-ending" data-measure="${baseindex}" onchange="myGrooveWriter.updateSheetMusic();">
-              <option value=""${altEnding === '' ? ' selected' : ''}>None</option>
-              <option value="1"${altEnding === '1' ? ' selected' : ''}>1</option>
-              <option value="2"${altEnding === '2' ? ' selected' : ''}>2</option>
-              <option value="3"${altEnding === '3' ? ' selected' : ''}>3</option>
-              <option value="4"${altEnding === '4' ? ' selected' : ''}>4</option>
-            </select></label>
+            <label class="measure-ending-label measure-select-label">Ending: <input type="text" class="embed-alt-ending measure-ending-input measure-text-input" data-measure="${baseindex}" value="${altEnding.replace(/"/g, '&quot;')}" placeholder="e.g. 1 or 1,2" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></label>
           </div>
           <div class="measure-control-row measure-text-row">
             <label class="measure-text-label">Begin Text:</label>
