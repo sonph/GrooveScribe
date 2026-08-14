@@ -246,6 +246,40 @@ function abcNoteToTabChar(drumType, abcNote) {
 function tabCharToAbcNote(drumType, tabChar) {
     return AbcNote.TAB_CHAR_TO_ABC_NOTE.get(drumType.name)?.get(tabChar) || null;
 }
+function figureOutStickingCountForIndex(index, notesPerMeasure, subdivision, timeSigBottom) {
+    const noteIndex = index % notesPerMeasure;
+    const impliedSubdivision = subdivision * (4 / timeSigBottom);
+    switch (impliedSubdivision) {
+        case 4:
+            return noteIndex + 1;
+        case 8:
+            return (noteIndex % 2 === 0) ? Math.floor(noteIndex / 2) + 1 : '&';
+        case 12:
+            if (noteIndex % 3 === 0)
+                return Math.floor(noteIndex / 3) + 1;
+            return (noteIndex % 3 === 1) ? '&' : 'a';
+        case 24:
+            if (noteIndex % 3 === 0)
+                return Math.floor(noteIndex / 6) + 1;
+            return (noteIndex % 3 === 1) ? '&' : 'a';
+        case 48:
+            if (noteIndex % 3 === 0)
+                return Math.floor(noteIndex / 12) + 1;
+            return (noteIndex % 3 === 1) ? '&' : 'a';
+        case 16:
+        case 32:
+        default: {
+            const wholeNoteInterval = impliedSubdivision / 4;
+            if (noteIndex % 4 === 0)
+                return Math.floor(noteIndex / wholeNoteInterval) + 1;
+            if (noteIndex % 4 === 1)
+                return 'e';
+            if (noteIndex % 4 === 2)
+                return '&';
+            return 'a';
+        }
+    }
+}
 class Subdivision {
     constructor(number) {
         if (typeof number === 'number' && Number.isInteger(number) && number >= 0) {
@@ -389,6 +423,10 @@ class Measure {
     }
     // String should be without the bar separators `|`.
     setDataFromString(drumType, string) {
+        if (string === '' || string.length === 0) {
+            this.arrays.set(drumType.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
+            return;
+        }
         if (string.length !== this.notesPerMeasure) {
             throw new Error(`Expected string of length ${this.notesPerMeasure}, got ${string} of length ${string.length}`);
         }
@@ -642,9 +680,12 @@ function encodeGrooveQueryString(state) {
         for (const measure of state.measures) {
             const str = measure.toString(drum);
             if (str) {
-                arrays.push(str);
                 if (str.split('').some(c => c !== '-')) {
                     hasAnyNotes = true;
+                    arrays.push(str);
+                }
+                else {
+                    arrays.push('');
                 }
             }
         }
@@ -987,8 +1028,10 @@ class GrooveData {
                             slotParts.push(`"L"x${posLen}`);
                         else if (val === 'b' || val === 'B')
                             slotParts.push(`"R/L"x${posLen}`);
-                        else if (val === 'c')
-                            slotParts.push(`"count"x${posLen}`);
+                        else if (val === 'c') {
+                            const count = figureOutStickingCountForIndex(idx, this.notesPerMeasure, this.subdivision.value, this.timeSig.bottom.value);
+                            slotParts.push(`"${count}"x${posLen}`);
+                        }
                         else
                             slotParts.push(`x${posLen}`);
                     }
@@ -1203,6 +1246,7 @@ globalThis.getFirstElement = getFirstElement;
 globalThis.decodeGrooveUrl = decodeGrooveUrl;
 globalThis.encodeGrooveQueryString = encodeGrooveQueryString;
 globalThis.buildMeasuresFromTabs = buildMeasuresFromTabs;
+globalThis.figureOutStickingCountForIndex = figureOutStickingCountForIndex;
 globalThis.constant_ABC_HH_Normal = constant_ABC_HH_Normal;
 globalThis.constant_ABC_HH_Accent = constant_ABC_HH_Accent;
 globalThis.constant_ABC_HH_Open = constant_ABC_HH_Open;

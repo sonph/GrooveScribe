@@ -62,6 +62,11 @@ describe('Measure', () => {
       'o', null, null, null, null, null, null, null]);
   });
 
+  test('setDataFromString should clear array when given empty string', () => {
+    measure.setDataFromString(DrumType.SNARE, '');
+    expect(measure.getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+  });
+
   test('should get correct string from array value', () => {
     measure.arrays.set(DrumType.KICK.name, [null, 'o', null, 'o', 'o']);
     expect(measure.toString(DrumType.KICK)).toEqual('-o-oo');
@@ -125,6 +130,12 @@ describe('GrooveData', () => {
     expect(GrooveData.splitTabIntoMeasureStrings(null)).toEqual([]);
     expect(GrooveData.splitTabIntoMeasureStrings('')).toEqual([]);
     expect(GrooveData.splitTabIntoMeasureStrings('|')).toEqual([]);
+    expect(GrooveData.splitTabIntoMeasureStrings('||')).toEqual(['']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|||')).toEqual(['', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('||||')).toEqual(['', '', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('||x-x-|')).toEqual(['', 'x-x-']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|x-x-||')).toEqual(['x-x-', '']);
+    expect(GrooveData.splitTabIntoMeasureStrings('|x-x-||-x-x|')).toEqual(['x-x-', '', '-x-x']);
   });
 
   test('toUrl should encode params', () => {
@@ -171,6 +182,48 @@ describe('URL codec', () => {
     expect(decoded.drumTabs.get('H')).toEqual('|x-x-x-x-|');
     expect(decoded.drumTabs.get('S')).toEqual('|--o---o-|');
     expect(decoded.drumTabs.get('K')).toEqual('|o---o---|');
+  });
+
+  test('decodeGrooveUrl and encodeGrooveQueryString optimize empty bars with consecutive pipes', () => {
+    // 1-measure with empty Snare: S=||
+    const data1 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data1.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|&S=||&K=|o-------o-------|');
+    expect(data1.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data1.toUrl()).toContain('S=||');
+
+    // 2-measures: Measure 1 empty snare, Measure 2 active snare -> S=||----o-------o---|
+    const data2 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data2.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=||----o-------o---|&K=|o-------o-------|o-------o-------|');
+    expect(data2.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data2.measures[1].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data2.toUrl()).toContain('S=||----o-------o---|');
+
+    // 2-measures: Measure 1 active snare, Measure 2 empty snare -> S=|----o-------o---||
+    const data3 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data3.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|----o-------o---||&K=|o-------o-------|o-------o-------|');
+    expect(data3.measures[0].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data3.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data3.toUrl()).toContain('S=|----o-------o---||');
+
+    // 2-measures: both empty snare -> S=|||
+    const data4 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data4.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|||&K=|o-------o-------|o-------o-------|');
+    expect(data4.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data4.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data4.toUrl()).toContain('S=|||');
+
+    // Backward compatibility: loading old legacy dash string S=|----------------| optimizes on serialize to S=||
+    const data5 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data5.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|&S=|----------------|&K=|o-------o-------|');
+    expect(data5.measures[0].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data5.toUrl()).toContain('S=||');
+
+    // Backward compatibility: multi-measure legacy dash strings S=|----------------|----------------| and mixed
+    const data6 = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.SIXTEENTH);
+    data6.fromUrl('TimeSig=4/4&Div=16&H=|xxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxx|&S=|----o-------o---|----------------|&K=|o-------o-------|o-------o-------|');
+    expect(data6.measures[0].getArray(DrumType.SNARE)[4]).toBe('o');
+    expect(data6.measures[1].getArray(DrumType.SNARE)).toEqual(new Array(16).fill(null));
+    expect(data6.toUrl()).toContain('S=|----o-------o---||');
   });
 
   test('URL round-trip preserves tempo and swing', () => {
@@ -226,6 +279,42 @@ describe('TimeSignature.fromString', () => {
     expect(TimeSignature.fromString('4/3')).toEqual(new TimeSignature(4, Subdivision.QUARTER));
     expect(TimeSignature.fromString('9/5')).toEqual(new TimeSignature(9, Subdivision.QUARTER));
     expect(TimeSignature.fromString('3/7')).toEqual(new TimeSignature(3, Subdivision.QUARTER));
+  });
+});
+
+describe('figureOutStickingCountForIndex', () => {
+  beforeAll(() => {
+    require('../js/groove_render.js');
+  });
+
+  test('calculates 16th note counts correctly (1, e, &, a)', () => {
+    const counts = Array.from({ length: 16 }, (_, i) => figureOutStickingCountForIndex(i, 16, 16, 4));
+    expect(counts).toEqual([
+      1, 'e', '&', 'a',
+      2, 'e', '&', 'a',
+      3, 'e', '&', 'a',
+      4, 'e', '&', 'a'
+    ]);
+  });
+
+  test('calculates 8th note counts correctly (1, &, 2, &)', () => {
+    const counts = Array.from({ length: 8 }, (_, i) => figureOutStickingCountForIndex(i, 8, 8, 4));
+    expect(counts).toEqual([1, '&', 2, '&', 3, '&', 4, '&']);
+  });
+
+  test('calculates 8th triplet counts correctly (1, &, a, 2, &, a)', () => {
+    const counts = Array.from({ length: 12 }, (_, i) => figureOutStickingCountForIndex(i, 12, 12, 4));
+    expect(counts).toEqual([
+      1, '&', 'a',
+      2, '&', 'a',
+      3, '&', 'a',
+      4, '&', 'a'
+    ]);
+  });
+
+  test('calculates quarter note counts correctly (1, 2, 3, 4)', () => {
+    const counts = Array.from({ length: 4 }, (_, i) => figureOutStickingCountForIndex(i, 4, 4, 4));
+    expect(counts).toEqual([1, 2, 3, 4]);
   });
 });
 
@@ -558,13 +647,13 @@ describe('SVG Note Highlighting & Note Mapping', () => {
     utils = new global.GrooveUtils(excludeAbcForTesting = true);
   });
 
-  test('create_note_mapping_array_for_highlighting identifies active note slots', () => {
+  test('createNoteMappingArrayForHighlighting identifies active note slots', () => {
     const hh = ['x', null, 'x', null, false, '-'];
     const sn = [null, 'o', null, null, null, null];
     const kk = [null, null, null, null, null, null];
     const toms = [[null, null, null, 'o', null, null], null, null, null];
 
-    const mapping = utils.create_note_mapping_array_for_highlighting(hh, sn, kk, toms, 6);
+    const mapping = createNoteMappingArrayForHighlighting(hh, sn, kk, toms, 6);
     expect(mapping).toEqual([true, true, true, true, false, false]);
   });
 
@@ -610,6 +699,57 @@ describe('SVG Note Highlighting & Note Mapping', () => {
     utils.clearHighlightNoteInABCSVG();
     expect(document.getElementById('abcNoteNum_0_1').getAttribute('class')).toBe('abcr');
     expect(utils.abcNoteNumCurrentlyHighlighted).toBe(-1);
+  });
+});
+
+describe('Helper math and sticking functions', () => {
+  beforeAll(() => {
+    require('../js/groove_audio.js');
+    require('../js/groove_render.js');
+  });
+
+  test('notesPerMeasureInFullSizeArray calculates full array length', () => {
+    expect(notesPerMeasureInFullSizeArray(false, TimeSignature.COMMON_TIME_44)).toBe(32);
+    expect(notesPerMeasureInFullSizeArray(true, TimeSignature.COMMON_TIME_44)).toBe(48);
+    expect(notesPerMeasureInFullSizeArray(false, new TimeSignature(3, Subdivision.QUARTER))).toBe(24);
+  });
+
+  test('getNoteScaler calculates scaling factor for UI arrays', () => {
+    expect(getNoteScaler(16, TimeSignature.COMMON_TIME_44)).toBe(2);
+    expect(getNoteScaler(8, TimeSignature.COMMON_TIME_44)).toBe(4);
+    expect(getNoteScaler(32, TimeSignature.COMMON_TIME_44)).toBe(1);
+    expect(getNoteScaler(12, TimeSignature.COMMON_TIME_44)).toBe(4);
+  });
+
+  test('noteGroupingSize calculates proper group sizes', () => {
+    expect(noteGroupingSize(16, TimeSignature.COMMON_TIME_44)).toBe(4);
+    expect(noteGroupingSize(8, TimeSignature.COMMON_TIME_44)).toBe(2);
+    expect(noteGroupingSize(12, TimeSignature.COMMON_TIME_44)).toBe(3);
+    expect(noteGroupingSize(12, new TimeSignature(3, Subdivision.QUARTER))).toBe(4);
+  });
+
+  test('convertStickingCountsToActualCounts replaces "count"x with musical count annotations', () => {
+    const stickingArray = new Array(32).fill('""x');
+    stickingArray[0] = '"count"x';
+    stickingArray[4] = '"count"x';
+    convertStickingCountsToActualCounts(stickingArray, 8, TimeSignature.COMMON_TIME_44);
+    expect(stickingArray[0]).toBe('"1"x');
+    expect(stickingArray[4]).toBe('"&"x');
+  });
+
+  test('HTMLForMidiPlayer renders multi-line template correctly', () => {
+    const utils = new global.GrooveUtils(true);
+    const htmlBasic = utils.HTMLForMidiPlayer(false);
+    expect(htmlBasic).toContain('class="playerControl"');
+    expect(htmlBasic).toContain('class="midiPlayImage Stopped"');
+    expect(htmlBasic).toContain('class="tempoAndProgress"');
+    expect(htmlBasic).not.toContain('midiMetronomeMenu');
+    expect(htmlBasic).not.toContain('midiGSLogo');
+
+    const htmlExpandable = utils.HTMLForMidiPlayer(true);
+    expect(htmlExpandable).toContain('midiMetronomeMenu');
+    expect(htmlExpandable).toContain('midiGSLogo');
+    expect(htmlExpandable).toContain('midiExpandImage');
   });
 });
 

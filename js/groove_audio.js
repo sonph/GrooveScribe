@@ -153,113 +153,51 @@ function isTripletDivision(subdivision) {
 function isTripletDivisionFromNotesPerMeasure(notesPerMeasure, timeSig) {
     return isTripletDivision((notesPerMeasure / timeSig.top) * timeSig.bottom.value);
 }
-function notesPerMeasureInFullSizeArray(is_triplet_division, timeSig) {
-    if (is_triplet_division) {
-        return 48 * (timeSig.top / timeSig.bottom.value);
-    }
-    return 32 * (timeSig.top / timeSig.bottom.value);
+function notesPerMeasureInFullSizeArray(isTripletDivision, timeSig) {
+    return (isTripletDivision ? 48 : 32) * (timeSig.top / timeSig.bottom.value);
 }
-function getNoteScaler(notes_per_measure, timeSig) {
-    if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36) {
-        console.log("Error in getNoteScaler, out of range: " + timeSig.top);
+function getNoteScaler(notesPerMeasure, timeSig) {
+    if (!timeSig.top || timeSig.top < 1 || timeSig.top > 36)
         return 1.0;
-    }
-    if (isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig))
-        return Math.ceil(notesPerMeasureInFullSizeArray(true, timeSig) / notes_per_measure);
-    return Math.ceil(notesPerMeasureInFullSizeArray(false, timeSig) / notes_per_measure);
+    const isTriplet = isTripletDivisionFromNotesPerMeasure(notesPerMeasure, timeSig);
+    return Math.ceil(notesPerMeasureInFullSizeArray(isTriplet, timeSig) / notesPerMeasure);
 }
-function create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes, HH2_array) {
-    var mapping_array = new Array(num_notes);
-    for (var i = 0; i < num_notes; i++) {
-        var hasNote = false;
-        if (HH_array && HH_array[i] !== false && HH_array[i] !== null && HH_array[i] !== undefined && HH_array[i] !== '-') {
-            hasNote = true;
-        }
-        if (HH2_array && HH2_array[i] !== false && HH2_array[i] !== null && HH2_array[i] !== undefined && HH2_array[i] !== '-') {
-            hasNote = true;
-        }
-        if (snare_array && snare_array[i] !== false && snare_array[i] !== null && snare_array[i] !== undefined && snare_array[i] !== '-') {
-            hasNote = true;
-        }
-        if (kick_array && kick_array[i] !== false && kick_array[i] !== null && kick_array[i] !== undefined && kick_array[i] !== '-') {
-            hasNote = true;
-        }
-        if (!hasNote && toms_array) {
-            for (var j = 0; j < toms_array.length; j++) {
-                if (toms_array[j] && toms_array[j][i] !== undefined && toms_array[j][i] !== false && toms_array[j][i] !== null && toms_array[j][i] !== '-') {
-                    hasNote = true;
-                    break;
-                }
-            }
-        }
-        mapping_array[i] = hasNote;
+function createNoteMappingArrayForHighlighting(hhArray, snareArray, kickArray, tomsArray, numNotes, hh2Array) {
+    const isNoteOn = (v) => v !== false && v !== null && v !== undefined && v !== '-';
+    const mappingArray = new Array(numNotes);
+    for (let i = 0; i < numNotes; i++) {
+        mappingArray[i] = Boolean((hhArray && isNoteOn(hhArray[i])) ||
+            (hh2Array && isNoteOn(hh2Array[i])) ||
+            (snareArray && isNoteOn(snareArray[i])) ||
+            (kickArray && isNoteOn(kickArray[i])) ||
+            (tomsArray && tomsArray.some(tom => tom && isNoteOn(tom[i]))));
     }
-    return mapping_array;
+    return mappingArray;
 }
-function figure_out_sticking_count_for_index(index, notes_per_measure, sub_division, time_sig_bottom) {
-    const note_index = index % notes_per_measure;
-    const implied_sub_division = sub_division * (4 / time_sig_bottom);
-    switch (implied_sub_division) {
-        case 4:
-            return note_index + 1;
-        case 8:
-            return (note_index % 2 === 0) ? Math.floor(note_index / 2) + 1 : "&";
-        case 12:
-            if (note_index % 3 === 0)
-                return Math.floor(note_index / 3) + 1;
-            return (note_index % 3 == 1) ? "&" : "a";
-        case 24:
-            if (note_index % 3 === 0)
-                return Math.floor(note_index / 6) + 1;
-            return (note_index % 3 == 1) ? "&" : "a";
-        case 48:
-            if (note_index % 3 === 0)
-                return Math.floor(note_index / 12) + 1;
-            return (note_index % 3 == 1) ? "&" : "a";
-        case 16:
-        case 32:
-        default:
-            var whole_note_interval = implied_sub_division / 4;
-            if (note_index % 4 === 0)
-                return Math.floor(note_index / whole_note_interval) + 1;
-            else if (note_index % 4 === 1)
-                return "e";
-            else if (note_index % 4 === 2)
-                return "&";
-            else
-                return "a";
-    }
-}
-function convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig) {
-    var cur_div_of_array = isTripletDivision(time_division) ? 48 : 32;
-    var actual_notes_per_measure_in_this_array = notesPerMeasureInFullSizeArray(cur_div_of_array === 48, timeSig);
-    var notes_per_measure_in_time_division = ((time_division / 4) * timeSig.top) * (4 / timeSig.bottom.value);
-    for (var i in sticking_array) {
-        if (sticking_array[i] == '"count"x') {
-            var adjusted_index = Math.floor(Number(i) / (actual_notes_per_measure_in_this_array / notes_per_measure_in_time_division));
-            var new_count = figure_out_sticking_count_for_index(adjusted_index, notes_per_measure_in_time_division, time_division, timeSig.bottom.value);
-            sticking_array[i] = '"' + new_count + '"x';
+function convertStickingCountsToActualCounts(stickingArray, timeDivision, timeSig) {
+    const isTriplets = isTripletDivision(timeDivision);
+    const actualNotesPerMeasure = notesPerMeasureInFullSizeArray(isTriplets, timeSig);
+    const notesPerMeasureInTimeDivision = ((timeDivision / 4) * timeSig.top) * (4 / timeSig.bottom.value);
+    const scaleRatio = actualNotesPerMeasure / notesPerMeasureInTimeDivision;
+    for (let i = 0; i < stickingArray.length; i++) {
+        if (stickingArray[i] === '"count"x') {
+            const adjustedIndex = Math.floor(i / scaleRatio);
+            const newCount = figureOutStickingCountForIndex(adjustedIndex, notesPerMeasureInTimeDivision, timeDivision, timeSig.bottom.value);
+            stickingArray[i] = `"${newCount}"x`;
         }
     }
 }
-function noteGroupingSize(notes_per_measure, timeSig) {
-    var note_grouping;
-    var usingTriplets = isTripletDivisionFromNotesPerMeasure(notes_per_measure, timeSig);
-    if (usingTriplets) {
-        if (timeSig.top != 2 && timeSig.bottom.value != 4)
-            console.log("Triplets are only supported in 2/4 and 4/4 time");
-        note_grouping = notes_per_measure / (timeSig.top * (4 / timeSig.bottom.value));
+function noteGroupingSize(notesPerMeasure, timeSig) {
+    if (isTripletDivisionFromNotesPerMeasure(notesPerMeasure, timeSig)) {
+        return notesPerMeasure / (timeSig.top * (4 / timeSig.bottom.value));
     }
-    else if (timeSig.top == 3) {
-        note_grouping = (notes_per_measure) / 3;
+    if (timeSig.top === 3) {
+        return notesPerMeasure / 3;
     }
-    else if (timeSig.top % 6 == 0 && timeSig.bottom.value % 8 == 0) {
-        note_grouping = notes_per_measure / (2 * timeSig.top / 6);
+    if (timeSig.top % 6 === 0 && timeSig.bottom.value % 8 === 0) {
+        return notesPerMeasure / (2 * timeSig.top / 6);
     }
-    else {
-        note_grouping = (notes_per_measure / timeSig.top) * (timeSig.bottom.value / 4);
-    }
-    return note_grouping;
+    return (notesPerMeasure / timeSig.top) * (timeSig.bottom.value / 4);
 }
 function MIDI_build_midi_url_count_in_track(timeSig, tempo) {
     var midiFile = new Midi.File();
@@ -464,9 +402,8 @@ globalThis.isTripletDivision = isTripletDivision;
 globalThis.isTripletDivisionFromNotesPerMeasure = isTripletDivisionFromNotesPerMeasure;
 globalThis.notesPerMeasureInFullSizeArray = notesPerMeasureInFullSizeArray;
 globalThis.getNoteScaler = getNoteScaler;
-globalThis.create_note_mapping_array_for_highlighting = create_note_mapping_array_for_highlighting;
-globalThis.figure_out_sticking_count_for_index = figure_out_sticking_count_for_index;
-globalThis.convert_sticking_counts_to_actual_counts = convert_sticking_counts_to_actual_counts;
+globalThis.createNoteMappingArrayForHighlighting = createNoteMappingArrayForHighlighting;
+globalThis.convertStickingCountsToActualCounts = convertStickingCountsToActualCounts;
 globalThis.noteGroupingSize = noteGroupingSize;
 globalThis.MIDI_build_midi_url_count_in_track = MIDI_build_midi_url_count_in_track;
 globalThis.MIDI_from_HH_Snare_Kick_Arrays = MIDI_from_HH_Snare_Kick_Arrays;

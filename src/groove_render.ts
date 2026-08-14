@@ -292,6 +292,35 @@ function tabCharToAbcNote(drumType: DrumType, tabChar: string): AbcNote | null {
   return AbcNote.TAB_CHAR_TO_ABC_NOTE.get(drumType.name)?.get(tabChar) || null;
 }
 
+function figureOutStickingCountForIndex(index: number, notesPerMeasure: number, subdivision: number, timeSigBottom: number): string | number {
+  const noteIndex = index % notesPerMeasure;
+  const impliedSubdivision = subdivision * (4 / timeSigBottom);
+  switch (impliedSubdivision) {
+    case 4:
+      return noteIndex + 1;
+    case 8:
+      return (noteIndex % 2 === 0) ? Math.floor(noteIndex / 2) + 1 : '&';
+    case 12:
+      if (noteIndex % 3 === 0) return Math.floor(noteIndex / 3) + 1;
+      return (noteIndex % 3 === 1) ? '&' : 'a';
+    case 24:
+      if (noteIndex % 3 === 0) return Math.floor(noteIndex / 6) + 1;
+      return (noteIndex % 3 === 1) ? '&' : 'a';
+    case 48:
+      if (noteIndex % 3 === 0) return Math.floor(noteIndex / 12) + 1;
+      return (noteIndex % 3 === 1) ? '&' : 'a';
+    case 16:
+    case 32:
+    default: {
+      const wholeNoteInterval = impliedSubdivision / 4;
+      if (noteIndex % 4 === 0) return Math.floor(noteIndex / wholeNoteInterval) + 1;
+      if (noteIndex % 4 === 1) return 'e';
+      if (noteIndex % 4 === 2) return '&';
+      return 'a';
+    }
+  }
+}
+
 class Subdivision {
   // Length of note will be 1/value.
   value: number;
@@ -473,6 +502,10 @@ class Measure {
 
   // String should be without the bar separators `|`.
   setDataFromString(drumType: DrumType, string: string) {
+    if (string === '' || string.length === 0) {
+      this.arrays.set(drumType.name, Measure.createEmptyArrayOfLength(this.notesPerMeasure));
+      return;
+    }
     if (string.length !== this.notesPerMeasure) {
       throw new Error(`Expected string of length ${this.notesPerMeasure}, got ${string} of length ${string.length}`);
     }
@@ -786,9 +819,11 @@ function encodeGrooveQueryString(state: EncodableGrooveState): string {
     for (const measure of state.measures) {
       const str = measure.toString(drum);
       if (str) {
-        arrays.push(str);
         if (str.split('').some(c => c !== '-')) {
           hasAnyNotes = true;
+          arrays.push(str);
+        } else {
+          arrays.push('');
         }
       }
     }
@@ -1169,7 +1204,10 @@ class GrooveData {
             if (val === 'R') slotParts.push(`"R"x${posLen}`);
             else if (val === 'L') slotParts.push(`"L"x${posLen}`);
             else if (val === 'b' || val === 'B') slotParts.push(`"R/L"x${posLen}`);
-            else if (val === 'c') slotParts.push(`"count"x${posLen}`);
+            else if (val === 'c') {
+              const count = figureOutStickingCountForIndex(idx, this.notesPerMeasure, this.subdivision.value, this.timeSig.bottom.value);
+              slotParts.push(`"${count}"x${posLen}`);
+            }
             else slotParts.push(`x${posLen}`);
           }
           beatParts.push(slotParts.join(''));
@@ -1417,6 +1455,7 @@ globalThis.tabCharToAbcNote = tabCharToAbcNote;
 (globalThis as any).decodeGrooveUrl = decodeGrooveUrl;
 (globalThis as any).encodeGrooveQueryString = encodeGrooveQueryString;
 (globalThis as any).buildMeasuresFromTabs = buildMeasuresFromTabs;
+(globalThis as any).figureOutStickingCountForIndex = figureOutStickingCountForIndex;
 
 (globalThis as any).constant_ABC_HH_Normal = constant_ABC_HH_Normal;
 (globalThis as any).constant_ABC_HH_Accent = constant_ABC_HH_Accent;

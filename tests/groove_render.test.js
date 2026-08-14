@@ -144,6 +144,22 @@ describe('groove_render.js isolated execution', () => {
     expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
   });
 
+  test('populates initial groove when URL explicitly contains empty pipe arrays (||)', () => {
+    const data = new GrooveData().fromUrl('TimeSig=4/4&Div=8&H=||&S=||&K=||');
+    const m = data.measures[0];
+    expect(m.toString(DrumType.HIHAT)).toBe('xxxxxxxx');
+    expect(m.toString(DrumType.KICK)).toBe('o---o---');
+    expect(m.toString(DrumType.SNARE)).toBe('--O---O-');
+  });
+
+  test('encodes empty bars as consecutive pipes in query string', () => {
+    const data = new GrooveData(TimeSignature.COMMON_TIME_44, Subdivision.EIGHTH);
+    data.fromUrl('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=||&K=|o---o---|');
+    expect(data.toQueryString()).toContain('S=||');
+    expect(data.toQueryString()).toContain('H=|xxxxxxxx|');
+    expect(data.toQueryString()).toContain('K=|o---o---|');
+  });
+
   test('generates invisible rests (x) instead of visible rests (z) in V:Stickings when empty', () => {
     const data = new GrooveData().fromUrl('TimeSig=4/4&Div=16&RepeatBegins=1&RepeatEnds=1;2&RepeatEndings=2:1&H=|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x---|&S=|----O----g--O---|----O----g-OO---|&K=|o-oo---oo-oo----|o-oo---oo-o--o--|');
     const notation = data.getAbcNotation();
@@ -214,6 +230,35 @@ describe('groove_render.js isolated execution', () => {
 
       const notation = data.getAbcNotation();
       expect(notation).not.toContain('w:');
+    });
+  });
+
+  describe('Sticking counts (c) in ABC notation', () => {
+    test('renders 16th note counts as "1", "e", "&", "a" in 4/4 time', () => {
+      const url = '?TimeSig=4/4&Div=16&Stickings=|cccccccccccccccc|&H=|xxxxxxxxxxxxxxxx|&S=|----o-------o---|&K=|o-------o-------|';
+      const data = new GrooveData().fromUrl(url);
+      const notation = data.getAbcNotation();
+
+      expect(notation).toContain('V:Stickings\n"1"x1"e"x1"&"x1"a"x1 "2"x1"e"x1"&"x1"a"x1 "3"x1"e"x1"&"x1"a"x1 "4"x1"e"x1"&"x1"a"x1 ||');
+      expect(notation).not.toContain('"count"');
+    });
+
+    test('renders 8th note counts as "1", "&", "2", "&", etc.', () => {
+      const url = '?TimeSig=4/4&Div=8&Stickings=|cccccccc|&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+      const notation = data.getAbcNotation();
+
+      expect(notation).toContain('V:Stickings\n"1"x1"&"x1 "2"x1"&"x1 "3"x1"&"x1 "4"x1"&"x1 ||');
+      expect(notation).not.toContain('"count"');
+    });
+
+    test('renders 8th triplet counts as "1", "&", "a", "2", etc.', () => {
+      const url = '?TimeSig=4/4&Div=12&Stickings=|cccccccccccc|&H=|xxxxxxxxxxxx|&S=|---o-----o--|&K=|o-----o-----|';
+      const data = new GrooveData().fromUrl(url);
+      const notation = data.getAbcNotation();
+
+      expect(notation).toContain('V:Stickings\n"1"x4"&"x4"a"x4 "2"x4"&"x4"a"x4 "3"x4"&"x4"a"x4 "4"x4"&"x4"a"x4 ||');
+      expect(notation).not.toContain('"count"');
     });
   });
 });

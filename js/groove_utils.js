@@ -207,29 +207,6 @@ class GrooveUtils {
             return true;
         };
     }
-    noteGroupingSize(notes_per_measure, timeSig) {
-        return noteGroupingSize(notes_per_measure, timeSig);
-    }
-    ;
-    notesPerMeasureInFullSizeArray(is_triplet_division, timeSig) {
-        return notesPerMeasureInFullSizeArray(is_triplet_division, timeSig);
-    }
-    getNoteScaler(notes_per_measure, timeSig) {
-        return getNoteScaler(notes_per_measure, timeSig);
-    }
-    ;
-    create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes, HH2_array) {
-        return create_note_mapping_array_for_highlighting(HH_array, snare_array, kick_array, toms_array, num_notes, HH2_array);
-    }
-    ;
-    figure_out_sticking_count_for_index(index, notes_per_measure, sub_division, time_sig_bottom) {
-        return figure_out_sticking_count_for_index(index, notes_per_measure, sub_division, time_sig_bottom);
-    }
-    ;
-    convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig) {
-        convert_sticking_counts_to_actual_counts(sticking_array, time_division, timeSig);
-    }
-    ;
     renderABCtoSVG(abcString) {
         if (this.isLegendVisible) {
             this.abcNoteNumIndex = -15;
@@ -374,7 +351,7 @@ class GrooveUtils {
         midiTrack.setInstrument(0, 0x13);
         var swing_percentage = myGrooveData.swingPercent / 100;
         const isTriplets = myGrooveData.subdivision.isTriplet();
-        const fullSizePerMeasure = this.notesPerMeasureInFullSizeArray(isTriplets, myGrooveData.timeSig);
+        const fullSizePerMeasure = notesPerMeasureInFullSizeArray(isTriplets, myGrooveData.timeSig);
         const num_notes_for_swing = myGrooveData.subdivision.value < 16
             ? (8 * myGrooveData.timeSig.top) / myGrooveData.timeSig.bottom.value
             : (16 * myGrooveData.timeSig.top) / myGrooveData.timeSig.bottom.value;
@@ -392,7 +369,7 @@ class GrooveUtils {
                 measure ? measure.getScaledArray(DrumType.TOM4, fullSizePerMeasure).map(c => c ? tabCharToAbcNote(DrumType.TOM4, c)?.note || false : false) : new Array(fullSizePerMeasure).fill(false),
             ];
             this.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, hhArray, snareArray, kickArray, tomsArray, MIDI_type || "general_MIDI", myGrooveData.metronomeFrequency, fullSizePerMeasure, num_notes_for_swing, swing_percentage, myGrooveData.timeSig, hh2Array);
-            this.note_mapping_array = this.note_mapping_array.concat(this.create_note_mapping_array_for_highlighting(hhArray, snareArray, kickArray, tomsArray, fullSizePerMeasure, hh2Array));
+            this.note_mapping_array = this.note_mapping_array.concat(createNoteMappingArrayForHighlighting(hhArray, snareArray, kickArray, tomsArray, fullSizePerMeasure, hh2Array));
         }
         return "data:audio/midi;base64," + btoa(midiFile.toBytes());
     }
@@ -700,38 +677,38 @@ class GrooveUtils {
         return addInLineGScribeLogoLoneGSVG();
     }
     HTMLForMidiPlayer(expandable) {
-        var newHTML = '' +
-            '<div id="playerControl' + this.grooveUtilsUniqueIndex + '" class="playerControl">' +
-            '	<div class="playerControlsRow" id="playerControlsRow' + this.grooveUtilsUniqueIndex + '">' +
-            '		<span title="Play/Pause" class="midiPlayImage Stopped" id="midiPlayImage' + this.grooveUtilsUniqueIndex + '"></span>' +
-            '       <span class="MIDIPlayTime" id="MIDIPlayTime' + this.grooveUtilsUniqueIndex + '">' + CONSTANT_Midi_play_time_zero + '</span>';
-        if (expandable)
-            newHTML += '' +
-                '       <span title="Metronome controls" class="midiMetronomeMenu" id="midiMetronomeMenu' + this.grooveUtilsUniqueIndex + '">' +
-                this.addInlineMetronomeSVG() +
-                '       </span>';
-        newHTML += '<span class="tempoAndProgress" id="tempoAndProgress' + this.grooveUtilsUniqueIndex + '">' +
-            '			<div class="tempoRow">' +
-            '				<span class="tempoLabel">BPM</span>' +
-            '				<input type="text" for="tempo" class="tempoTextField" pattern="\\d+" id="tempoTextField' + this.grooveUtilsUniqueIndex + '" value="80"></input>' +
-            '				<input type=range min=30 max=300 value=90 class="tempoInput' + (this.is_touch_device() ? ' touch' : '') + '" id="tempoInput' + this.grooveUtilsUniqueIndex + '" list="tempoSettings">' +
-            '			</div>' +
-            '			<div class="swingRow">' +
-            '				<span class="swingLabel">SWING</span>' +
-            '				<span for="swingAmount" class="swingOutput" id="swingOutput' + this.grooveUtilsUniqueIndex + '">0% swing</span>' +
-            '				<input type=range min=0 max=50 value=0 class="swingInput' + (this.is_touch_device() ? ' touch' : '') + '" id="swingInput' + this.grooveUtilsUniqueIndex + '" list="swingSettings" step=5 >' +
-            '			</div>' +
-            '       </span>';
-        if (expandable)
-            newHTML +=
-                '       <span title="Expand full screen in GrooveScribe" class="midiGSLogo" id="midiGSLogo' + this.grooveUtilsUniqueIndex + '">' +
-                    this.addInLineGScribeLogoLoneGSVG() +
-                    '       </span>' +
-                    '		<span title="Expand/Retract player" class="midiExpandImage" id="midiExpandImage' + this.grooveUtilsUniqueIndex + '"></span>';
-        newHTML += '</div>';
-        return newHTML;
+        const idx = this.grooveUtilsUniqueIndex;
+        const touchClass = this.is_touch_device() ? ' touch' : '';
+        const metronomeMenu = expandable ? `
+      <span title="Metronome controls" class="midiMetronomeMenu" id="midiMetronomeMenu${idx}">
+        ${this.addInlineMetronomeSVG()}
+      </span>` : '';
+        const expandControls = expandable ? `
+      <span title="Expand full screen in GrooveScribe" class="midiGSLogo" id="midiGSLogo${idx}">
+        ${this.addInLineGScribeLogoLoneGSVG()}
+      </span>
+      <span title="Expand/Retract player" class="midiExpandImage" id="midiExpandImage${idx}"></span>` : '';
+        return `
+      <div id="playerControl${idx}" class="playerControl">
+        <div class="playerControlsRow" id="playerControlsRow${idx}">
+          <span title="Play/Pause" class="midiPlayImage Stopped" id="midiPlayImage${idx}"></span>
+          <span class="MIDIPlayTime" id="MIDIPlayTime${idx}">${CONSTANT_Midi_play_time_zero}</span>${metronomeMenu}
+          <span class="tempoAndProgress" id="tempoAndProgress${idx}">
+            <div class="tempoRow">
+              <span class="tempoLabel">BPM</span>
+              <input type="text" for="tempo" class="tempoTextField" pattern="\\d+" id="tempoTextField${idx}" value="80"></input>
+              <input type="range" min="30" max="300" value="90" class="tempoInput${touchClass}" id="tempoInput${idx}" list="tempoSettings">
+            </div>
+            <div class="swingRow">
+              <span class="swingLabel">SWING</span>
+              <span for="swingAmount" class="swingOutput" id="swingOutput${idx}">0% swing</span>
+              <input type="range" min="0" max="50" value="0" class="swingInput${touchClass}" id="swingInput${idx}" list="swingSettings" step="5">
+            </div>
+          </span>${expandControls}
+        </div>
+      </div>
+    `.trim();
     }
-    ;
     AddMidiPlayerToPage(HTML_Id_to_attach_to, division, expandable) {
         var html_element = document.getElementById(HTML_Id_to_attach_to);
         if (html_element)

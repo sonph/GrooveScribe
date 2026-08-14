@@ -1,25 +1,5 @@
-// Javascript for the Groove Scribe HTML application
-// Groove Scribe is for drummers and helps create sheet music with an easy to use WYSIWYG groove editor.
-//
-// Author: Lou Montulli
-// Original Creation date: Feb 2015.
-//
-//  Copyright 2015-2020 Lou Montulli, Mike Johnston
-//
-//  This file is part of Project Groove Scribe.
-//
-//  Groove Scribe is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation, either version 2 of the License, or
-//  (at your option) any later version.
-//
-//  Groove Scribe is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with Groove Scribe.  If not, see <http://www.gnu.org/licenses/>.
+/*jshint multistr: true */
+/*jslint browser:true devel:true */
 function setEmbedStatus(status) {
     const statusE = document.getElementById("status");
     if (!statusE)
@@ -837,8 +817,8 @@ class GrooveWriter {
         }
         if (this.class_permutation_type != "none")
             percent_complete = (percent_complete * this.get_numberOfActivePermutationSections()) % 1.0;
-        var note_id_in_32 = Math.floor(percent_complete * this.myGrooveUtils.notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
-        var real_note_id = (note_id_in_32 / this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
+        var note_id_in_32 = Math.floor(percent_complete * notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
+        var real_note_id = (note_id_in_32 / getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
         this.hilight_all_notes_on_same_beat(instrument, real_note_id);
     }
     clear_all_highlights(instrument) {
@@ -1556,7 +1536,7 @@ class GrooveWriter {
     }
     // Extracts note array of a single measure from the clickable UI and scales it to 32 (or 48) elements.
     get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, startIndexForClickableUI, HH2_Array) {
-        var scaler = this.myGrooveUtils.getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
+        var scaler = getNoteScaler(this.data.notesPerMeasure, this.data.timeSig);
         for (var i = 0; i < this.data.notesPerMeasure; i++) {
             var array_index = (i) * scaler;
             if (this.isStickingsVisible())
@@ -1644,7 +1624,7 @@ class GrooveWriter {
                         Kick_Array = this.filter_kick_array_for_permutation(Kick_Array);
                         new_kick_array = this.merge_kick_arrays(new_kick_array, Kick_Array);
                         this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, new_kick_array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
-                        this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes, HH2_Array));
+                        this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, new_kick_array, Toms_Array, num_notes, HH2_Array));
                     }
                 }
                 break;
@@ -1659,7 +1639,7 @@ class GrooveWriter {
                         else
                             new_snare_array = this.get_snare_permutation_array(i);
                         this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, new_snare_array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
-                        this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes, HH2_Array));
+                        this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(createNoteMappingArrayForHighlighting(HH_Array, new_snare_array, Kick_Array, Toms_Array, num_notes, HH2_Array));
                     }
                 }
                 break;
@@ -1670,7 +1650,7 @@ class GrooveWriter {
                 else
                     num_notes_for_swing = 16 * this.data.timeSig.top / this.data.timeSig.bottom.value;
                 this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
-                this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array));
+                this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array));
                 for (i = 1; i < this.data.numberOfMeasures; i++) {
                     Sticking_Array = this.get_empty_note_array_in_32nds();
                     HH_Array = this.get_empty_note_array_in_32nds();
@@ -1681,7 +1661,7 @@ class GrooveWriter {
                     this.get32NoteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, this.data.notesPerMeasure * i, HH2_Array);
                     this.muteArrayFromClickableUI(Sticking_Array, HH_Array, Snare_Array, Kick_Array, Toms_Array, i, HH2_Array);
                     this.myGrooveUtils.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, MIDI_type, metronomeFrequency, num_notes, num_notes_for_swing, swing_percentage, this.data.timeSig, HH2_Array);
-                    this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(this.myGrooveUtils.create_note_mapping_array_for_highlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array));
+                    this.myGrooveUtils.note_mapping_array = this.myGrooveUtils.note_mapping_array.concat(createNoteMappingArrayForHighlighting(HH_Array, Snare_Array, Kick_Array, Toms_Array, num_notes, HH2_Array));
                 }
                 break;
         }
@@ -3473,228 +3453,122 @@ class GrooveWriter {
         this.renderEmbedMeasureTable(this.data.numberOfMeasures);
     }
     HTMLforStaffContainer(baseindex, indexStartForNotes) {
-        var newHTML = ('\
-						<div class="staff-container" id="staff-container' + baseindex + '">\
-							<div class="stickings-row-container">\
-								<div class="line-labels">\
-									<div class="stickings-label" onClick="myGrooveWriter.noteLabelClick(event, \'stickings\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'stickings\', ' + baseindex + ')">STICKINGS</div>\
-								</div>\
-								<div class="music-line-container">\n\
-									\
-									<div class="notes-container">\n');
-        newHTML += ('\
-										<div class="stickings-container">\
-											<div class="opening_note_space"> </div>');
-        for (var i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('\
-														<div id="sticking' + i + '" class="sticking" onClick="myGrooveWriter.noteLeftClick(event, \'sticking\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'sticking\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'sticking\', ' + i + ')">\n\
-															<div class="sticking_right note_part"  id="sticking_right' + i + '">R</div>\n\
-															<div class="sticking_left note_part"   id="sticking_left' + i + '">L</div>\n\
-															<div class="sticking_both note_part"   id="sticking_both' + i + '">R/L</div>\n\
-															<div class="sticking_count note_part"   id="sticking_count' + i + '">C</div>\n\
-														</div>\n\
-													');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div>\n');
+        const notesPerMeasure = this.data.notesPerMeasure;
+        const groupSize = noteGroupingSize(notesPerMeasure, this.data.timeSig);
+        const endNoteIndex = indexStartForNotes + notesPerMeasure - 1;
+        const renderNoteRow = (renderNote) => {
+            let html = '';
+            for (let i = indexStartForNotes; i <= endNoteIndex; i++) {
+                html += renderNote(i);
+                if ((i - (indexStartForNotes - 1)) % groupSize === 0 && i < endNoteIndex) {
+                    html += '<div class="space_between_note_groups"> </div>\n';
+                }
             }
-        }
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-									</div>\
-								</div>\
-							</div>\n');
-        newHTML += ('\
-							<span class="notes-row-container">\
-								<div class="line-labels">\
-									<div class="hh-label" onClick="myGrooveWriter.noteLabelClick(event, \'hh\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'hh\', ' + baseindex + ')">Hi-hat</div>\
-									<div class="hh2-label" onClick="myGrooveWriter.noteLabelClick(event, \'hh2\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'hh2\', ' + baseindex + ')">H2</div>\
-									<div class="tom-label" id="tom1-label" onClick="myGrooveWriter.noteLabelClick(event, \'tom1\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'tom1\', ' + baseindex + ')">Tom</div>\
-									<div class="snare-label" onClick="myGrooveWriter.noteLabelClick(event, \'snare\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'snare\', ' + baseindex + ')">Snare</div>\
-									<div class="tom-label" id="tom4-label" onClick="myGrooveWriter.noteLabelClick(event, \'tom4\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'tom4\', ' + baseindex + ')">Tom</div>\
-									<div class="kick-label" onClick="myGrooveWriter.noteLabelClick(event, \'kick\', ' + baseindex + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, \'kick\', ' + baseindex + ')">Kick</div>\
-								</div>\
-								<div class="music-line-container">\
-									\
-									<div class="notes-container">\
-									<div class="staff-line-1"></div>\
-									<div class="staff-line-2"></div>\
-									<div class="staff-line-3"></div>\
-									<div class="staff-line-4"></div>\
-									<div class="staff-line-5"></div>\
-									<div class="staff-line-6"></div>\n');
-        newHTML += ('\
-										<div class="background-highlight-container">\
-											<div class="opening_note_space"> </div>');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('						<div id="bg-highlight' + i + '" class="bg-highlight" onClick="myGrooveWriter.handleBgHighlightClick(event, ' + i + ')" >\
-												</div>\n');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> \n');
-            }
-        }
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="hi-hat-container">\
-											<div class="opening_note_space"> </div>');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('\
-														<div id="hi-hat' + i + '" class="hi-hat" onClick="myGrooveWriter.noteLeftClick(event, \'hh\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh\', ' + i + ')">\
-															<div class="hh_crash note_part"  id="hh_crash' + i + '"><i class="fa fa-asterisk"></i></div>\
-															<div class="hh_ride note_part"   id="hh_ride' + i + '"><i class="fa fa-dot-circle-o"></i></div>\
-															<div class="hh_ride_bell note_part"   id="hh_ride_bell' + i + '"><i class="fa fa-bell-o"></i></div>\
-															<div class="hh_cow_bell note_part"    id="hh_cow_bell' + i + '"><i class="fa fa-plus-square-o"></i></div>\
-															<div class="hh_stacker note_part"   id="hh_stacker' + i + '"><i class="fa fa-bars"></i></div>\
-															<div class="hh_metronome_normal note_part"   id="hh_metronome_normal' + i + '"><i class="fa fa-neuter"></i></div>\
-															<div class="hh_metronome_accent note_part"   id="hh_metronome_accent' + i + '"><i class="fa fa-map-pin"></i></div>\
-															<div class="hh_cross note_part"  id="hh_cross' + i + '"><i class="fa fa-times"></i></div>\
-															<div class="hh_open note_part"   id="hh_open' + i + '"><i class="fa fa-circle-o"></i></div>\
-															<div class="hh_close note_part"  id="hh_close' + i + '"><i class="fa fa-plus"></i></div>\
-															<div class="hh_accent note_part" id="hh_accent' + i + '"><i class="fa fa-angle-right"></i></div>\
-														</div>\n\
-													');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> \n');
-            }
-        }
-        newHTML += '<div class="unmuteHHButton" id="unmutehhButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("hh", ' + baseindex + ', false)\'><span class="fa-stack unmuteHHStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></div>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="hi-hat2-container">\
-											<div class="opening_note_space"> </div>');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('\
-														<div id="hi-hat2-' + i + '" class="hi-hat2" onClick="myGrooveWriter.noteLeftClick(event, \'hh2\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'hh2\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'hh2\', ' + i + ')">\
-															<div class="hh2_crash note_part"  id="hh2_crash' + i + '"><i class="fa fa-asterisk"></i></div>\
-															<div class="hh2_ride note_part"   id="hh2_ride' + i + '"><i class="fa fa-dot-circle-o"></i></div>\
-															<div class="hh2_ride_bell note_part"   id="hh2_ride_bell' + i + '"><i class="fa fa-bell-o"></i></div>\
-															<div class="hh2_cow_bell note_part"    id="hh2_cow_bell' + i + '"><i class="fa fa-plus-square-o"></i></div>\
-															<div class="hh2_stacker note_part"   id="hh2_stacker' + i + '"><i class="fa fa-bars"></i></div>\
-															<div class="hh2_metronome_normal note_part"   id="hh2_metronome_normal' + i + '"><i class="fa fa-neuter"></i></div>\
-															<div class="hh2_metronome_accent note_part"   id="hh2_metronome_accent' + i + '"><i class="fa fa-map-pin"></i></div>\
-															<div class="hh2_cross note_part"  id="hh2_cross' + i + '"><i class="fa fa-times"></i></div>\
-															<div class="hh2_open note_part"   id="hh2_open' + i + '"><i class="fa fa-circle-o"></i></div>\
-															<div class="hh2_close note_part"  id="hh2_close' + i + '"><i class="fa fa-plus"></i></div>\
-															<div class="hh2_accent note_part" id="hh2_accent' + i + '"><i class="fa fa-angle-right"></i></div>\
-														</div>\n\
-													');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> \n');
-            }
-        }
-        newHTML += '<div class="unmuteHH2Button" id="unmutehh2Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("hh2", ' + baseindex + ', false)\'><span class="fa-stack unmuteHH2Stack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></div>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="toms-container" id="tom1-container">\
-											<div class="opening_note_space"> </div>');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('\
-						<div id="tom1-' + i + '" class="tom" onClick="myGrooveWriter.noteLeftClick(event, \'tom1\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'tom1\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'tom1\', ' + i + ')">\
-							<div class="tom_circle note_part"  id="tom_circle1-' + i + '"></div>\
-						</div>\n\
-						');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> \n');
-            }
-        }
-        newHTML += '<span class="unmuteTom1Button" id="unmutetom1Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("tom1", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="snare-container">\
-											<div class="opening_note_space"> </div> ');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('' +
-                '<div id="snare' + i + '" class="snare" onClick="myGrooveWriter.noteLeftClick(event, \'snare\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'snare\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'snare\', ' + i + ')">' +
-                '<div class="snare_ghost note_part"  id="snare_ghost' + i + '">(<i class="fa fa-circle dot_in_snare_ghost_note"></i>)</div>' +
-                '<div class="snare_circle note_part" id="snare_circle' + i + '"></div>' +
-                '<div class="snare_xstick note_part" id="snare_xstick' + i + '"><i class="fa fa-times"></i></div>' +
-                '<div class="snare_buzz note_part" id="snare_buzz' + i + '"><i class="fa fa-bars"></i></div>' +
-                '<div class="snare_flam note_part" id="snare_flam' + i + '"><i class="fa ">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">' +
-                '	<style type="text/css">' +
-                '		.flam_fill {fill: currentColor}' +
-                '		.flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}' +
-                '	</style>' +
-                '	<defs>' +
-                '		<path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>' +
-                '		<ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>' +
-                '	</defs>' +
-                '	<g id="note" transform="translate(-44 -35)">' +
-                '		<path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>' +
-                '		<use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>' +
-                '		<path class="flam_stroke" d="m49.5 49.34l9-5"></path>' +
-                '		<path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>' +
-                '	</g>' +
-                '</svg>' +
-                '</i></div>' +
-                '<div class="snare_drag note_part" id="snare_drag' + i + '"><i class="fa ">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">' +
-                '	<style type="text/css">' +
-                '		.drag_fill {fill: currentColor}' +
-                '		.drag_stroke {stroke: currentColor; fill: none; stroke-width: .7}' +
-                '	</style>' +
-                '	<defs>' +
-                '		<path id="drag_ghd" class="drag_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>' +
-                '		<ellipse id="drag_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="drag_fill"></ellipse>' +
-                '	</defs>' +
-                '	<g id="note" transform="translate(-44 -35)">' +
-                '       <path class="fill" d="m51.81 38.34 l8.58 0.00v1.60l-8.58 0.00"></path>' +
-                '	    <path class="fill" d="m52.10 41.34 l8.00 0.00v1.60l-8.00 0.00"></path>' +
-                '		<path class="drag_stroke" d="m52.1 53.34v-15.00"></path>' +
-                '		<use x="50.50" y="53.34" xlink:href="#drag_ghd"></use>' +
-                '		<path class="drag_stroke" d="m49.50 49.34l8.00 -15.00"></path>' +
-                '		<path class="drag_stroke" d="m60.10 53.34v-15.00"></path>' +
-                '		<use x="58.50" y="53.34" xlink:href="#drag_ghd"></use>' +
-                '		<path class="drag_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#drag_hd"></use>' +
-                '	</g>' +
-                '</svg>' +
-                '</i></div>' +
-                '<div class="snare_accent note_part" id="snare_accent' + i + '">' +
-                '  <i class="fa fa-chevron-right"></i>' +
-                '</div>' +
-                '</div> \n');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> ');
-            }
-        }
-        newHTML += '<span class="unmuteSnareButton" id="unmutesnareButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("snare", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="toms-container" id="tom4-container">\
-											<div class="opening_note_space"> </div>');
-        for (i = indexStartForNotes; i < this.data.notesPerMeasure + indexStartForNotes; i++) {
-            newHTML += ('\
-						<div id="tom4-' + i + '" class="tom" onClick="myGrooveWriter.noteLeftClick(event, \'tom4\', ' + i + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'tom4\', ' + i + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'tom4\', ' + i + ')">\
-							<div class="tom_circle note_part"  id="tom_circle4-' + i + '"></div>\
-						</div>\n\
-						');
-            if ((i - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && i < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> \n');
-            }
-        }
-        newHTML += '<span class="unmuteTom4Button" id="unmutetom4Button' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("tom4", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-										<div class="kick-container">\
-											<div class="opening_note_space"> </div> ');
-        for (var j = indexStartForNotes; j < this.data.notesPerMeasure + indexStartForNotes; j++) {
-            newHTML += ('\
-														<div id="kick' + j + '" class="kick" onClick="myGrooveWriter.noteLeftClick(event, \'kick\', ' + j + ')" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, \'kick\', ' + j + ')" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, \'kick\', ' + j + ')">\
-														<div class="kick_splash note_part" id="kick_splash' + j + '"><i class="fa fa-times"></i></div>\
-														<div class="kick_circle note_part" id="kick_circle' + j + '"></div>\
-														</div> \n\
-													');
-            if ((j - (indexStartForNotes - 1)) % this.myGrooveUtils.noteGroupingSize(this.data.notesPerMeasure, this.data.timeSig) === 0 && j < this.data.notesPerMeasure + indexStartForNotes - 1) {
-                newHTML += ('<div class="space_between_note_groups"> </div> ');
-            }
-        }
-        newHTML += '<span class="unmuteKickButton" id="unmutekickButton' + baseindex + '" onClick=\'myGrooveWriter.muteInstrument("kick", ' + baseindex + ', false)\'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span>';
-        newHTML += ('<div class="end_note_space"></div>\n</div>\n');
-        newHTML += ('\
-								</div>\
-							</div>\
-						</span>\n');
-        if (baseindex == this.data.numberOfMeasures)
-            newHTML += '<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>';
+            return html;
+        };
+        const stickingsHTML = renderNoteRow((i) => `
+      <div id="sticking${i}" class="sticking" onClick="myGrooveWriter.noteLeftClick(event, 'sticking', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'sticking', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'sticking', ${i})">
+        <div class="sticking_right note_part" id="sticking_right${i}">R</div>
+        <div class="sticking_left note_part" id="sticking_left${i}">L</div>
+        <div class="sticking_both note_part" id="sticking_both${i}">R/L</div>
+        <div class="sticking_count note_part" id="sticking_count${i}">C</div>
+      </div>\n`);
+        const bgHighlightsHTML = renderNoteRow((i) => `
+      <div id="bg-highlight${i}" class="bg-highlight" onClick="myGrooveWriter.handleBgHighlightClick(event, ${i})"></div>\n`);
+        const hhHTML = renderNoteRow((i) => `
+      <div id="hi-hat${i}" class="hi-hat" onClick="myGrooveWriter.noteLeftClick(event, 'hh', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'hh', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'hh', ${i})">
+        <div class="hh_crash note_part" id="hh_crash${i}"><i class="fa fa-asterisk"></i></div>
+        <div class="hh_ride note_part" id="hh_ride${i}"><i class="fa fa-dot-circle-o"></i></div>
+        <div class="hh_ride_bell note_part" id="hh_ride_bell${i}"><i class="fa fa-bell-o"></i></div>
+        <div class="hh_cow_bell note_part" id="hh_cow_bell${i}"><i class="fa fa-plus-square-o"></i></div>
+        <div class="hh_stacker note_part" id="hh_stacker${i}"><i class="fa fa-bars"></i></div>
+        <div class="hh_metronome_normal note_part" id="hh_metronome_normal${i}"><i class="fa fa-neuter"></i></div>
+        <div class="hh_metronome_accent note_part" id="hh_metronome_accent${i}"><i class="fa fa-map-pin"></i></div>
+        <div class="hh_cross note_part" id="hh_cross${i}"><i class="fa fa-times"></i></div>
+        <div class="hh_open note_part" id="hh_open${i}"><i class="fa fa-circle-o"></i></div>
+        <div class="hh_close note_part" id="hh_close${i}"><i class="fa fa-plus"></i></div>
+        <div class="hh_accent note_part" id="hh_accent${i}"><i class="fa fa-angle-right"></i></div>
+      </div>\n`);
+        const hh2HTML = renderNoteRow((i) => `
+      <div id="hi-hat2-${i}" class="hi-hat2" onClick="myGrooveWriter.noteLeftClick(event, 'hh2', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'hh2', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'hh2', ${i})">
+        <div class="hh2_crash note_part" id="hh2_crash${i}"><i class="fa fa-asterisk"></i></div>
+        <div class="hh2_ride note_part" id="hh2_ride${i}"><i class="fa fa-dot-circle-o"></i></div>
+        <div class="hh2_ride_bell note_part" id="hh2_ride_bell${i}"><i class="fa fa-bell-o"></i></div>
+        <div class="hh2_cow_bell note_part" id="hh2_cow_bell${i}"><i class="fa fa-plus-square-o"></i></div>
+        <div class="hh2_stacker note_part" id="hh2_stacker${i}"><i class="fa fa-bars"></i></div>
+        <div class="hh2_metronome_normal note_part" id="hh2_metronome_normal${i}"><i class="fa fa-neuter"></i></div>
+        <div class="hh2_metronome_accent note_part" id="hh2_metronome_accent${i}"><i class="fa fa-map-pin"></i></div>
+        <div class="hh2_cross note_part" id="hh2_cross${i}"><i class="fa fa-times"></i></div>
+        <div class="hh2_open note_part" id="hh2_open${i}"><i class="fa fa-circle-o"></i></div>
+        <div class="hh2_close note_part" id="hh2_close${i}"><i class="fa fa-plus"></i></div>
+        <div class="hh2_accent note_part" id="hh2_accent${i}"><i class="fa fa-angle-right"></i></div>
+      </div>\n`);
+        const tom1HTML = renderNoteRow((i) => `
+      <div id="tom1-${i}" class="tom" onClick="myGrooveWriter.noteLeftClick(event, 'tom1', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'tom1', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'tom1', ${i})">
+        <div class="tom_circle note_part" id="tom_circle1-${i}"></div>
+      </div>\n`);
+        const snareHTML = renderNoteRow((i) => `
+      <div id="snare${i}" class="snare" onClick="myGrooveWriter.noteLeftClick(event, 'snare', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'snare', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'snare', ${i})">
+        <div class="snare_ghost note_part" id="snare_ghost${i}">(<i class="fa fa-circle dot_in_snare_ghost_note"></i>)</div>
+        <div class="snare_circle note_part" id="snare_circle${i}"></div>
+        <div class="snare_xstick note_part" id="snare_xstick${i}"><i class="fa fa-times"></i></div>
+        <div class="snare_buzz note_part" id="snare_buzz${i}"><i class="fa fa-bars"></i></div>
+        <div class="snare_flam note_part" id="snare_flam${i}"><i class="fa ">
+          <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
+            <style type="text/css">
+              .flam_fill {fill: currentColor}
+              .flam_stroke {stroke: currentColor; fill: none; stroke-width: .7}
+            </style>
+            <defs>
+              <path id="flam_ghd" class="flam_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
+              <ellipse id="flam_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="flam_fill"></ellipse>
+            </defs>
+            <g id="note" transform="translate(-44 -35)">
+              <path class="flam_stroke" d="m52.1 53.34v-14M52.1 39.34c0.6 3.4 5.6 3.8 3 10 1.2-4.4-1.4-7-3-7"></path>
+              <use x="50.50" y="53.34" xlink:href="#flam_ghd"></use>
+              <path class="flam_stroke" d="m49.5 49.34l9-5"></path>
+              <path class="flam_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#flam_hd"></use>
+            </g>
+          </svg>
+        </i></div>
+        <div class="snare_drag note_part" id="snare_drag${i}"><i class="fa ">
+          <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="30" height="30">
+            <style type="text/css">
+              .drag_fill {fill: currentColor}
+              .drag_stroke {stroke: currentColor; fill: none; stroke-width: .7}
+            </style>
+            <defs>
+              <path id="drag_ghd" class="drag_fill" d="m1.7-1c-1-1.7-4.5 0.2-3.4 2 1 1.7 4.5-0.2 3.4-2"></path>
+              <ellipse id="drag_hd" rx="4.1" ry="2.9" transform="rotate(-20)" class="drag_fill"></ellipse>
+            </defs>
+            <g id="note" transform="translate(-44 -35)">
+              <path class="fill" d="m51.81 38.34 l8.58 0.00v1.60l-8.58 0.00"></path>
+              <path class="fill" d="m52.10 41.34 l8.00 0.00v1.60l-8.00 0.00"></path>
+              <path class="drag_stroke" d="m52.1 53.34v-15.00"></path>
+              <use x="50.50" y="53.34" xlink:href="#drag_ghd"></use>
+              <path class="drag_stroke" d="m49.50 49.34l8.00 -15.00"></path>
+              <path class="drag_stroke" d="m60.10 53.34v-15.00"></path>
+              <use x="58.50" y="53.34" xlink:href="#drag_ghd"></use>
+              <path class="drag_stroke" d="m50.5 58.34c2.9 3 11.6 3 14.5 0M69.5 53.34v-21"></path><use x="66.00" y="53.34" xlink:href="#drag_hd"></use>
+            </g>
+          </svg>
+        </i></div>
+        <div class="snare_accent note_part" id="snare_accent${i}">
+          <i class="fa fa-chevron-right"></i>
+        </div>
+      </div>\n`);
+        const tom4HTML = renderNoteRow((i) => `
+      <div id="tom4-${i}" class="tom" onClick="myGrooveWriter.noteLeftClick(event, 'tom4', ${i})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'tom4', ${i})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'tom4', ${i})">
+        <div class="tom_circle note_part" id="tom_circle4-${i}"></div>
+      </div>\n`);
+        const kickHTML = renderNoteRow((j) => `
+      <div id="kick${j}" class="kick" onClick="myGrooveWriter.noteLeftClick(event, 'kick', ${j})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteRightClick(event, 'kick', ${j})" onmouseenter="myGrooveWriter.noteOnMouseEnter(event, 'kick', ${j})">
+        <div class="kick_splash note_part" id="kick_splash${j}"><i class="fa fa-times"></i></div>
+        <div class="kick_circle note_part" id="kick_circle${j}"></div>
+      </div>\n`);
+        const addMeasureBtn = baseindex === this.data.numberOfMeasures
+            ? `<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>`
+            : '';
         const isRepeatStart = this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex);
         const isRepeatEnd = this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex);
         const altEnding = (this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "";
@@ -3702,38 +3576,126 @@ class GrooveWriter {
         const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
         const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
         const lyrics = (textEntry && textEntry.lyrics) ? textEntry.lyrics : "";
-        newHTML += '<div class="measure-controls-container" data-measure="' + baseindex + '">' +
-            '<div class="measure-control-row measure-repeats-row">' +
-            '<label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-start" data-measure="' + baseindex + '"' + (isRepeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"> Repeat Start</label>' +
-            '<label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-end" data-measure="' + baseindex + '"' + (isRepeatEnd ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"> Repeat End</label>' +
-            '<label class="measure-select-label">Ending: <select class="embed-alt-ending" data-measure="' + baseindex + '" onchange="myGrooveWriter.updateSheetMusic();">' +
-            '<option value=""' + (altEnding === '' ? ' selected' : '') + '>None</option>' +
-            '<option value="1"' + (altEnding === '1' ? ' selected' : '') + '>1</option>' +
-            '<option value="2"' + (altEnding === '2' ? ' selected' : '') + '>2</option>' +
-            '<option value="3"' + (altEnding === '3' ? ' selected' : '') + '>3</option>' +
-            '<option value="4"' + (altEnding === '4' ? ' selected' : '') + '>4</option>' +
-            '</select></label>' +
-            '</div>' +
-            '<div class="measure-control-row measure-text-row">' +
-            '<label class="measure-text-label">Begin Text:</label>' +
-            '<input type="text" class="embed-text-begin measure-text-input" data-measure="' + baseindex + '" value="' + textBegin.replace(/"/g, '&quot;') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
-            '</div>' +
-            '<div class="measure-control-row measure-text-row">' +
-            '<label class="measure-text-label">End Text:</label>' +
-            '<input type="text" class="embed-text-end measure-text-input" data-measure="' + baseindex + '" value="' + textEnd.replace(/"/g, '&quot;') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
-            '</div>' +
-            '<div class="measure-control-row measure-text-row">' +
-            '<label class="measure-text-label"><a href="https://abcnotation.com/wiki/abc:standard:v2.1#lyrics" target="_blank" rel="noopener noreferrer" class="measure-lyrics-link" title="ABC lyrics syntax help">Lyrics</a>:</label>' +
-            '<input type="text" class="embed-text-lyrics measure-text-input" data-measure="' + baseindex + '" value="' + lyrics.replace(/"/g, '&quot;') + '" placeholder="e.g. 1 & 2 & 3 & 4 &" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
-            '</div>' +
-            '<div class="measure-control-row measure-actions-row">' +
-            '<button type="button" class="measure-btn measure-copy-btn" data-measure="' + baseindex + '" title="Copy this measure and append to the end" onClick="myGrooveWriter.copyMeasureToLastButtonClick(' + baseindex + ')"><i class="fa fa-clone"></i> Copy to last</button>' +
-            '<button type="button" class="measure-btn measure-clear-btn" data-measure="' + baseindex + '" title="Erase all notes in this measure" onClick="myGrooveWriter.clearMeasureButtonClick(' + baseindex + ')"><i class="fa fa-eraser"></i> Clear measure</button>' +
-            '<button type="button" class="measure-btn measure-delete-btn" data-measure="' + baseindex + '" title="' + (this.data.numberOfMeasures <= 1 ? 'Cannot delete the only measure' : 'Delete this measure') + '" onClick="myGrooveWriter.deleteMeasureButtonClick(' + baseindex + ')"' + (this.data.numberOfMeasures <= 1 ? ' disabled' : '') + '><i class="fa fa-trash"></i> Delete measure</button>' +
-            '</div>' +
-            '</div>';
-        newHTML += ('</div>');
-        return newHTML;
+        const isOnlyMeasure = this.data.numberOfMeasures <= 1;
+        return `
+      <div class="staff-container" id="staff-container${baseindex}">
+        <div class="stickings-row-container">
+          <div class="line-labels">
+            <div class="stickings-label" onClick="myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})">STICKINGS</div>
+          </div>
+          <div class="music-line-container">
+            <div class="notes-container">
+              <div class="stickings-container">
+                <div class="opening_note_space"> </div>
+                ${stickingsHTML}
+                <div class="end_note_space"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <span class="notes-row-container">
+          <div class="line-labels">
+            <div class="hh-label" onClick="myGrooveWriter.noteLabelClick(event, 'hh', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'hh', ${baseindex})">Hi-hat</div>
+            <div class="hh2-label" onClick="myGrooveWriter.noteLabelClick(event, 'hh2', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'hh2', ${baseindex})">H2</div>
+            <div class="tom-label" id="tom1-label" onClick="myGrooveWriter.noteLabelClick(event, 'tom1', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'tom1', ${baseindex})">Tom</div>
+            <div class="snare-label" onClick="myGrooveWriter.noteLabelClick(event, 'snare', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'snare', ${baseindex})">Snare</div>
+            <div class="tom-label" id="tom4-label" onClick="myGrooveWriter.noteLabelClick(event, 'tom4', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'tom4', ${baseindex})">Tom</div>
+            <div class="kick-label" onClick="myGrooveWriter.noteLabelClick(event, 'kick', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'kick', ${baseindex})">Kick</div>
+          </div>
+          <div class="music-line-container">
+            <div class="notes-container">
+              <div class="staff-line-1"></div>
+              <div class="staff-line-2"></div>
+              <div class="staff-line-3"></div>
+              <div class="staff-line-4"></div>
+              <div class="staff-line-5"></div>
+              <div class="staff-line-6"></div>
+
+              <div class="background-highlight-container">
+                <div class="opening_note_space"> </div>
+                ${bgHighlightsHTML}
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="hi-hat-container">
+                <div class="opening_note_space"> </div>
+                ${hhHTML}
+                <div class="unmuteHHButton" id="unmutehhButton${baseindex}" onClick='myGrooveWriter.muteInstrument("hh", ${baseindex}, false)'><span class="fa-stack unmuteHHStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></div>
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="hi-hat2-container">
+                <div class="opening_note_space"> </div>
+                ${hh2HTML}
+                <div class="unmuteHH2Button" id="unmutehh2Button${baseindex}" onClick='myGrooveWriter.muteInstrument("hh2", ${baseindex}, false)'><span class="fa-stack unmuteHH2Stack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></div>
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="toms-container" id="tom1-container">
+                <div class="opening_note_space"> </div>
+                ${tom1HTML}
+                <span class="unmuteTom1Button" id="unmutetom1Button${baseindex}" onClick='myGrooveWriter.muteInstrument("tom1", ${baseindex}, false)'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></span>
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="snare-container">
+                <div class="opening_note_space"> </div>
+                ${snareHTML}
+                <span class="unmuteSnareButton" id="unmutesnareButton${baseindex}" onClick='myGrooveWriter.muteInstrument("snare", ${baseindex}, false)'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></span>
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="toms-container" id="tom4-container">
+                <div class="opening_note_space"> </div>
+                ${tom4HTML}
+                <span class="unmuteTom4Button" id="unmutetom4Button${baseindex}" onClick='myGrooveWriter.muteInstrument("tom4", ${baseindex}, false)'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></span>
+                <div class="end_note_space"></div>
+              </div>
+
+              <div class="kick-container">
+                <div class="opening_note_space"> </div>
+                ${kickHTML}
+                <span class="unmuteKickButton" id="unmutekickButton${baseindex}" onClick='myGrooveWriter.muteInstrument("kick", ${baseindex}, false)'><span class="fa-stack unmuteStack"><i class="fa fa-ban fa-stack-2x" style="color:red"></i><i class="fa fa-volume-down fa-stack-1x"></i></span></span>
+                <div class="end_note_space"></div>
+              </div>
+            </div>
+          </div>
+        </span>
+        ${addMeasureBtn}
+
+        <div class="measure-controls-container" data-measure="${baseindex}">
+          <div class="measure-control-row measure-repeats-row">
+            <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-start" data-measure="${baseindex}"${isRepeatStart ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat Start</label>
+            <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-end" data-measure="${baseindex}"${isRepeatEnd ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat End</label>
+            <label class="measure-select-label">Ending: <select class="embed-alt-ending" data-measure="${baseindex}" onchange="myGrooveWriter.updateSheetMusic();">
+              <option value=""${altEnding === '' ? ' selected' : ''}>None</option>
+              <option value="1"${altEnding === '1' ? ' selected' : ''}>1</option>
+              <option value="2"${altEnding === '2' ? ' selected' : ''}>2</option>
+              <option value="3"${altEnding === '3' ? ' selected' : ''}>3</option>
+              <option value="4"${altEnding === '4' ? ' selected' : ''}>4</option>
+            </select></label>
+          </div>
+          <div class="measure-control-row measure-text-row">
+            <label class="measure-text-label">Begin Text:</label>
+            <input type="text" class="embed-text-begin measure-text-input" data-measure="${baseindex}" value="${textBegin.replace(/"/g, '&quot;')}" placeholder="e.g. Intro" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">
+          </div>
+          <div class="measure-control-row measure-text-row">
+            <label class="measure-text-label">End Text:</label>
+            <input type="text" class="embed-text-end measure-text-input" data-measure="${baseindex}" value="${textEnd.replace(/"/g, '&quot;')}" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">
+          </div>
+          <div class="measure-control-row measure-text-row">
+            <label class="measure-text-label"><a href="https://abcnotation.com/wiki/abc:standard:v2.1#lyrics" target="_blank" rel="noopener noreferrer" class="measure-lyrics-link" title="ABC lyrics syntax help">Lyrics</a>:</label>
+            <input type="text" class="embed-text-lyrics measure-text-input" data-measure="${baseindex}" value="${lyrics.replace(/"/g, '&quot;')}" placeholder="e.g. 1 & 2 & 3 & 4 &" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">
+          </div>
+          <div class="measure-control-row measure-actions-row">
+            <button type="button" class="measure-btn measure-copy-btn" data-measure="${baseindex}" title="Copy this measure and append to the end" onClick="myGrooveWriter.copyMeasureToLastButtonClick(${baseindex})"><i class="fa fa-clone"></i> Copy to last</button>
+            <button type="button" class="measure-btn measure-clear-btn" data-measure="${baseindex}" title="Erase all notes in this measure" onClick="myGrooveWriter.clearMeasureButtonClick(${baseindex})"><i class="fa fa-eraser"></i> Clear measure</button>
+            <button type="button" class="measure-btn measure-delete-btn" data-measure="${baseindex}" title="${isOnlyMeasure ? 'Cannot delete the only measure' : 'Delete this measure'}" onClick="myGrooveWriter.deleteMeasureButtonClick(${baseindex})"${isOnlyMeasure ? ' disabled' : ''}><i class="fa fa-trash"></i> Delete measure</button>
+          </div>
+        </div>
+      </div>
+    `.trim();
     }
     permutationOptionClick(event) {
         var optionId = event.target.id;

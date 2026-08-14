@@ -6,6 +6,12 @@ INITIAL_BRANCH=$(git branch --show-current)
 TARGET_BRANCH="gh-pages"
 SOURCE_BRANCH="master"
 
+# Ensure script is invoked from master branch
+if [ "${INITIAL_BRANCH}" != "${SOURCE_BRANCH}" ]; then
+  echo "Error: Deployment can only be invoked from the '${SOURCE_BRANCH}' branch (currently on '${INITIAL_BRANCH}')."
+  exit 1
+fi
+
 echo "==> Starting deployment to ${TARGET_BRANCH}..."
 
 # Ensure working directory is clean
@@ -27,9 +33,9 @@ fi
 echo "==> Pulling latest ${TARGET_BRANCH} from origin..."
 git pull origin ${TARGET_BRANCH} || true
 
-# Merge latest source branch (master)
+# Merge latest source branch (master), prioritizing master in case of artifact conflicts
 echo "==> Merging ${SOURCE_BRANCH} into ${TARGET_BRANCH}..."
-git merge ${SOURCE_BRANCH} --no-edit
+git merge ${SOURCE_BRANCH} -X theirs --no-edit
 
 # Build TypeScript to JavaScript
 echo "==> Building JavaScript assets..."
@@ -39,10 +45,14 @@ npm run build
 echo "==> Running test suite..."
 npm test
 
-# Stage all assets including compiled JS files and sourcemaps
+# Minify JavaScript assets
+echo "==> Minifying JavaScript assets..."
+npm run minify
+
+# Stage all assets including compiled JS files, minified bundles, and sourcemaps
 echo "==> Staging assets..."
 git add -A
-git add -f js/*.js js/*.js.map 2>/dev/null || true
+git add -f js/*.js js/*.min.js js/*.js.map 2>/dev/null || true
 
 # Commit changes if any exist
 if ! git diff --cached --quiet; then
