@@ -39,10 +39,14 @@ npm run build
 echo "==> Running test suite..."
 npm test
 
-# Stage all assets including compiled JS files and sourcemaps
+# Minify JavaScript assets
+echo "==> Minifying JavaScript assets..."
+npm run minify
+
+# Stage all assets including compiled JS files, minified bundles, and sourcemaps
 echo "==> Staging assets..."
 git add -A
-git add -f js/*.js js/*.js.map 2>/dev/null || true
+git add -f js/*.js js/*.min.js js/*.js.map 2>/dev/null || true
 
 # Commit changes if any exist
 if ! git diff --cached --quiet; then
