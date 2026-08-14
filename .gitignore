@@ -12,10 +12,6 @@ cordova/plugins/
 node_modules/
 
 # TypeScript build output
-js/groove_utils.js
-js/groove_utils.js.map
-js/groove_writer.js
-js/groove_writer.js.map
 tsjs/
 
 # Build output
