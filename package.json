@@ -8,7 +8,8 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "serve": "python3 -m http.server 8001",
-    "dev": "concurrently -n \"ts,serve\" -c \"blue,green\" \"npm run watch\" \"npm run serve\""
+    "dev": "concurrently -n \"ts,serve\" -c \"blue,green\" \"npm run watch\" \"npm run serve\"",
+    "deploy": "./scripts/deploy_gh_pages.sh"
   },
   "repository": {
     "type": "git",
