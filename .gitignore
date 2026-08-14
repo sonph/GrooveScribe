@@ -1,8 +1,45 @@
 MIDI.js/js/MIDI/MIDI.JS.min.js
 js/groove_display.min.js
 js/groove_writer.min.js
+js/local_development.js
 Lesson.css
 cordova/platforms/
 mikeLessons.html
 cordova/plugins/
 .idea/
+
+# Node
+node_modules/
+
+# TypeScript build output
+js/groove_utils.js
+js/groove_utils.js.map
+js/groove_writer.js
+js/groove_writer.js.map
+tsjs/
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS & Editor
+.DS_Store
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+
+# Python caching (for any Python cleanup scripts like fix_css.py)
+__pycache__/
+*.py[cod]

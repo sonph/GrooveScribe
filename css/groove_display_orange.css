@@ -59,8 +59,8 @@
 		padding-left: 0px;
 	}
 	.playerControlsRow {
-		/display: flex;
-		/display: -webkit-flex;
+		/* display: flex; */
+		/* display: -webkit-flex; */
 		padding-left: 6px;
 		height: 48px;
 		flex-flow: flex-start;
@@ -143,7 +143,7 @@
 			display: none;
 	}
 	.tempoRow, .swingRow {
-		/border: 1px solid red;
+		/* border: 1px solid red; */
 		display: flex;
 		display: -webkit-flex;
 		height: 24px;
@@ -257,7 +257,7 @@
 
 	.abcr {  /* rectangles enclosing notes in ABC SVG */
 		fill: transparent;
-		fill-opactity: 0.25;
+		fill-opacity: 0.25;
 	}
 	.abcr.highlighted {
 		fill: var(--highlight-color) !important;
@@ -265,6 +265,16 @@
 	}
 	#GrooveDB_MetaData , #debugDisplayArea {
 		background-color: #DDD;
+	}
+	#debugDisplayArea {
+		float: right;
+		position: fixed;
+		top: 50vh;
+		right: 0;
+		width: 50vw;
+		height: 50vh;
+		overflow: auto;
+		z-index: 1000;
 	}
 
 input[type=range] {

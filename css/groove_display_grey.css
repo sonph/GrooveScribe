@@ -47,7 +47,7 @@
 		padding-left: 0px;
 	}
 	.playerControlsRow {
-		/border: 1px solid red;
+		/* border: 1px solid red; */
 		display: flex;
 		display: -webkit-flex;
 		padding-left: 6px;
@@ -152,7 +152,7 @@
 		display: none;
 	}
 	.tempoRow, .swingRow {
-		/border: 1px solid red;
+		/* border: 1px solid red; */
 		display: flex;
 		display: -webkit-flex;
 		height: 22px;

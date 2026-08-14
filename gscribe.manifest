@@ -22,8 +22,10 @@ images/GScribe_Logo_word_stack.svg
 images/NotationKey.svg
 images/NotationKeySmall.svg
 js/abc2svg-1.js
-js/grooves.js
 js/groove_display.js
+js/groove_render.js
+js/groove_audio.js
+js/groove_ui.js
 js/groove_utils.js
 js/groove_writer.js
 js/jsmidgen.js
