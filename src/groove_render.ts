@@ -543,6 +543,7 @@ class Measure {
 interface MeasureTextEntry {
   begin?: string;
   end?: string;
+  lyrics?: string;
 }
 
 interface DecodedGrooveUrl {
@@ -615,19 +616,26 @@ function decodeGrooveUrl(paramsString: string): DecodedGrooveUrl {
         const m = parseInt(parts[0].trim(), 10);
         if (isNaN(m) || m <= 0) return;
         let isBegin = true;
+        let isLyrics = false;
         let text = "";
         if (parts.length === 2) {
           text = decodeURIComponent(parts[1]);
         } else {
           const type = parts[1].toLowerCase();
-          isBegin = type.startsWith('b') || type.startsWith('s');
+          if (type.startsWith('l') || type.startsWith('w')) {
+            isLyrics = true;
+          } else {
+            isBegin = type.startsWith('b') || type.startsWith('s');
+          }
           text = decodeURIComponent(parts.slice(2).join(':'));
         }
         if (!measureText.has(m)) {
           measureText.set(m, {});
         }
         const obj = measureText.get(m)!;
-        if (isBegin) {
+        if (isLyrics) {
+          obj.lyrics = text;
+        } else if (isBegin) {
           obj.begin = text;
         } else {
           obj.end = text;
@@ -760,6 +768,9 @@ function encodeGrooveQueryString(state: EncodableGrooveState): string {
       }
       if (entry.end && entry.end.trim().length > 0) {
         textParts.push(`${m}:e:${encodeURIComponent(entry.end.trim())}`);
+      }
+      if (entry.lyrics && entry.lyrics.trim().length > 0) {
+        textParts.push(`${m}:l:${encodeURIComponent(entry.lyrics.trim())}`);
       }
     }
     if (textParts.length > 0) {
@@ -1124,6 +1135,7 @@ class GrooveData {
       const altEnding = this.repeatEndings ? this.repeatEndings.get(m) : undefined;
       const textBegin = this.measureText ? this.measureText.get(m)?.begin : undefined;
       const textEnd = this.measureText ? this.measureText.get(m)?.end : undefined;
+      const lyrics = this.measureText ? this.measureText.get(m)?.lyrics : undefined;
 
       let beginPrefix = '';
       if (hasRepeatBegin) {
@@ -1197,12 +1209,17 @@ class GrooveData {
       const endBarWithSpacing = isTriplet ? ' ' + endBar : (lastMeasure && !hasRepeatEnd ? ' ' + endBar : endBar);
       handsSegments.push(endBarWithSpacing);
 
-      handsVoiceParts.push(handsSegments.join(''));
+      let measureHandsAbc = handsSegments.join('');
+      if (lyrics && lyrics.trim().length > 0) {
+        measureHandsAbc += '\nw: ' + lyrics.trim();
+      }
+      handsVoiceParts.push(measureHandsAbc);
     }
 
+    const hasAnyLyrics = Array.from(this.measureText?.values() || []).some(e => e.lyrics && e.lyrics.trim().length > 0);
     const lines: string[] = [];
     lines.push('V:Stickings\n' + stickingsVoiceParts.join(' '));
-    lines.push('V:Hands stem=up\n%%voicemap drum\n' + handsVoiceParts.join(' '));
+    lines.push('V:Hands stem=up\n%%voicemap drum\n' + (hasAnyLyrics ? handsVoiceParts.join('\n') : handsVoiceParts.join(' ')));
 
     return lines.join('\n') + '\n';
   }

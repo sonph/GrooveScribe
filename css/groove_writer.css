@@ -771,6 +771,13 @@
 		outline: none;
 		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
 	}
+	.measure-lyrics-link {
+		color: #2484C0;
+		text-decoration: underline;
+	}
+	.measure-lyrics-link:hover {
+		color: #1765a7;
+	}
 	.measure-actions-row {
 		display: flex;
 		align-items: center;

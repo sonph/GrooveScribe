@@ -2460,4 +2460,33 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     expect(noteEle.scrollIntoView).toHaveBeenCalledTimes(1);
     expect(noteEle.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   });
+
+  test('measure controls contain Lyrics input with ABC notation link and updates ABC source', () => {
+    writer.set_Default_notes('TimeSig=4/4&Div=8&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|');
+    const container = document.getElementById('staff-container1');
+    expect(container).not.toBeNull();
+
+    // Check for Lyrics link with correct href
+    const lyricsLink = container.querySelector('.measure-lyrics-link');
+    expect(lyricsLink).not.toBeNull();
+    expect(lyricsLink.getAttribute('href')).toBe('https://abcnotation.com/wiki/abc:standard:v2.1#lyrics');
+    expect(lyricsLink.getAttribute('target')).toBe('_blank');
+    expect(lyricsLink.textContent).toBe('Lyrics');
+
+    // Check lyrics input
+    const lyricsInput = container.querySelector('.embed-text-lyrics');
+    expect(lyricsInput).not.toBeNull();
+    expect(lyricsInput.placeholder).toBe('e.g. 1 & 2 & 3 & 4 &');
+
+    // Set lyrics value and trigger update
+    lyricsInput.value = '1 & 2 & 3 & 4 &';
+    writer.updateSheetMusic();
+
+    expect(writer.data.measureText.get(1)?.lyrics).toBe('1 & 2 & 3 & 4 &');
+    const abcSource = document.getElementById('ABCsource').value;
+    expect(abcSource).toContain('w: 1 & 2 & 3 & 4 &');
+
+    const convertedUrl = document.getElementById('convertedUrl').value;
+    expect(convertedUrl).toContain('MeasureText=1:l:1%20%26%202%20%26%203%20%26%204%20%26');
+  });
 });

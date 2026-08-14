@@ -185,4 +185,36 @@ describe('groove_render.js isolated execution', () => {
       expect(notation).toBeDefined();
     });
   });
+
+  describe('Lyrics (w:) parsing, encoding, and ABC generation', () => {
+    test('parses MeasureText lyrics (:l: and :w:) and serializes back to URL query string', () => {
+      const url = '?TimeSig=4/4&Div=8&MeasureText=1:l:1%20%26%202%20%26;2:w:3%20%26%204%20%26&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+
+      expect(data.measureText.get(1)?.lyrics).toBe('1 & 2 &');
+      expect(data.measureText.get(2)?.lyrics).toBe('3 & 4 &');
+
+      const qs = data.toQueryString();
+      expect(qs).toContain('MeasureText=1:l:1%20%26%202%20%26;2:l:3%20%26%204%20%26');
+    });
+
+    test('generates w: lyrics line in ABC notation when lyrics are present for a measure', () => {
+      const url = '?TimeSig=4/4&Div=8&MeasureText=1:b:Intro;1:l:1%20%26%202%20%26%203%20%26%204%20%26;2:l:Fill%20count&H=|xxxxxxxx|xxxxxxxx|&S=|--o---o-|--o---o-|&K=|o---o---|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+
+      const notation = data.getAbcNotation();
+      expect(notation).toContain('w: 1 & 2 & 3 & 4 &');
+      expect(notation).toContain('w: Fill count');
+      expect(notation).toContain('"Intro"');
+    });
+
+    test('omits w: lines when no lyrics are provided', () => {
+      const url = '?TimeSig=4/4&Div=8&MeasureText=1:b:Intro&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|';
+      const data = new GrooveData().fromUrl(url);
+
+      const notation = data.getAbcNotation();
+      expect(notation).not.toContain('w:');
+    });
+  });
 });
+

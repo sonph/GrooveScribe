@@ -40,6 +40,7 @@ interface EmbedMeasureRowState {
   altEnding: string;
   textBegin: string;
   textEnd: string;
+  lyrics?: string;
 }
 
 function setEmbedStatus(status: string): void {
@@ -1998,12 +1999,14 @@ class GrooveWriter {
       const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+      const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
       existingData[m] = {
         repeatStart: startCb ? startCb.checked : false,
         repeatEnd: endCb ? endCb.checked : false,
         altEnding: altSel ? altSel.value : "",
         textBegin: txtBegin ? txtBegin.value : "",
-        textEnd: txtEnd ? txtEnd.value : ""
+        textEnd: txtEnd ? txtEnd.value : "",
+        lyrics: txtLyrics ? txtLyrics.value : ""
       };
     });
 
@@ -2020,11 +2023,12 @@ class GrooveWriter {
           repeatEnd: !!isRepeatEnd,
           altEnding: altEnding || "",
           textBegin: textEntry.begin || "",
-          textEnd: textEntry.end || ""
+          textEnd: textEntry.end || "",
+          lyrics: textEntry.lyrics || ""
         };
       }
       if (!d) {
-        d = { repeatStart: false, repeatEnd: false, altEnding: "", textBegin: "", textEnd: "" };
+        d = { repeatStart: false, repeatEnd: false, altEnding: "", textBegin: "", textEnd: "", lyrics: "" };
       }
       html += '<tr data-measure="' + m + '">' +
         '<td>Measure ' + m + '</td>' +
@@ -2039,6 +2043,7 @@ class GrooveWriter {
         '</select></td>' +
         '<td><input type="text" class="embed-text-begin" data-measure="' + m + '" value="' + (d.textBegin ? d.textBegin.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Intro" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></td>' +
         '<td><input type="text" class="embed-text-end" data-measure="' + m + '" value="' + (d.textEnd ? d.textEnd.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></td>' +
+        '<td><input type="text" class="embed-text-lyrics" data-measure="' + m + '" value="' + (d.lyrics ? d.lyrics.replace(/"/g, '&quot;') : '') + '" placeholder="e.g. 1 & 2 &" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></td>' +
       '</tr>';
     }
     tbody.innerHTML = html;
@@ -2063,6 +2068,7 @@ class GrooveWriter {
           if (entry) {
             if (entry.begin && entry.begin.trim().length > 0) mTexts.push(`${m}:b:${entry.begin.trim()}`);
             if (entry.end && entry.end.trim().length > 0) mTexts.push(`${m}:e:${entry.end.trim()}`);
+            if (entry.lyrics && entry.lyrics.trim().length > 0) mTexts.push(`${m}:l:${entry.lyrics.trim()}`);
           }
         });
       }
@@ -2081,6 +2087,7 @@ class GrooveWriter {
       const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+      const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
 
       if (startCb && startCb.checked) {
         repeatBegins.push(m);
@@ -2096,6 +2103,9 @@ class GrooveWriter {
       }
       if (txtEnd && txtEnd.value.trim().length > 0) {
         measureTexts.push(m + ":e:" + txtEnd.value.trim());
+      }
+      if (txtLyrics && txtLyrics.value.trim().length > 0) {
+        measureTexts.push(m + ":l:" + txtLyrics.value.trim());
       }
     });
 
@@ -2122,14 +2132,16 @@ class GrooveWriter {
     });
     const textBeginMap: Record<number, string> = {};
     const textEndMap: Record<number, string> = {};
+    const textLyricsMap: Record<number, string> = {};
     (data.measureText || "").toString().split(";").filter(Boolean).forEach(part => {
       const segments = part.split(":");
       if (segments.length >= 3) {
         const m = parseInt(segments[0], 10);
-        const type = segments[1];
+        const type = segments[1].toLowerCase();
         const text = segments.slice(2).join(":");
-        if (type === "b") textBeginMap[m] = text;
-        if (type === "e") textEndMap[m] = text;
+        if (type === "b" || type === "s") textBeginMap[m] = text;
+        else if (type === "e") textEndMap[m] = text;
+        else if (type === "l" || type === "w") textLyricsMap[m] = text;
       }
     });
 
@@ -2142,12 +2154,13 @@ class GrooveWriter {
       });
       this.data.repeatEndings = rEndings;
       const mText = new Map<number, MeasureTextEntry>();
-      const allTextMs = new Set([...Object.keys(textBeginMap), ...Object.keys(textEndMap)]);
+      const allTextMs = new Set([...Object.keys(textBeginMap), ...Object.keys(textEndMap), ...Object.keys(textLyricsMap)]);
       allTextMs.forEach(mStr => {
         const m = parseInt(mStr, 10);
         const entry: MeasureTextEntry = {};
         if (textBeginMap[m]) entry.begin = textBeginMap[m];
         if (textEndMap[m]) entry.end = textEndMap[m];
+        if (textLyricsMap[m]) entry.lyrics = textLyricsMap[m];
         mText.set(m, entry);
       });
       this.data.measureText = mText;
@@ -2159,7 +2172,8 @@ class GrooveWriter {
       ...reList,
       ...Object.keys(altMap).map(Number),
       ...Object.keys(textBeginMap).map(Number),
-      ...Object.keys(textEndMap).map(Number)
+      ...Object.keys(textEndMap).map(Number),
+      ...Object.keys(textLyricsMap).map(Number)
     ];
     if (allMeasureNumbers.length > 0) {
       maxM = Math.max(maxM, ...allMeasureNumbers);
@@ -2177,12 +2191,14 @@ class GrooveWriter {
       const altSel = row.querySelector(".embed-alt-ending") as HTMLSelectElement | null;
       const txtBegin = row.querySelector(".embed-text-begin") as HTMLInputElement | null;
       const txtEnd = row.querySelector(".embed-text-end") as HTMLInputElement | null;
+      const txtLyrics = row.querySelector(".embed-text-lyrics") as HTMLInputElement | null;
 
       if (startCb) startCb.checked = rbList.includes(m);
       if (endCb) endCb.checked = reList.includes(m);
       if (altSel) altSel.value = altMap[m] || "";
       if (txtBegin) txtBegin.value = textBeginMap[m] || "";
       if (txtEnd) txtEnd.value = textEndMap[m] || "";
+      if (txtLyrics) txtLyrics.value = textLyricsMap[m] || "";
     });
   }
 
@@ -2212,8 +2228,9 @@ class GrooveWriter {
         const txt = rest.join(":");
         if (!isNaN(m) && txt) {
           const entry = measureText.get(m) || {};
-          if (pos === "b") entry.begin = txt;
+          if (pos === "b" || pos === "s") entry.begin = txt;
           if (pos === "e") entry.end = txt;
+          if (pos === "l" || pos === "w") entry.lyrics = txt;
           measureText.set(m, entry);
         }
       });
@@ -3555,8 +3572,9 @@ class GrooveWriter {
           const txt = rest.join(":");
           if (!isNaN(m) && txt) {
             const entry = measureText.get(m) || {};
-            if (pos === "b") entry.begin = txt;
+            if (pos === "b" || pos === "s") entry.begin = txt;
             if (pos === "e") entry.end = txt;
+            if (pos === "l" || pos === "w") entry.lyrics = txt;
             measureText.set(m, entry);
           }
         });
@@ -4001,6 +4019,7 @@ class GrooveWriter {
     const textEntry = (this.data && this.data.measureText && this.data.measureText.get(baseindex)) ? this.data.measureText.get(baseindex) : {};
     const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
     const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
+    const lyrics = (textEntry && textEntry.lyrics) ? textEntry.lyrics : "";
 
     newHTML += '<div class="measure-controls-container" data-measure="' + baseindex + '">' +
       '<div class="measure-control-row measure-repeats-row">' +
@@ -4021,6 +4040,10 @@ class GrooveWriter {
       '<div class="measure-control-row measure-text-row">' +
         '<label class="measure-text-label">End Text:</label>' +
         '<input type="text" class="embed-text-end measure-text-input" data-measure="' + baseindex + '" value="' + textEnd.replace(/"/g, '&quot;') + '" placeholder="e.g. Fill" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
+      '</div>' +
+      '<div class="measure-control-row measure-text-row">' +
+        '<label class="measure-text-label"><a href="https://abcnotation.com/wiki/abc:standard:v2.1#lyrics" target="_blank" rel="noopener noreferrer" class="measure-lyrics-link" title="ABC lyrics syntax help">Lyrics</a>:</label>' +
+        '<input type="text" class="embed-text-lyrics measure-text-input" data-measure="' + baseindex + '" value="' + lyrics.replace(/"/g, '&quot;') + '" placeholder="e.g. 1 & 2 & 3 & 4 &" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();">' +
       '</div>' +
       '<div class="measure-control-row measure-actions-row">' +
         '<button type="button" class="measure-btn measure-copy-btn" data-measure="' + baseindex + '" title="Copy this measure and append to the end" onClick="myGrooveWriter.copyMeasureToLastButtonClick(' + baseindex + ')"><i class="fa fa-clone"></i> Copy to last</button>' +

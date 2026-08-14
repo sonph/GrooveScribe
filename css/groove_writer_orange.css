@@ -1010,6 +1010,13 @@
 		outline: none;
 		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
 	}
+	.measure-lyrics-link {
+		color: var(--highlight-color, #f58220);
+		text-decoration: underline;
+	}
+	.measure-lyrics-link:hover {
+		color: #d96d10;
+	}
 	.measure-actions-row {
 		display: flex;
 		align-items: center;
