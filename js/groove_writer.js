@@ -394,6 +394,7 @@ class GrooveWriter {
         this.selectedInstrument = "snare";
         this.isConverting = false;
         this.isInitializing = false;
+        this.draggedMeasureIndex = null;
         this.tempoChangeCallback = (newTempo) => {
             this.data.tempo = newTempo;
             if (this.data.showTempo) {
@@ -1884,48 +1885,24 @@ class GrooveWriter {
             count = this.data ? this.data.numberOfMeasures : 1;
         }
         count = Math.max(1, count);
-        // Preserve existing row states
-        const existingRows = tbody.querySelectorAll("tr");
-        const existingData = {};
-        existingRows.forEach(row => {
-            const m = parseInt(row.getAttribute("data-measure") || "0", 10);
-            if (!m)
-                return;
-            const startCb = row.querySelector(".embed-repeat-start");
-            const endCb = row.querySelector(".embed-repeat-end");
-            const altSel = row.querySelector(".embed-alt-ending");
-            const txtBegin = row.querySelector(".embed-text-begin");
-            const txtEnd = row.querySelector(".embed-text-end");
-            const txtLyrics = row.querySelector(".embed-text-lyrics");
-            existingData[m] = {
-                repeatStart: startCb ? startCb.checked : false,
-                repeatEnd: endCb ? endCb.checked : false,
-                altEnding: altSel ? altSel.value : "",
-                textBegin: txtBegin ? txtBegin.value : "",
-                textEnd: txtEnd ? txtEnd.value : "",
-                lyrics: txtLyrics ? txtLyrics.value : ""
-            };
-        });
         var html = "";
         for (var m = 1; m <= count; m++) {
-            let d = existingData[m];
-            if (!d && this.data) {
-                const isRepeatStart = this.data.repeatBegins && this.data.repeatBegins.has(m);
-                const isRepeatEnd = this.data.repeatEnds && this.data.repeatEnds.has(m);
-                const altEnding = this.data.repeatEndings && this.data.repeatEndings.get(m) ? this.data.repeatEndings.get(m) : "";
-                const textEntry = this.data.measureText && this.data.measureText.get(m) ? this.data.measureText.get(m) : {};
-                d = {
-                    repeatStart: !!isRepeatStart,
-                    repeatEnd: !!isRepeatEnd,
-                    altEnding: altEnding || "",
-                    textBegin: textEntry.begin || "",
-                    textEnd: textEntry.end || "",
-                    lyrics: textEntry.lyrics || ""
-                };
-            }
-            if (!d) {
-                d = { repeatStart: false, repeatEnd: false, altEnding: "", textBegin: "", textEnd: "", lyrics: "" };
-            }
+            const measure = this.data && this.data.measures ? this.data.measures[m - 1] : null;
+            const isRepeatStart = measure ? measure.repeatBegin : (this.data && this.data.repeatBegins && this.data.repeatBegins.has(m));
+            const isRepeatEnd = measure ? measure.repeatEnd : (this.data && this.data.repeatEnds && this.data.repeatEnds.has(m));
+            const altEnding = measure ? measure.alternateEnding : (this.data && this.data.repeatEndings && this.data.repeatEndings.get(m) ? this.data.repeatEndings.get(m) : "");
+            const textEntry = this.data && this.data.measureText && this.data.measureText.get(m) ? this.data.measureText.get(m) : {};
+            const textBegin = measure ? measure.textBegin : (textEntry?.begin || "");
+            const textEnd = measure ? measure.textEnd : (textEntry?.end || "");
+            const lyrics = measure ? measure.lyrics : (textEntry?.lyrics || "");
+            const d = {
+                repeatStart: !!isRepeatStart,
+                repeatEnd: !!isRepeatEnd,
+                altEnding: altEnding || "",
+                textBegin: textBegin || "",
+                textEnd: textEnd || "",
+                lyrics: lyrics || ""
+            };
             html += '<tr data-measure="' + m + '">' +
                 '<td>Measure ' + m + '</td>' +
                 '<td><input type="checkbox" class="embed-repeat-start" data-measure="' + m + '"' + (d.repeatStart ? ' checked' : '') + ' onchange="myGrooveWriter.updateSheetMusic();"></td>' +
@@ -1949,6 +1926,7 @@ class GrooveWriter {
         const repeatEnds = [];
         const repeatEndings = [];
         const measureTexts = [];
+        const measureMap = new Map();
         const measureContainers = document.querySelectorAll(".measure-controls-container, #embedMeasureTableBody tr");
         if (measureContainers.length === 0) {
             if (!this.data)
@@ -1979,31 +1957,52 @@ class GrooveWriter {
         }
         measureContainers.forEach((row, idx) => {
             const m = parseInt(row.getAttribute("data-measure") || (idx + 1).toString(), 10);
+            if (!m)
+                return;
             const startCb = row.querySelector(".embed-repeat-start");
             const endCb = row.querySelector(".embed-repeat-end");
             const altSel = row.querySelector(".embed-alt-ending");
             const txtBegin = row.querySelector(".embed-text-begin");
             const txtEnd = row.querySelector(".embed-text-end");
             const txtLyrics = row.querySelector(".embed-text-lyrics");
-            if (startCb && startCb.checked) {
-                repeatBegins.push(m);
-            }
-            if (endCb && endCb.checked) {
-                repeatEnds.push(m);
-            }
-            if (altSel && altSel.value) {
-                repeatEndings.push(m + ":" + altSel.value);
-            }
-            if (txtBegin && txtBegin.value.trim().length > 0) {
-                measureTexts.push(m + ":b:" + txtBegin.value.trim());
-            }
-            if (txtEnd && txtEnd.value.trim().length > 0) {
-                measureTexts.push(m + ":e:" + txtEnd.value.trim());
-            }
-            if (txtLyrics && txtLyrics.value.trim().length > 0) {
-                measureTexts.push(m + ":l:" + txtLyrics.value.trim());
-            }
+            const current = measureMap.get(m) || {
+                start: false,
+                end: false,
+                altEnding: "",
+                txtBegin: "",
+                txtEnd: "",
+                txtLyrics: ""
+            };
+            if (startCb && startCb.checked)
+                current.start = true;
+            if (endCb && endCb.checked)
+                current.end = true;
+            if (altSel && altSel.value && altSel.value.trim().length > 0)
+                current.altEnding = altSel.value.trim();
+            if (txtBegin && txtBegin.value && txtBegin.value.trim().length > 0)
+                current.txtBegin = txtBegin.value.trim();
+            if (txtEnd && txtEnd.value && txtEnd.value.trim().length > 0)
+                current.txtEnd = txtEnd.value.trim();
+            if (txtLyrics && txtLyrics.value && txtLyrics.value.trim().length > 0)
+                current.txtLyrics = txtLyrics.value.trim();
+            measureMap.set(m, current);
         });
+        const sortedMs = Array.from(measureMap.keys()).sort((a, b) => a - b);
+        for (const m of sortedMs) {
+            const d = measureMap.get(m);
+            if (d.start)
+                repeatBegins.push(m);
+            if (d.end)
+                repeatEnds.push(m);
+            if (d.altEnding)
+                repeatEndings.push(m + ":" + d.altEnding);
+            if (d.txtBegin)
+                measureTexts.push(m + ":b:" + d.txtBegin);
+            if (d.txtEnd)
+                measureTexts.push(m + ":e:" + d.txtEnd);
+            if (d.txtLyrics)
+                measureTexts.push(m + ":l:" + d.txtLyrics);
+        }
         return {
             repeatBegins: repeatBegins.join(";"),
             repeatEnds: repeatEnds.join(";"),
@@ -2290,6 +2289,12 @@ class GrooveWriter {
         const wasTomsVisible = this.isTomsVisible();
         const lastMeasure = this.data.measures[this.data.measures.length - 1];
         const newMeasure = lastMeasure ? lastMeasure.clone() : new Measure(this.data.timeSig, this.data.subdivision);
+        newMeasure.repeatBegin = false;
+        newMeasure.repeatEnd = false;
+        newMeasure.alternateEnding = "";
+        newMeasure.textBegin = "";
+        newMeasure.textEnd = "";
+        newMeasure.lyrics = "";
         this.data.measures.push(newMeasure);
         this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
         return newMeasure;
@@ -2302,47 +2307,31 @@ class GrooveWriter {
         const wasStickingsVisible = this.isStickingsVisible();
         const wasTomsVisible = this.isTomsVisible();
         this.data.measures.splice(measureIndex, 1);
-        const deletedM = measureIndex + 1;
-        const newRepeatBegins = new Set();
-        if (this.data.repeatBegins) {
-            this.data.repeatBegins.forEach(m => {
-                if (m < deletedM)
-                    newRepeatBegins.add(m);
-                else if (m > deletedM)
-                    newRepeatBegins.add(m - 1);
-            });
+        this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
+        return true;
+    }
+    moveMeasure(fromIndex, toIndex) {
+        if (this.data.numberOfMeasures <= 1) {
+            return false;
         }
-        this.data.repeatBegins = newRepeatBegins;
-        const newRepeatEnds = new Set();
-        if (this.data.repeatEnds) {
-            this.data.repeatEnds.forEach(m => {
-                if (m < deletedM)
-                    newRepeatEnds.add(m);
-                else if (m > deletedM)
-                    newRepeatEnds.add(m - 1);
-            });
+        if (fromIndex < 0 || fromIndex >= this.data.numberOfMeasures) {
+            return false;
         }
-        this.data.repeatEnds = newRepeatEnds;
-        const newRepeatEndings = new Map();
-        if (this.data.repeatEndings) {
-            this.data.repeatEndings.forEach((val, m) => {
-                if (m < deletedM)
-                    newRepeatEndings.set(m, val);
-                else if (m > deletedM)
-                    newRepeatEndings.set(m - 1, val);
-            });
+        if (toIndex < 0 || toIndex >= this.data.numberOfMeasures) {
+            return false;
         }
-        this.data.repeatEndings = newRepeatEndings;
-        const newMeasureText = new Map();
-        if (this.data.measureText) {
-            this.data.measureText.forEach((val, m) => {
-                if (m < deletedM)
-                    newMeasureText.set(m, val);
-                else if (m > deletedM)
-                    newMeasureText.set(m - 1, val);
-            });
+        if (fromIndex === toIndex) {
+            return false;
         }
-        this.data.measureText = newMeasureText;
+        this.syncUIToMeasures();
+        if (this.isAudioPlaying || (this.myGrooveUtils && this.myGrooveUtils.isPlaying())) {
+            this.myGrooveUtils?.stopMIDI_playback();
+        }
+        const wasStickingsVisible = this.isStickingsVisible();
+        const wasTomsVisible = this.isTomsVisible();
+        const [movedMeasure] = this.data.measures.splice(fromIndex, 1);
+        this.data.measures.splice(toIndex, 0, movedMeasure);
+        this.selectedNoteIndex = toIndex * this.data.notesPerMeasure;
         this.refreshMeasureGrid(wasStickingsVisible, wasTomsVisible);
         return true;
     }
@@ -3451,6 +3440,125 @@ class GrooveWriter {
         }
         this.updateNavHighlights();
         this.renderEmbedMeasureTable(this.data.numberOfMeasures);
+        this.setupMeasureDragAndDrop();
+    }
+    setupMeasureDragAndDrop() {
+        const measureContainer = document.getElementById("measureContainer");
+        if (!measureContainer)
+            return;
+        const staffContainers = measureContainer.querySelectorAll(".staff-container");
+        const numMeasures = this.data.numberOfMeasures;
+        staffContainers.forEach((container) => {
+            const el = container;
+            const measureIdxStr = el.getAttribute("data-measure-index");
+            const idx = measureIdxStr ? parseInt(measureIdxStr, 10) : -1;
+            if (idx < 0)
+                return;
+            if (numMeasures > 1) {
+                el.setAttribute("draggable", "true");
+            }
+            else {
+                el.removeAttribute("draggable");
+            }
+            el.addEventListener("dragstart", (e) => {
+                if (this.data.numberOfMeasures <= 1) {
+                    e.preventDefault();
+                    return;
+                }
+                const target = e.target;
+                if (target && typeof target.closest === "function" && target.closest("input, textarea, select, button, a, label, .unmuteHHButton, .unmuteHH2Button, .unmuteTom1Button, .unmuteSnareButton, .unmuteTom4Button, .unmuteKickButton")) {
+                    e.preventDefault();
+                    return;
+                }
+                this.draggedMeasureIndex = idx;
+                el.classList.add("is-dragging");
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", String(idx));
+                }
+            });
+            el.addEventListener("dragend", () => {
+                this.draggedMeasureIndex = null;
+                this.clearDragGuides();
+                el.classList.remove("is-dragging");
+            });
+            el.addEventListener("dragover", (e) => {
+                if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                    return;
+                }
+                e.preventDefault();
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = "move";
+                }
+                const rect = el.getBoundingClientRect();
+                const isLeftHalf = e.clientX < rect.left + rect.width / 2;
+                this.showDragGuide(idx, isLeftHalf);
+            });
+            el.addEventListener("drop", (e) => {
+                if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = el.getBoundingClientRect();
+                const isLeftHalf = e.clientX < rect.left + rect.width / 2;
+                const fromIndex = this.draggedMeasureIndex;
+                const insertPosition = isLeftHalf ? idx : idx + 1;
+                const toIndex = insertPosition > fromIndex ? insertPosition - 1 : insertPosition;
+                this.draggedMeasureIndex = null;
+                this.clearDragGuides();
+                if (fromIndex !== toIndex) {
+                    this.moveMeasure(fromIndex, toIndex);
+                }
+            });
+        });
+        measureContainer.addEventListener("dragover", (e) => {
+            if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                return;
+            }
+            e.preventDefault();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "move";
+            }
+        });
+        measureContainer.addEventListener("drop", (e) => {
+            if (this.draggedMeasureIndex === null || this.data.numberOfMeasures <= 1) {
+                return;
+            }
+            e.preventDefault();
+            const fromIndex = this.draggedMeasureIndex;
+            const toIndex = this.data.numberOfMeasures - 1;
+            this.draggedMeasureIndex = null;
+            this.clearDragGuides();
+            if (fromIndex !== toIndex) {
+                this.moveMeasure(fromIndex, toIndex);
+            }
+        });
+    }
+    showDragGuide(targetMeasureIndex, isLeftHalf) {
+        const containers = document.querySelectorAll(".staff-container");
+        containers.forEach((el) => {
+            const measureIdxStr = el.getAttribute("data-measure-index");
+            const idx = measureIdxStr ? parseInt(measureIdxStr, 10) : -1;
+            if (idx === targetMeasureIndex) {
+                if (isLeftHalf) {
+                    el.classList.add("drag-guide-left");
+                    el.classList.remove("drag-guide-right");
+                }
+                else {
+                    el.classList.add("drag-guide-right");
+                    el.classList.remove("drag-guide-left");
+                }
+            }
+            else {
+                el.classList.remove("drag-guide-left", "drag-guide-right");
+            }
+        });
+    }
+    clearDragGuides() {
+        document.querySelectorAll(".staff-container").forEach((el) => {
+            el.classList.remove("drag-guide-left", "drag-guide-right", "is-dragging");
+        });
     }
     HTMLforStaffContainer(baseindex, indexStartForNotes) {
         const notesPerMeasure = this.data.notesPerMeasure;
@@ -3569,16 +3677,24 @@ class GrooveWriter {
         const addMeasureBtn = baseindex === this.data.numberOfMeasures
             ? `<span id="addMeasureButton" title="Add measure" onClick="myGrooveWriter.addMeasureButtonClick(event)"><i class="fa fa-plus"></i></span>`
             : '';
-        const isRepeatStart = this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex);
-        const isRepeatEnd = this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex);
-        const altEnding = (this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "";
+        const measure = this.data && this.data.measures ? this.data.measures[baseindex - 1] : null;
+        const isRepeatStart = measure ? measure.repeatBegin : (this.data && this.data.repeatBegins && this.data.repeatBegins.has(baseindex));
+        const isRepeatEnd = measure ? measure.repeatEnd : (this.data && this.data.repeatEnds && this.data.repeatEnds.has(baseindex));
+        const altEnding = measure ? measure.alternateEnding : ((this.data && this.data.repeatEndings && this.data.repeatEndings.get(baseindex)) ? this.data.repeatEndings.get(baseindex) : "");
         const textEntry = (this.data && this.data.measureText && this.data.measureText.get(baseindex)) ? this.data.measureText.get(baseindex) : {};
-        const textBegin = (textEntry && textEntry.begin) ? textEntry.begin : "";
-        const textEnd = (textEntry && textEntry.end) ? textEntry.end : "";
-        const lyrics = (textEntry && textEntry.lyrics) ? textEntry.lyrics : "";
+        const textBegin = measure ? measure.textBegin : ((textEntry && textEntry.begin) ? textEntry.begin : "");
+        const textEnd = measure ? measure.textEnd : ((textEntry && textEntry.end) ? textEntry.end : "");
+        const lyrics = measure ? measure.lyrics : ((textEntry && textEntry.lyrics) ? textEntry.lyrics : "");
         const isOnlyMeasure = this.data.numberOfMeasures <= 1;
+        const draggableAttr = !isOnlyMeasure ? ' draggable="true"' : '';
+        const dragHandleHTML = `
+      <div class="measure-drag-handle" data-measure="${baseindex}" title="${isOnlyMeasure ? '' : 'Drag to reorder measure'}">
+        <span class="measure-number-label">${!isOnlyMeasure ? '<i class="fa fa-bars measure-drag-icon"></i> ' : ''}Measure ${baseindex}</span>
+      </div>
+    `.trim();
         return `
-      <div class="staff-container" id="staff-container${baseindex}">
+      <div class="staff-container" id="staff-container${baseindex}" data-measure-index="${baseindex - 1}"${draggableAttr}>
+        ${dragHandleHTML}
         <div class="stickings-row-container">
           <div class="line-labels">
             <div class="stickings-label" onClick="myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})" oncontextmenu="event.preventDefault(); myGrooveWriter.noteLabelClick(event, 'stickings', ${baseindex})">STICKINGS</div>
@@ -3668,13 +3784,7 @@ class GrooveWriter {
           <div class="measure-control-row measure-repeats-row">
             <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-start" data-measure="${baseindex}"${isRepeatStart ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat Start</label>
             <label class="measure-checkbox-label"><input type="checkbox" class="embed-repeat-end" data-measure="${baseindex}"${isRepeatEnd ? ' checked' : ''} onchange="myGrooveWriter.updateSheetMusic();"> Repeat End</label>
-            <label class="measure-select-label">Ending: <select class="embed-alt-ending" data-measure="${baseindex}" onchange="myGrooveWriter.updateSheetMusic();">
-              <option value=""${altEnding === '' ? ' selected' : ''}>None</option>
-              <option value="1"${altEnding === '1' ? ' selected' : ''}>1</option>
-              <option value="2"${altEnding === '2' ? ' selected' : ''}>2</option>
-              <option value="3"${altEnding === '3' ? ' selected' : ''}>3</option>
-              <option value="4"${altEnding === '4' ? ' selected' : ''}>4</option>
-            </select></label>
+            <label class="measure-ending-label measure-select-label">Ending: <input type="text" class="embed-alt-ending measure-ending-input measure-text-input" data-measure="${baseindex}" value="${altEnding.replace(/"/g, '&quot;')}" placeholder="e.g. 1 or 1,2" oninput="myGrooveWriter.updateSheetMusic();" onchange="myGrooveWriter.updateSheetMusic();"></label>
           </div>
           <div class="measure-control-row measure-text-row">
             <label class="measure-text-label">Begin Text:</label>
@@ -3862,6 +3972,7 @@ const decodeConvertedUrlGlobal = (url) => getGWInstance()?.populateEmbedFromUrl(
 const copyMeasureToLastGlobal = (measureIndex) => getGWInstance()?.copyMeasureToLast(measureIndex);
 const clearMeasureGlobal = (measureIndex) => getGWInstance()?.clearMeasure(measureIndex);
 const deleteMeasureGlobal = (measureIndex) => getGWInstance()?.deleteMeasure(measureIndex);
+const moveMeasureGlobal = (fromIndex, toIndex) => getGWInstance()?.moveMeasure(fromIndex, toIndex);
 if (typeof window !== "undefined") {
     window.renderEmbedMeasureTable = renderEmbedMeasureTableGlobal;
     window.getEmbedTableData = getEmbedTableDataGlobal;
@@ -3877,6 +3988,7 @@ if (typeof window !== "undefined") {
     window.copyMeasureToLast = copyMeasureToLastGlobal;
     window.clearMeasure = clearMeasureGlobal;
     window.deleteMeasure = deleteMeasureGlobal;
+    window.moveMeasure = moveMeasureGlobal;
     window.encodeAfterLastColon = encodeAfterLastColon;
     window.parseQuery = parseQuery;
 }
@@ -3895,6 +4007,7 @@ if (typeof globalThis !== "undefined") {
     globalThis.copyMeasureToLast = copyMeasureToLastGlobal;
     globalThis.clearMeasure = clearMeasureGlobal;
     globalThis.deleteMeasure = deleteMeasureGlobal;
+    globalThis.moveMeasure = moveMeasureGlobal;
     globalThis.encodeAfterLastColon = encodeAfterLastColon;
     globalThis.parseQuery = parseQuery;
 }
@@ -3914,6 +4027,7 @@ if (typeof module !== "undefined" && module.exports) {
         copyMeasureToLast: copyMeasureToLastGlobal,
         clearMeasure: clearMeasureGlobal,
         deleteMeasure: deleteMeasureGlobal,
+        moveMeasure: moveMeasureGlobal,
         encodeAfterLastColon,
         parseQuery,
         kickPermutationStrait,

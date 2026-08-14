@@ -240,13 +240,71 @@
 		margin-right: auto;
 	}
 	.staff-container {
-		/* margin-left: 2px; */
-		/* margin-top: 2px; */
+		position: relative;
 		margin-right: -3px;
 		margin-bottom: 0px;
 		display: inline-block;
 		background: #FFFFFF;
 		white-space: nowrap;
+		transition: opacity 0.15s ease, box-shadow 0.15s ease;
+	}
+	.staff-container.is-dragging {
+		opacity: 0.4;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+	.staff-container.drag-guide-left::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: -3px;
+		width: 6px;
+		background: #2484C0;
+		border-radius: 3px;
+		box-shadow: 0 0 10px rgba(36, 132, 192, 0.9);
+		z-index: 1000;
+		pointer-events: none;
+	}
+	.staff-container.drag-guide-right::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		right: -3px;
+		width: 6px;
+		background: #2484C0;
+		border-radius: 3px;
+		box-shadow: 0 0 10px rgba(36, 132, 192, 0.9);
+		z-index: 1000;
+		pointer-events: none;
+	}
+	.measure-drag-handle {
+		display: flex;
+		align-items: center;
+		padding: 4px 8px;
+		background: #f1f5f9;
+		border-bottom: 1px solid #e2e8f0;
+		font-size: 11px;
+		font-weight: 700;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		user-select: none;
+		box-sizing: border-box;
+	}
+	.staff-container[draggable="true"] .measure-drag-handle {
+		cursor: grab;
+	}
+	.staff-container[draggable="true"] .measure-drag-handle:active {
+		cursor: grabbing;
+	}
+	.staff-container[draggable="true"] .measure-drag-handle:hover {
+		background: #e2e8f0;
+		color: #1e293b;
+	}
+	.measure-drag-icon {
+		margin-right: 5px;
+		color: #94a3b8;
 	}
 	.notes-row-container {
 		display: inline-block;
@@ -718,7 +776,8 @@
 		margin: 0;
 		vertical-align: middle;
 	}
-	.measure-select-label {
+	.measure-select-label,
+	.measure-ending-label {
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
@@ -738,6 +797,22 @@
 	}
 	.measure-select-label select:focus,
 	.measure-controls-container select:focus {
+		border-color: #2484C0;
+		outline: none;
+		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
+	}
+	.measure-ending-input {
+		width: 75px;
+		min-width: 60px;
+		padding: 3px 6px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		background: #fff;
+		font-size: 12px;
+		color: #333;
+		box-sizing: border-box;
+	}
+	.measure-ending-input:focus {
 		border-color: #2484C0;
 		outline: none;
 		box-shadow: 0 0 3px rgba(36, 132, 192, 0.4);
