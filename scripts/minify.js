@@ -25,6 +25,9 @@ async function minifyAll() {
       const result = await terser.minify(code, {
         compress: true,
         mangle: true,
+        format: {
+          ascii_only: true,
+        },
       });
       if (result.error) {
         throw result.error;

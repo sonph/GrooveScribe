@@ -434,7 +434,7 @@ class GrooveUtils {
       );
     }
 
-    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+    return "data:audio/midi;base64," + binaryStringToBase64(midiFile.toBytes());
   };
 
   loadMIDIFromURL(midiURL: string): void {

@@ -371,7 +371,7 @@ class GrooveUtils {
             this.MIDI_from_HH_Snare_Kick_Arrays(midiTrack, hhArray, snareArray, kickArray, tomsArray, MIDI_type || "general_MIDI", myGrooveData.metronomeFrequency, fullSizePerMeasure, num_notes_for_swing, swing_percentage, myGrooveData.timeSig, hh2Array);
             this.note_mapping_array = this.note_mapping_array.concat(createNoteMappingArrayForHighlighting(hhArray, snareArray, kickArray, tomsArray, fullSizePerMeasure, hh2Array));
         }
-        return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+        return "data:audio/midi;base64," + binaryStringToBase64(midiFile.toBytes());
     }
     ;
     loadMIDIFromURL(midiURL) {

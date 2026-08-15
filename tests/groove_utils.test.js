@@ -931,4 +931,28 @@ describe('Legend and ABC Header', () => {
     expect(gd.measureText.get(1)).toEqual({ begin: 'Intro' });
     expect(gd.measureText.get(3)).toEqual({ end: 'Outro', lyrics: '1 & 2 &' });
   });
+
+  test('create_MIDIURLFromGrooveData produces valid base64 MIDI with MThd header', () => {
+    const fs = require('fs');
+    eval(fs.readFileSync('./js/jsmidgen.js', 'utf8'));
+    global.Midi = Midi;
+
+    const data = new GrooveData();
+    data.fromUrl('Mode=edit&TimeSig=2/4&Div=16&Tempo=118&H=||&S=|O------O|&K=|-----o--|&T1=|-o------|&T4=|--ooo-o-|');
+
+    const utils = new global.GrooveUtils(true);
+    utils.setGrooveData(data);
+
+    let midiUrl;
+    expect(() => {
+      midiUrl = utils.create_MIDIURLFromGrooveData(data, 'general_MIDI');
+    }).not.toThrow();
+
+    expect(midiUrl).toBeDefined();
+    expect(midiUrl.startsWith('data:audio/midi;base64,')).toBe(true);
+
+    const b64 = midiUrl.replace('data:audio/midi;base64,', '');
+    const decoded = Buffer.from(b64, 'base64').toString('binary');
+    expect(decoded.startsWith('MThd')).toBe(true);
+  });
 });

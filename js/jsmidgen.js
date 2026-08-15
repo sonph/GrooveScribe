@@ -360,7 +360,7 @@ var Midi = {};
 	File.HDR_CHUNK_SIZE  = "\x00\x00\x00\x06"; // Header length for SMF
 	File.HDR_TYPE0       = "\x00\x00";         // Midi Type 0 id
 	File.HDR_TYPE1       = "\x00\x01";         // Midi Type 1 id
-	File.HDR_SPEED       = "\x00\x80";         // Defaults to 128 ticks per beat
+	File.HDR_SPEED       = String.fromCharCode(0x00, 0x80); // Defaults to 128 ticks per beat
 
 	File.prototype.addTrack = function(track) {
 		if (track) {

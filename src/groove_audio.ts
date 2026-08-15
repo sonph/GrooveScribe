@@ -244,6 +244,14 @@ function noteGroupingSize(notesPerMeasure: number, timeSig: TimeSignature): numb
   return (notesPerMeasure / timeSig.top) * (timeSig.bottom.value / 4);
 }
 
+function binaryStringToBase64(bytes: string): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes.charCodeAt(i) & 0xff);
+  }
+  return btoa(binary);
+}
+
 function MIDI_build_midi_url_count_in_track(timeSig: TimeSignature, tempo: number): string {
   var midiFile = new Midi.File();
   var midiTrack = new Midi.Track();
@@ -268,7 +276,7 @@ function MIDI_build_midi_url_count_in_track(timeSig: TimeSignature, tempo: numbe
     midiTrack.addNoteOff(9, MIDI_METRONOME_NORMAL, noteDelay);
   }
 
-  return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+  return "data:audio/midi;base64," + binaryStringToBase64(midiFile.toBytes());
 }
 
 function MIDI_from_HH_Snare_Kick_Arrays(
@@ -502,6 +510,7 @@ class MidiEventCallback {
 (globalThis as any).createNoteMappingArrayForHighlighting = createNoteMappingArrayForHighlighting;
 (globalThis as any).convertStickingCountsToActualCounts = convertStickingCountsToActualCounts;
 (globalThis as any).noteGroupingSize = noteGroupingSize;
+(globalThis as any).binaryStringToBase64 = binaryStringToBase64;
 (globalThis as any).MIDI_build_midi_url_count_in_track = MIDI_build_midi_url_count_in_track;
 (globalThis as any).MIDI_from_HH_Snare_Kick_Arrays = MIDI_from_HH_Snare_Kick_Arrays;
 

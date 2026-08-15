@@ -4,6 +4,7 @@
 <!--Copyright 2015-2020 Lou Montulli, Mike Johnston  GPL V2.0 Please See LICENSE.txt for more details -->
 
 <head>
+  <meta charset="utf-8">
   <title>Groove Scribe</title>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,15 +40,12 @@
     #measureContainer .bg-highlight {
       cursor: pointer;
     }
-    #measureContainer .nav-col-highlight,
-    #measureContainer .bg-highlight.nav-col-highlight,
-    #measureContainer .hi-hat.nav-col-highlight,
-    #measureContainer .hi-hat2.nav-col-highlight,
-    #measureContainer .snare.nav-col-highlight,
-    #measureContainer .kick.nav-col-highlight,
-    #measureContainer .tom.nav-col-highlight,
-    #measureContainer .sticking.nav-col-highlight {
-      background-color: rgba(36, 132, 192, 0.14) !important;
+    #measureContainer .bg-highlight.playback-col-highlight {
+      background-color: rgba(36, 132, 192, 0.22) !important;
+      border-radius: 4px !important;
+    }
+    #measureContainer .bg-highlight.nav-col-highlight {
+      background-color: rgba(36, 132, 192, 0.12) !important;
       border-radius: 4px !important;
     }
     #measureContainer .hi-hat-container.nav-row-highlight,
@@ -55,18 +53,9 @@
     #measureContainer .snare-container.nav-row-highlight,
     #measureContainer .kick-container.nav-row-highlight,
     #measureContainer .toms-container.nav-row-highlight,
-    #measureContainer .stickings-container.nav-row-highlight {
-      background-color: rgba(36, 132, 192, 0.07) !important;
+    #measureContainer .stickings-row-container.nav-row-highlight {
+      background-color: rgba(36, 132, 192, 0.06) !important;
       border-radius: 4px !important;
-    }
-    #measureContainer .line-labels div.nav-label-highlight,
-    #measureContainer .stickings-label.nav-label-highlight {
-      color: #2484C0 !important;
-      background-color: rgba(36, 132, 192, 0.14) !important;
-      font-weight: bold !important;
-      border-radius: 4px !important;
-      padding: 2px 4px !important;
-      box-shadow: none !important;
     }
     #measureContainer .hi-hat.nav-note-cursor,
     #measureContainer .hi-hat2.nav-note-cursor,
@@ -74,11 +63,11 @@
     #measureContainer .kick.nav-note-cursor,
     #measureContainer .tom.nav-note-cursor,
     #measureContainer .sticking.nav-note-cursor {
-      background-color: rgba(36, 132, 192, 0.28) !important;
+      background-color: rgba(36, 132, 192, 0.25) !important;
       box-shadow: 0 0 0 2px #2484C0, 0 0 8px rgba(36, 132, 192, 0.6) !important;
       border-radius: 4px !important;
       z-index: 30 !important;
-      position: relative !important;
+      position: relative;
     }
     #measureContainer.nav-active .hi-hat.nav-note-cursor,
     #measureContainer.nav-active .hi-hat2.nav-note-cursor,
@@ -86,7 +75,7 @@
     #measureContainer.nav-active .kick.nav-note-cursor,
     #measureContainer.nav-active .tom.nav-note-cursor,
     #measureContainer.nav-active .sticking.nav-note-cursor {
-      background-color: rgba(36, 132, 192, 0.38) !important;
+      background-color: rgba(36, 132, 192, 0.35) !important;
       box-shadow: 0 0 0 2.5px #2484C0, 0 0 12px rgba(36, 132, 192, 0.85) !important;
     }
     #measureContainer .snare_accent {

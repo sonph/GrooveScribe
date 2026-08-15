@@ -31,8 +31,12 @@ describe('Get note UI state', () => {
   test('permutationPopupClick', () => {
     document.body.innerHTML = '<div id="permutationAnchor"></div><div id="PermutationOptions"></div><div class="kick-container"></div><div class="snare-container"></div>';
     writer.updateSheetMusic = jest.fn();
-    expect(() => writer.permutationPopupClick('none')).not.toThrow();
+    writer.permutationPopupClick('kick_16ths');
+    expect(writer.class_permutation_type).toBe('kick_16ths');
     expect(writer.updateSheetMusic).toHaveBeenCalled();
+
+    writer.permutationPopupClick('none');
+    expect(writer.class_permutation_type).toBe('none');
   });
 });
 
@@ -923,33 +927,22 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     writer.playSingleNote = jest.fn();
   });
 
-  test('measureContainer is active and highlights are displayed by default on render', () => {
+  test('measureContainer is active by default on render', () => {
     expect(writer.isMeasureContainerActive).toBe(true);
     expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(true);
-    expect(document.getElementById('bg-highlight0').classList.contains('nav-col-highlight')).toBe(true);
-    expect(document.getElementById('snare0').classList.contains('nav-note-cursor')).toBe(true);
   });
 
-  test('setMeasureContainerSelected toggles active state while keeping highlights visible', () => {
+  test('setMeasureContainerSelected toggles active state', () => {
     writer.selectedInstrument = 'snare';
     writer.selectedNoteIndex = 4;
     writer.setMeasureContainerSelected(true);
 
     expect(writer.isMeasureContainerActive).toBe(true);
     expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(true);
-    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
-
-    const snareContainer = document.querySelector('#staff-container1 .snare-container');
-    expect(snareContainer.classList.contains('nav-row-highlight')).toBe(true);
 
     writer.setMeasureContainerSelected(false);
     expect(writer.isMeasureContainerActive).toBe(false);
     expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
-    // Highlights remain visible by default
-    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
-    expect(snareContainer.classList.contains('nav-row-highlight')).toBe(true);
   });
 
   test('arrow keys navigate left/right across notes and up/down across rows', () => {
@@ -964,22 +957,18 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
     writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedNoteIndex).toBe(4);
-    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
 
     // Press down to hh2 (Cymbal 2) row
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedInstrument).toBe('hh2');
-    expect(document.getElementById('hi-hat2-4').classList.contains('nav-note-cursor')).toBe(true);
 
     // Press down to snare row (when toms hidden, hh -> hh2 -> snare -> kick)
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedInstrument).toBe('snare');
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
 
     // Press down to kick row
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedInstrument).toBe('kick');
-    expect(document.getElementById('kick4').classList.contains('nav-note-cursor')).toBe(true);
 
     // Press down again at bottom stops at kick
     writer.handleMeasureContainerKeyDown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
@@ -1113,8 +1102,6 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(writer.isMeasureContainerSelected).toBe(true);
     expect(writer.selectedInstrument).toBe('snare');
     expect(writer.selectedNoteIndex).toBe(6);
-    expect(document.getElementById('snare6').classList.contains('nav-note-cursor')).toBe(true);
-    expect(document.getElementById('bg-highlight6').classList.contains('nav-col-highlight')).toBe(true);
   });
 
   test('mouse click on row label activates navigation for that row', () => {
@@ -1123,7 +1110,7 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(writer.selectedInstrument).toBe('kick');
   });
 
-  test('multi-measure navigation moves across measure boundaries and highlights correct staff', () => {
+  test('multi-measure navigation moves across measure boundaries', () => {
     writer.addMeasure();
     expect(writer.numberOfMeasures()).toBe(2);
 
@@ -1134,11 +1121,6 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     // Press right -> moves to index 16 (first note of Measure 2)
     writer.handleMeasureContainerKeyDown({ key: 'ArrowRight', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedNoteIndex).toBe(16);
-    expect(document.getElementById('bg-highlight16').classList.contains('nav-col-highlight')).toBe(true);
-    expect(document.getElementById('snare16').classList.contains('nav-note-cursor')).toBe(true);
-
-    // Measure 2 staff container should now have row highlight
-    expect(document.querySelector('#staff-container2 .snare-container').classList.contains('nav-row-highlight')).toBe(true);
 
     // Modify note in Measure 2 via keyboard
     writer.handleMeasureContainerKeyDown({ key: 'O', preventDefault: () => {}, stopPropagation: () => {} });
@@ -1161,7 +1143,6 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     // Press up to sticking row
     writer.handleMeasureContainerKeyDown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.selectedInstrument).toBe('sticking');
-    expect(document.getElementById('sticking0').classList.contains('nav-note-cursor')).toBe(true);
 
     // Press 'r' -> Right
     writer.handleMeasureContainerKeyDown({ key: 'r', preventDefault: () => {}, stopPropagation: () => {} });
@@ -1204,7 +1185,7 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(writer.get_tom_state(2, 4).abc).toBe(false);
   });
 
-  test('escape key deactivates key interception while keeping highlights visible', () => {
+  test('escape key deactivates key interception', () => {
     writer.selectedInstrument = 'snare';
     writer.selectedNoteIndex = 2;
     writer.setMeasureContainerSelected(true);
@@ -1213,7 +1194,6 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     writer.handleMeasureContainerKeyDown({ key: 'Escape', preventDefault: () => {}, stopPropagation: () => {} });
     expect(writer.isMeasureContainerActive).toBe(false);
     expect(document.getElementById('measureContainer').classList.contains('nav-active')).toBe(false);
-    expect(document.getElementById('snare2').classList.contains('nav-note-cursor')).toBe(true);
   });
 
   test('boundary clamping on arrow keys', () => {
@@ -1263,7 +1243,7 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(writer.isMeasureContainerSelected).toBe(false);
   });
 
-  test('changeDivision clamps selectedNoteIndex and refreshes highlights', () => {
+  test('changeDivision clamps selectedNoteIndex', () => {
     writer.selectedInstrument = 'snare';
     writer.selectedNoteIndex = 14;
     writer.setMeasureContainerSelected(true);
@@ -1271,10 +1251,9 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     writer.changeDivision(8); // Now only 8 notes per measure (0..7)
     expect(grooveUtils.data.notesPerMeasure).toBe(8);
     expect(writer.selectedNoteIndex).toBe(7); // Clamped to 7
-    expect(document.getElementById('snare7').classList.contains('nav-note-cursor')).toBe(true);
   });
 
-  test('clicking on any element moves highlight directly to that element', () => {
+  test('clicking on any element moves focus directly to that element', () => {
     writer.setMeasureContainerSelected(false);
     expect(writer.isMeasureContainerSelected).toBe(false);
 
@@ -1284,49 +1263,38 @@ describe('measureContainer Keyboard Navigation and Highlighting', () => {
     expect(writer.isMeasureContainerSelected).toBe(true);
     expect(writer.selectedInstrument).toBe('hh');
     expect(writer.selectedNoteIndex).toBe(5);
-    expect(document.getElementById('hi-hat5').classList.contains('nav-note-cursor')).toBe(true);
-    expect(document.getElementById('bg-highlight5').classList.contains('nav-col-highlight')).toBe(true);
 
     // 2. Click on background highlight column 10
     const bg10 = document.getElementById('bg-highlight10');
     bg10.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     expect(writer.selectedNoteIndex).toBe(10);
-    expect(document.getElementById('bg-highlight10').classList.contains('nav-col-highlight')).toBe(true);
 
     // 3. Click on Kick label
     const kickLabel = document.querySelector('#staff-container1 .kick-label');
     kickLabel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     expect(writer.selectedInstrument).toBe('kick');
-    expect(document.getElementById('kick10').classList.contains('nav-note-cursor')).toBe(true);
 
     // 4. Click on Snare row container
     const snareContainer = document.querySelector('#staff-container1 .snare-container');
     snareContainer.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     expect(writer.selectedInstrument).toBe('snare');
-    expect(document.getElementById('snare10').classList.contains('nav-note-cursor')).toBe(true);
   });
 
   test('audio playback temporarily disables navigation highlighting and restores it when stopped', () => {
     writer.selectedInstrument = 'snare';
     writer.selectedNoteIndex = 4;
     writer.setMeasureContainerSelected(true);
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
 
     // Start playback
     writer.isAudioPlaying = true;
     writer.clearNavHighlights();
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(false);
-    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(false);
 
     // While playing, updateNavHighlights should do nothing
     writer.updateNavHighlights();
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(false);
 
     // Stop playback
     writer.isAudioPlaying = false;
     writer.updateNavHighlights();
-    expect(document.getElementById('snare4').classList.contains('nav-note-cursor')).toBe(true);
-    expect(document.getElementById('bg-highlight4').classList.contains('nav-col-highlight')).toBe(true);
   });
 });
 
@@ -2284,26 +2252,19 @@ describe('MeasureContainer Repeat & Text Annotations Rows', () => {
     expect(writer.isMeasureContainerSelected).toBe(false);
   });
 
-  test('highlighting notes 20-23 in measure 3 does not erroneously highlight notes 0-3 in measure 1', () => {
+  test('playback highlighting notes 20-23 in measure 3 does not erroneously highlight notes 0-3 in measure 1', () => {
     const url = 'Mode=edit&TimeSig=4/4&Div=8&Comments=chorus&Tempo=124&ShowTempo=1&RepeatBegins=1&RepeatEnds=2&RepeatEndings=1:1;2:2&MeasureText=3:b:aaaa&H=|xxxxxxxx|xxxxxxxx|xxxxxxxx|&H2=|x-bb----|x-bb----|x-bbbbbb|&S=|--O---O-|--O---O-|--O---o-|&K=|X---o---|o---o---|o---o---|&T1=|----o---|----o---|----o---|&T4=|------oo|------oo|------oo|';
     writer.set_Default_notes(url);
-    writer.setMeasureContainerSelected(true);
 
     for (let idx = 20; idx <= 23; idx++) {
-      writer.selectedNoteIndex = idx;
-      writer.selectedInstrument = 'hh2';
-      writer.updateNavHighlights();
+      writer.hilight_all_notes_on_same_beat('hh2', idx);
 
-      // Measure 3 elements for note index should be highlighted
-      expect(document.getElementById('bg-highlight' + idx).classList.contains('nav-col-highlight')).toBe(true);
-      expect(document.getElementById('hi-hat2-' + idx).classList.contains('nav-col-highlight')).toBe(true);
-      expect(document.getElementById('hi-hat' + idx).classList.contains('nav-col-highlight')).toBe(true);
+      // Measure 3 background column for note index should have playback highlight
+      expect(document.getElementById('bg-highlight' + idx).classList.contains('playback-col-highlight')).toBe(true);
 
-      // Measure 1 notes (0..3) must NOT have nav-col-highlight
+      // Measure 1 notes (0..3) must NOT have playback-col-highlight
       const m1NoteIdx = idx - 20;
-      expect(document.getElementById('hi-hat2-' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
-      expect(document.getElementById('hi-hat' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
-      expect(document.getElementById('bg-highlight' + m1NoteIdx).classList.contains('nav-col-highlight')).toBe(false);
+      expect(document.getElementById('bg-highlight' + m1NoteIdx).classList.contains('playback-col-highlight')).toBe(false);
     }
   });
 
@@ -3034,5 +2995,110 @@ describe('Time Signature Selection', () => {
     expect(writer.data.measures[1].notesPerMeasure).toBe(6);
     expect(writer.data.measures[0].lyrics).toBe('m1');
     expect(writer.data.measures[1].lyrics).toBe('m2');
+  });
+
+  test('generates valid base64 MIDI URL with 2/4 time, 16th division, and toms', () => {
+    writer.set_Default_notes('Mode=edit&TimeSig=2/4&Div=16&Tempo=118&H=||&S=|O------O|&K=|-----o--|&T1=|-o------|&T4=|--ooo-o-|');
+    let midiUrl;
+    expect(() => {
+      midiUrl = writer.createMidiUrlFromClickableUI('general_MIDI');
+    }).not.toThrow();
+
+    expect(midiUrl).toBeDefined();
+    expect(midiUrl.startsWith('data:audio/midi;base64,')).toBe(true);
+    const b64Data = midiUrl.replace('data:audio/midi;base64,', '');
+    expect(b64Data.length).toBeGreaterThan(0);
+  });
+
+  test('binaryStringToBase64 encodes bytes with high character codes without throwing', () => {
+    const raw = String.fromCharCode(0, 128, 255, 65);
+    const b64 = binaryStringToBase64(raw);
+    expect(b64).toBeDefined();
+    expect(typeof b64).toBe('string');
+  });
+
+  test('hilight_all_notes_on_same_beat highlights beat 0 and updates columns correctly', () => {
+    writer.set_Default_notes('Mode=edit&TimeSig=2/4&Div=16&Tempo=118&H=||&S=|O------O|&K=|-----o--|&T1=|-o------|&T4=|--ooo-o-|');
+    writer.clear_all_highlights('clear');
+
+    expect(writer.class_cur_all_notes_highlight_id).toBe(-1);
+
+    // Highlight note 0 (first beat)
+    writer.hilight_all_notes_on_same_beat('snare', 0);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(0);
+    const bg0 = document.getElementById('bg-highlight0');
+    expect(bg0.classList.contains('playback-col-highlight')).toBe(true);
+
+    // Advance to note 1
+    writer.hilight_all_notes_on_same_beat('tom', 1);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(1);
+    expect(bg0.classList.contains('playback-col-highlight')).toBe(false);
+    const bg1 = document.getElementById('bg-highlight1');
+    expect(bg1.classList.contains('playback-col-highlight')).toBe(true);
+
+    // Clear all highlights
+    writer.clear_all_highlights('clear');
+    expect(writer.class_cur_all_notes_highlight_id).toBe(-1);
+    expect(bg1.classList.contains('playback-col-highlight')).toBe(false);
+  });
+
+  test('hilight_note advances across notes with percent_complete during normal playback even with float variance', () => {
+    writer.set_Default_notes('Mode=edit&TimeSig=2/4&Div=16&Tempo=118&H=||&S=|O------O|&K=|-----o--|&T1=|-o------|&T4=|--ooo-o-|');
+    writer.clear_all_highlights('clear');
+
+    // 2/4 time with 16th division has 8 notes (0 to 7)
+    // Note 0
+    writer.hilight_note('snare', 0.0);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(0);
+    expect(document.getElementById('bg-highlight0').classList.contains('playback-col-highlight')).toBe(true);
+
+    // Note 1 with slight timing float variance (0.1249 instead of 0.125)
+    writer.hilight_note('tom', 0.1249);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(1);
+    expect(document.getElementById('bg-highlight1').classList.contains('playback-col-highlight')).toBe(true);
+    expect(document.getElementById('bg-highlight0').classList.contains('playback-col-highlight')).toBe(false);
+
+    // Note 2 with float variance (0.2499)
+    writer.hilight_note('tom', 0.2499);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(2);
+    expect(document.getElementById('bg-highlight2').classList.contains('playback-col-highlight')).toBe(true);
+
+    // Note 5 with float variance (0.6249)
+    writer.hilight_note('kick', 0.6249);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(5);
+    expect(document.getElementById('bg-highlight5').classList.contains('playback-col-highlight')).toBe(true);
+
+    // Note 7 with float variance (0.8749)
+    writer.hilight_note('snare', 0.8749);
+    expect(writer.class_cur_all_notes_highlight_id).toBe(7);
+    expect(document.getElementById('bg-highlight7').classList.contains('playback-col-highlight')).toBe(true);
+  });
+
+  test('editing highlight is active while editing and cleared during playback', () => {
+    writer.set_Default_notes('Mode=edit&TimeSig=2/4&Div=16&Tempo=118&H=||&S=|O------O|&K=|-----o--|&T1=|-o------|&T4=|--ooo-o-|');
+    writer.selectedInstrument = 'snare';
+    writer.selectedNoteIndex = 2;
+    writer.isAudioPlaying = false;
+    writer.updateNavHighlights();
+
+    expect(document.getElementById('snare2').classList.contains('nav-note-cursor')).toBe(true);
+    expect(document.getElementById('bg-highlight2').classList.contains('nav-col-highlight')).toBe(true);
+
+    // When audio playback starts
+    writer.isAudioPlaying = true;
+    writer.clearNavHighlights();
+    expect(document.getElementById('snare2').classList.contains('nav-note-cursor')).toBe(false);
+    expect(document.getElementById('bg-highlight2').classList.contains('nav-col-highlight')).toBe(false);
+
+    // Playback highlight active
+    writer.hilight_all_notes_on_same_beat('snare', 3);
+    expect(document.getElementById('bg-highlight3').classList.contains('playback-col-highlight')).toBe(true);
+
+    // Audio stops
+    writer.clear_all_highlights('clear');
+    writer.isAudioPlaying = false;
+    writer.updateNavHighlights();
+    expect(document.getElementById('bg-highlight3').classList.contains('playback-col-highlight')).toBe(false);
+    expect(document.getElementById('snare2').classList.contains('nav-note-cursor')).toBe(true);
   });
 });

@@ -199,6 +199,13 @@ function noteGroupingSize(notesPerMeasure, timeSig) {
     }
     return (notesPerMeasure / timeSig.top) * (timeSig.bottom.value / 4);
 }
+function binaryStringToBase64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes.charCodeAt(i) & 0xff);
+    }
+    return btoa(binary);
+}
 function MIDI_build_midi_url_count_in_track(timeSig, tempo) {
     var midiFile = new Midi.File();
     var midiTrack = new Midi.Track();
@@ -218,7 +225,7 @@ function MIDI_build_midi_url_count_in_track(timeSig, tempo) {
         midiTrack.addNoteOn(9, MIDI_METRONOME_NORMAL, 0, MIDI_VELOCITY_NORMAL);
         midiTrack.addNoteOff(9, MIDI_METRONOME_NORMAL, noteDelay);
     }
-    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+    return "data:audio/midi;base64," + binaryStringToBase64(midiFile.toBytes());
 }
 function MIDI_from_HH_Snare_Kick_Arrays(midiTrack, HH_Array, Snare_Array, Kick_Array, Toms_Array, midi_output_type, metronome_frequency, num_notes, num_notes_for_swing, swing_percentage, timeSig, metronomeSolo = false, offsetClickStartBeat = "1", HH2_Array) {
     var prev_hh_note = 46; // default open hi-hat to mute previous open hats on first stroke
@@ -405,6 +412,7 @@ globalThis.getNoteScaler = getNoteScaler;
 globalThis.createNoteMappingArrayForHighlighting = createNoteMappingArrayForHighlighting;
 globalThis.convertStickingCountsToActualCounts = convertStickingCountsToActualCounts;
 globalThis.noteGroupingSize = noteGroupingSize;
+globalThis.binaryStringToBase64 = binaryStringToBase64;
 globalThis.MIDI_build_midi_url_count_in_track = MIDI_build_midi_url_count_in_track;
 globalThis.MIDI_from_HH_Snare_Kick_Arrays = MIDI_from_HH_Snare_Kick_Arrays;
 globalThis.MIDI_VELOCITY_NORMAL = MIDI_VELOCITY_NORMAL;

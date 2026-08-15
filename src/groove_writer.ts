@@ -426,14 +426,14 @@ class GrooveWriter {
   class_metronome_auto_speed_up_active: boolean = false;
   class_metronome_count_in_active: boolean = false;
   class_metronome_count_in_is_playing: boolean = false;
-  class_permutation_type: string = "";
+  class_permutation_type: string = "none";
   class_advancedEditIsOn: boolean = false;
-  class_cur_hh_highlight_id: number = 0;
-  class_cur_tom1_highlight_id: number = 0;
-  class_cur_tom4_highlight_id: number = 0;
-  class_cur_snare_highlight_id: number = 0;
-  class_cur_kick_highlight_id: number = 0;
-  class_cur_all_notes_highlight_id: number = 0;
+  class_cur_hh_highlight_id: number = -1;
+  class_cur_tom1_highlight_id: number = -1;
+  class_cur_tom4_highlight_id: number = -1;
+  class_cur_snare_highlight_id: number = -1;
+  class_cur_kick_highlight_id: number = -1;
+  class_cur_all_notes_highlight_id: number = -1;
   insertNoteContextMenu: HTMLElement | null = null;
   class_which_index_last_clicked: number = 0;
   class_undo_stack: Array<string> = [];
@@ -654,23 +654,25 @@ class GrooveWriter {
 
   hilight_all_notes_on_same_beat(instrument: string, id: number): void {
     id = Math.floor(id);
-    if (id < 0 || id >= this.data.notesPerMeasure * this.data.numberOfMeasures)
+    const maxNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    if (id < 0 || id >= maxNotes)
       return;
 
     if (this.class_cur_all_notes_highlight_id === id)
       return;
 
     if (this.class_cur_all_notes_highlight_id !== -1) {
-      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
+      const prevId = this.class_cur_all_notes_highlight_id;
+      const bg_ele = document.getElementById("bg-highlight" + prevId);
       if (bg_ele) {
-        bg_ele.style.background = "transparent";
+        bg_ele.classList.remove("playback-col-highlight");
       }
     }
 
     this.class_cur_all_notes_highlight_id = id;
-    var new_bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
+    const new_bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
     if (new_bg_ele) {
-      new_bg_ele.style.background = "rgba(50, 126, 173, 0.2)";
+      new_bg_ele.classList.add("playback-col-highlight");
     }
   }
 
@@ -680,11 +682,11 @@ class GrooveWriter {
       return;
     }
 
-    if (this.class_permutation_type != "none")
+    if (this.class_permutation_type && this.class_permutation_type !== "none")
       percent_complete = (percent_complete * this.get_numberOfActivePermutationSections()) % 1.0;
 
-    var note_id_in_32 = Math.floor(percent_complete * notesPerMeasureInFullSizeArray(this.usingTriplets(), this.data.timeSig) * this.data.numberOfMeasures);
-    var real_note_id = (note_id_in_32 / getNoteScaler(this.data.notesPerMeasure, this.data.timeSig));
+    const totalNotes = this.data.notesPerMeasure * this.data.numberOfMeasures;
+    const real_note_id = Math.floor((percent_complete * totalNotes) + 0.001);
 
     this.hilight_all_notes_on_same_beat(instrument, real_note_id);
   }
@@ -717,11 +719,17 @@ class GrooveWriter {
     }
 
     if (this.class_cur_all_notes_highlight_id !== -1) {
-      var bg_ele = document.getElementById("bg-highlight" + this.class_cur_all_notes_highlight_id);
+      const prevId = this.class_cur_all_notes_highlight_id;
+      const bg_ele = document.getElementById("bg-highlight" + prevId);
       if (bg_ele) {
-        bg_ele.style.background = "transparent";
+        bg_ele.classList.remove("playback-col-highlight");
       }
       this.class_cur_all_notes_highlight_id = -1;
+    }
+
+    const allPlayingCols = document.querySelectorAll(".playback-col-highlight");
+    for (let i = 0; i < allPlayingCols.length; i++) {
+      allPlayingCols[i].classList.remove("playback-col-highlight");
     }
   }
 
@@ -1723,7 +1731,7 @@ class GrooveWriter {
         break;
     }
 
-    return "data:audio/midi;base64," + btoa(midiFile.toBytes());
+    return "data:audio/midi;base64," + binaryStringToBase64(midiFile.toBytes());
   }
 
   MIDISaveAs(): void {
@@ -2720,6 +2728,29 @@ class GrooveWriter {
     }
   }
 
+  getRowContainer(instrument: string, staffIndex: number): HTMLElement | null {
+    const staff = document.getElementById("staff-container" + staffIndex);
+    if (!staff) return null;
+    switch (instrument) {
+      case "sticking":
+      case "stickings":
+        return staff.querySelector(".stickings-row-container") as HTMLElement | null;
+      case "hh":
+        return staff.querySelector(".hi-hat-container") as HTMLElement | null;
+      case "hh2":
+        return staff.querySelector(".hi-hat2-container") as HTMLElement | null;
+      case "tom1":
+      case "tom4":
+        return staff.querySelector(".toms-container") as HTMLElement | null;
+      case "snare":
+        return staff.querySelector(".snare-container") as HTMLElement | null;
+      case "kick":
+        return staff.querySelector(".kick-container") as HTMLElement | null;
+      default:
+        return null;
+    }
+  }
+
   clearNavHighlights(): void {
     const container = document.getElementById("measureContainer");
     if (container) {
@@ -2761,55 +2792,11 @@ class GrooveWriter {
       this.selectedNoteIndex = 0;
     }
 
-    // Highlight column / stack of notes
     const bgEle = document.getElementById("bg-highlight" + this.selectedNoteIndex);
     if (bgEle) {
       bgEle.classList.add("nav-col-highlight");
     }
-    const allInstruments = ["sticking", "hh", "hh2", "tom1", "snare", "tom4", "kick"];
-    for (const inst of allInstruments) {
-      const el = this.getNoteElement(inst, this.selectedNoteIndex);
-      if (el) {
-        el.classList.add("nav-col-highlight");
-      }
-    }
 
-    // Highlight row in active staff container
-    const measureIndex = Math.floor(this.selectedNoteIndex / this.data.notesPerMeasure) + 1;
-    const staff = document.getElementById("staff-container" + measureIndex);
-    if (staff) {
-      let rowSelector = "";
-      switch (this.selectedInstrument) {
-        case "sticking":
-        case "stickings":
-          rowSelector = ".stickings-container";
-          break;
-        case "hh":
-          rowSelector = ".hi-hat-container";
-          break;
-        case "hh2":
-          rowSelector = ".hi-hat2-container";
-          break;
-        case "tom1":
-          rowSelector = "#tom1-container";
-          break;
-        case "snare":
-          rowSelector = ".snare-container";
-          break;
-        case "tom4":
-          rowSelector = "#tom4-container";
-          break;
-        case "kick":
-          rowSelector = ".kick-container";
-          break;
-      }
-      if (rowSelector) {
-        const rowEle = staff.querySelector(rowSelector);
-        if (rowEle) rowEle.classList.add("nav-row-highlight");
-      }
-    }
-
-    // Highlight active note cell
     const noteEle = this.getNoteElement(this.selectedInstrument, this.selectedNoteIndex);
     if (noteEle) {
       noteEle.classList.add("nav-note-cursor");
@@ -2818,6 +2805,12 @@ class GrooveWriter {
           noteEle.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
         } catch (_) {}
       }
+    }
+
+    const staffIndex = Math.floor(this.selectedNoteIndex / this.data.notesPerMeasure) + 1;
+    const rowContainer = this.getRowContainer(this.selectedInstrument, staffIndex);
+    if (rowContainer) {
+      rowContainer.classList.add("nav-row-highlight");
     }
   }
 
@@ -3172,6 +3165,7 @@ class GrooveWriter {
     this.myGrooveUtils.midiEventCallbacks.playEvent = () => {
       this.isAudioPlaying = true;
       this.clearNavHighlights();
+      this.clear_all_highlights("clear");
       if (origPlayEvent) origPlayEvent.call(this.myGrooveUtils.midiEventCallbacks);
     };
 
